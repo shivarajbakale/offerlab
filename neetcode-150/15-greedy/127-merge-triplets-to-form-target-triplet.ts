@@ -33,6 +33,14 @@
  *   merging all those safe triplets then yields the target.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: greedy
+ * Key insight: Max never decreases, so any triplet with a value above the target can never
+ *   be used. Among the safe ones, merging all of them never overshoots, so you only need
+ *   each target position matched exactly by some safe triplet.
+ * Real world: A config system that merges feature flags by taking the max level per
+ *   setting, checking whether some subset of profiles produces exactly the desired
+ *   configuration.
  */
 
 import { test } from "node:test";

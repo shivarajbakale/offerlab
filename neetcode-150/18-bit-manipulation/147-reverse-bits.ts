@@ -26,6 +26,12 @@
  *   `>>>` (logical shift) when reading bits so the sign bit is not smeared.
  *
  * Time: O(1) (32 iterations)   Space: O(1)
+ *
+ * Pattern: bit-manipulation
+ * Key insight: Read bit i with an unsigned shift and place it at bit 31 - i. In JS, >>> 0
+ *   at the end reinterprets the signed 32-bit result as unsigned.
+ * Real world: FFT implementations reorder samples by bit-reversed index, and network code
+ *   reverses bit order when converting between LSB-first and MSB-first wire formats.
  */
 
 import { test } from "node:test";

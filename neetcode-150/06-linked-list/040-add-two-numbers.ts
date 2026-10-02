@@ -30,6 +30,13 @@
  *   carry floor(sum / 10). Keep going while either list or a carry remains.
  *
  * Time: O(max(m, n))   Space: O(1) extra (output list aside)
+ *
+ * Pattern: linked-list
+ * Key insight: Digits are stored least significant first, which is exactly the order
+ *   grade-school addition needs, so no reversal is required. Looping while either list or
+ *   the carry is non-empty handles unequal lengths and a final carry in one rule.
+ * Real world: Arbitrary-precision integer libraries (BigInt, GMP) add numbers stored as
+ *   arrays of limbs, least significant first, carrying between limbs the same way.
  */
 
 import { test } from "node:test";

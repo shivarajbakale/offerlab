@@ -38,6 +38,15 @@
  *
  * Time: O(m * n * 4 * 3^(L-1)) worst case, L = max word length
  * Space: O(total characters in words)
+ *
+ * Pattern: trie,backtracking
+ * Key insight: Searching each word separately repeats the same board walks. Walking one
+ *   trie alongside the board searches all words at once and abandons a path as soon as it
+ *   stops being a prefix of any word; pruning exhausted trie branches makes later
+ *   searches faster.
+ * Real world: Boggle solvers and multi-pattern scanners (like Aho-Corasick in grep or
+ *   antivirus engines) that match a whole dictionary in one pass instead of one pattern
+ *   at a time.
  */
 
 import { test } from "node:test";

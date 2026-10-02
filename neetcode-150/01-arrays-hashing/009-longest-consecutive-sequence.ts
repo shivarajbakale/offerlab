@@ -26,6 +26,13 @@
  *   visited a constant number of times overall.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: hashing
+ * Key insight: Only numbers whose predecessor n - 1 is missing can start a run, so
+ *   counting up from those alone touches each number a constant number of times and
+ *   avoids sorting.
+ * Real world: Finding the longest streak of consecutive login days for a user from an
+ *   unordered set of activity dates.
  */
 
 import { test } from "node:test";

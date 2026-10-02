@@ -26,6 +26,13 @@
  *   (Quickselect gives O(n) average but O(n^2) worst case.)
  *
  * Time: O(n log k)   Space: O(k)
+ *
+ * Pattern: heap-top-k
+ * Key insight: Sorting all n values is unnecessary; a min-heap holding the k largest seen
+ *   so far drops anything smaller than its root, so after one pass the root is the k-th
+ *   largest in O(n log k).
+ * Real world: Analytics queries such as 'the 95th-percentile-ranked item' or 'top-k
+ *   products by sales' computed in one pass over a large table.
  */
 
 import { test } from "node:test";

@@ -29,6 +29,13 @@
  *   max of the left side and min of the right side.
  *
  * Time: O(log(min(m, n)))   Space: O(1)
+ *
+ * Pattern: binary-search
+ * Key insight: The median splits both arrays into a left half and right half. Choosing i
+ *   from the shorter array fixes j from the other, and the cross-checks A[i-1] <= B[j]
+ *   and B[j-1] <= A[i] say which way i must move.
+ * Real world: Computing a combined median latency from two sorted shards without merging
+ *   their full data.
  */
 
 import { test } from "node:test";

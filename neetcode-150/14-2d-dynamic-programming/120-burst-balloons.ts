@@ -34,6 +34,13 @@
  *   Fill by increasing interval length. Answer: dp[0][n + 1].
  *
  * Time: O(n^3)   Space: O(n^2)
+ *
+ * Pattern: dp-interval
+ * Key insight: Choosing the first balloon to burst leaves neighbours that keep changing.
+ *   Choosing the LAST balloon k in (l, r) fixes its neighbours to l and r, which splits
+ *   the interval into two independent halves (l, k) and (k, r).
+ * Real world: Query optimizers pick the best join order the same way: choose the last join
+ *   to perform, and the left and right sub-plans become independent subproblems.
  */
 
 import { test } from "node:test";

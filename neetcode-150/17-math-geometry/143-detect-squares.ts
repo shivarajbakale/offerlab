@@ -31,6 +31,13 @@
  *   cnt(x, y) * cnt(x, qy) * cnt(qx, y) for each such diagonal point.
  *
  * Time: add O(1), count O(p) for p distinct points   Space: O(p)
+ *
+ * Pattern: hashing,design
+ * Key insight: Fixing the query point and choosing the diagonal corner pins down the whole
+ *   square, so the other two corners can be looked up directly. Multiplying their stored
+ *   counts handles duplicate points without enumerating triples.
+ * Real world: A geometry or vision tool detecting axis-aligned rectangles from a stream of
+ *   detected corner points, using a hash of point counts for constant-time corner lookups.
  */
 
 import { test } from "node:test";

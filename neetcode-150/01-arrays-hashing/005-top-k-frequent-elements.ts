@@ -27,6 +27,13 @@
  *   collecting values until we have k.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: hashing,heap-top-k
+ * Key insight: A frequency can never exceed n, so counts can index an array of buckets
+ *   directly; reading buckets from high to low yields the top k without any sorting or
+ *   heap.
+ * Real world: A trending-topics panel counting hashtags in the last hour and showing the
+ *   k most frequent ones.
  */
 
 import { test } from "node:test";

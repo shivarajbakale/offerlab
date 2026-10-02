@@ -34,6 +34,14 @@
  *   Pass 2 wires each copy's next and random through the map.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: linked-list,hashing
+ * Key insight: The random pointer can aim at a node that has not been copied yet, so
+ *   copying and wiring cannot happen in one pass. Building every copy first and keeping
+ *   an old -> new map turns any original pointer into its copy with one lookup.
+ * Real world: Deep-cloning an object graph with shared references (structuredClone, a
+ *   game engine duplicating a scene), where a visited map keeps aliased objects aliased
+ *   in the clone.
  */
 
 import { test } from "node:test";

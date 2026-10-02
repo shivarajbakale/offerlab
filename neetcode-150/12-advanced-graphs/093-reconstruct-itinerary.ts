@@ -30,6 +30,14 @@
  *   post-order is the itinerary. Dead ends naturally end up last.
  *
  * Time: O(E log E)   Space: O(E)
+ *
+ * Pattern: graph-dfs
+ * Key insight: Using every ticket exactly once is an Eulerian path. Greedily taking the
+ *   smallest destination can hit a dead end early, but adding an airport to the route
+ *   only after its tickets are used up pushes dead ends to the end, so the reversed
+ *   post-order is always valid.
+ * Real world: Route planners for snowplows, mail delivery or PCB drilling that must
+ *   traverse every street or edge exactly once (Chinese postman / Eulerian circuits).
  */
 
 import { test } from "node:test";

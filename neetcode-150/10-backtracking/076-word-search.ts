@@ -33,6 +33,14 @@
  *   restore it on the way back.
  *
  * Time: O(m * n * 4^L) where L = word.length   Space: O(L) recursion
+ *
+ * Pattern: backtracking, grid-dfs
+ * Key insight: Overwriting the current cell with "#" doubles as the visited set for this
+ *   one path, and restoring it on the way back frees the cell for other paths. A mismatch
+ *   on any letter prunes the whole branch at once, so most starting cells die after one
+ *   comparison.
+ * Real world: A word-game app (Boggle, word search puzzles) checking whether a player's
+ *   traced word really exists on the letter grid without reusing a tile.
  */
 
 import { test } from "node:test";

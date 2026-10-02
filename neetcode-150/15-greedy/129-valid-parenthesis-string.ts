@@ -32,6 +32,13 @@
  *   since a negative count is never a valid choice. Valid if min ends at 0.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: greedy
+ * Key insight: You do not need to decide what each '*' is. Track the range [min, max] of
+ *   possible open counts; any value in between is achievable. Fail if max goes negative,
+ *   clamp min at 0, and succeed if 0 is still in range at the end.
+ * Real world: A lenient parser or editor that tolerates wildcard or unknown tokens,
+ *   checking whether some interpretation of them makes the brackets balance.
  */
 
 import { test } from "node:test";

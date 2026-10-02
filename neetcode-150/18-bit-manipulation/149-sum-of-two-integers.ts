@@ -27,6 +27,13 @@
  *   mask; in JS the 32-bit truncation is built in.)
  *
  * Time: O(1) (at most 32 iterations)   Space: O(1)
+ *
+ * Pattern: bit-manipulation
+ * Key insight: XOR is addition without carries, and (a & b) << 1 is exactly the carries.
+ *   Feeding the carry back in repeats until no carry remains, which is how a hardware
+ *   adder works.
+ * Real world: This is the logic of ripple-carry and carry-lookahead adders inside CPUs and
+ *   is used in hardware description code and circuit simulators.
  */
 
 import { test } from "node:test";

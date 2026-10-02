@@ -29,6 +29,14 @@
  *   Path compression + union by rank keep operations near O(1).
  *
  * Time: O(n * α(n))   Space: O(n)
+ *
+ * Pattern: union-find
+ * Key insight: Union-find answers "are a and b already connected?" in near-constant time.
+ *   The first edge whose endpoints share a root closes the cycle, and since this is the
+ *   only extra edge, it is the answer.
+ * Real world: Network design tools spotting a redundant cable or loop in a topology as
+ *   links are added, which matters for protocols like Spanning Tree that must break
+ *   loops.
  */
 
 import { test } from "node:test";

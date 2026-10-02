@@ -26,6 +26,13 @@
  *   the end, the current path is one subset.
  *
  * Time: O(n * 2^n)   Space: O(n) recursion (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: Every subset corresponds to one include/exclude choice per element, so a
+ *   binary decision tree of depth n reaches each of the 2^n subsets exactly once. Undoing
+ *   the push after recursing lets one path array be reused.
+ * Real world: Feature-flag or test-configuration generators that enumerate every
+ *   combination of on/off options.
  */
 
 import { test } from "node:test";
@@ -36,14 +43,14 @@ export function subsets(nums: number[]): number[][] {
   const path: number[] = [];
 
   const dfs = (i: number): void => {
-    if (i === nums.length) {
-      res.push([...path]);
+    if (i === nums.length) { // @say Decided on every number: the path is one complete subset
+      res.push([...path]); // @say Record a copy of {path}, since path keeps changing
       return;
     }
-    path.push(nums[i]); // include nums[i]
+    path.push(nums[i]); // @say Choice 1: include {nums[i]} in the subset
     dfs(i + 1);
-    path.pop(); // exclude nums[i]
-    dfs(i + 1);
+    path.pop(); // @say Undo: drop {nums[i]} so we can explore subsets without it
+    dfs(i + 1); // @say Choice 2: skip {nums[i]} and decide on the next number
   };
 
   dfs(0);

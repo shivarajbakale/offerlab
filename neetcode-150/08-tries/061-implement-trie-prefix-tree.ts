@@ -30,6 +30,13 @@
  *   required.
  *
  * Time: O(L) per operation   Space: O(total characters inserted)
+ *
+ * Pattern: trie
+ * Key insight: Words sharing a prefix share a path, so lookup time depends on word
+ *   length, not on how many words are stored. search and startsWith follow the same path
+ *   and differ only in whether the end-of-word flag is required.
+ * Real world: Autocomplete in search boxes and IDEs, and IP routing tables that look up
+ *   the longest matching address prefix.
  */
 
 import { test } from "node:test";

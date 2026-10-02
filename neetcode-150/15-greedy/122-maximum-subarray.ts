@@ -29,6 +29,13 @@
  *   fresh at the next element. Track the best sum seen along the way.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: best-so-far
+ * Key insight: A negative running sum can only lower whatever follows, so the best
+ *   subarray ending here either extends the previous one or starts fresh at this element.
+ *   One pass tracks that running sum and the best value seen.
+ * Real world: Finding the stretch of days with the largest total profit in a P&L series,
+ *   or the strongest signal burst in a noisy sensor trace.
  */
 
 import { test } from "node:test";

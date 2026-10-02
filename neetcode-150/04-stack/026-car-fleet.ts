@@ -35,6 +35,13 @@
  *   fleet and is pushed.
  *
  * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: monotonic-stack
+ * Key insight: Processing cars from closest to the target, a car that would arrive no
+ *   later than the fleet ahead gets blocked and joins it, so only cars with a strictly
+ *   later arrival time start new fleets.
+ * Real world: Traffic simulation merging vehicles into platoons on a single lane where
+ *   faster cars catch up and are stuck behind slower ones.
  */
 
 import { test } from "node:test";

@@ -8,6 +8,7 @@ npm test                                   # run every problem's tests
 node --test neetcode-150/07-trees/*.ts     # run one category
 node neetcode-150/01-arrays-hashing/001-contains-duplicate.ts   # run one problem
 npm run typecheck                          # strict tsc check
+npm run viz                                # watch solutions run step by step (see viz/README.md)
 ```
 
 | #   | Folder                         | Problems  |

@@ -24,6 +24,13 @@
  *   length reaches 2n, record the string.
  *
  * Time: O(4^n / sqrt(n)) (Catalan number of results)   Space: O(n) recursion
+ *
+ * Pattern: backtracking
+ * Key insight: A prefix can still become valid exactly when open <= n and close <= open,
+ *   so enforcing those two rules while building prunes every invalid branch and only
+ *   valid strings are ever completed.
+ * Real world: Test generators enumerating all well-formed nested structures (JSON, XML)
+ *   up to a size to fuzz a parser.
  */
 
 import { test } from "node:test";

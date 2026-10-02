@@ -29,6 +29,13 @@
  *   number not yet used, mark it, recurse, then unmark it (backtrack).
  *
  * Time: O(n * n!)   Space: O(n) (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: Each position can take any number not yet used, so a used[] array plus
+ *   undo after recursion explores all n! orderings while building only one path array.
+ * Real world: Brute-force route planners trying every visiting order for a handful of
+ *   stops, or test tools exercising every ordering of a few events to find race
+ *   conditions.
  */
 
 import { test } from "node:test";

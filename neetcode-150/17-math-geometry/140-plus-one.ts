@@ -30,6 +30,12 @@
  *   A 9 becomes 0 and the carry moves left. If every digit was 9, prepend 1.
  *
  * Time: O(n)   Space: O(1) (O(n) only in the all-nines case)
+ *
+ * Pattern: math
+ * Key insight: Adding one only changes the trailing run of 9s plus the digit before it.
+ *   Stop at the first digit below 9; only an all-9s number needs a new leading 1.
+ * Real world: Big-number and odometer-style counters, such as incrementing a version
+ *   string or a fixed-width sequence ID stored as digits.
  */
 
 import { test } from "node:test";

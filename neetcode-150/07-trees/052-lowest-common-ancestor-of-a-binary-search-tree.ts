@@ -31,6 +31,13 @@
  *   paths split here (or the current node is p or q), so this is the LCA.
  *
  * Time: O(h)   Space: O(1)
+ *
+ * Pattern: bst
+ * Key insight: In a BST, comparing p and q against the current value tells which side
+ *   each one lives on. The first node where they are not both on the same side is where
+ *   their paths split, which is the LCA, so no full traversal is needed.
+ * Real world: Finding the smallest range bucket that contains two keys in a sorted range
+ *   index, such as the common parent block of two keys in a B-tree.
  */
 
 import { test } from "node:test";

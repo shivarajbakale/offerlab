@@ -31,6 +31,13 @@
  *   answer.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: stack
+ * Key insight: In postfix notation every operator applies to the two most recent results,
+ *   so a stack holds exactly the pending operands and no parentheses or precedence rules
+ *   are needed.
+ * Real world: Stack-based virtual machines like the JVM and calculators evaluate compiled
+ *   expressions in postfix order with an operand stack.
  */
 
 import { test } from "node:test";

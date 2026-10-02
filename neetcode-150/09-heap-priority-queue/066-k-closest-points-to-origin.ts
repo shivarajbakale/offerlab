@@ -26,6 +26,13 @@
  *   closest points seen so far; when it grows past k, evict the farthest.
  *
  * Time: O(n log k)   Space: O(k)
+ *
+ * Pattern: heap-top-k
+ * Key insight: Keeping a max-heap of size k means the root is the farthest of the current
+ *   best k, so any closer point simply evicts it. Comparing squared distances avoids sqrt
+ *   without changing the order.
+ * Real world: Map apps and ride-hailing systems returning the k nearest drivers or
+ *   restaurants to a location.
  */
 
 import { test } from "node:test";

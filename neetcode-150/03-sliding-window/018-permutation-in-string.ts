@@ -25,6 +25,13 @@
  *   changes two counts, so update `matches` in O(1); 26 matches means found.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: sliding-window
+ * Key insight: A permutation of s1 is any window of the same length with the same letter
+ *   counts. Sliding changes only two counts, so a running count of matching letters makes
+ *   each step O(1).
+ * Real world: Malware scanners spotting a known byte multiset in a stream regardless of
+ *   order, using a fixed-size rolling window of counts.
  */
 
 import { test } from "node:test";

@@ -26,6 +26,13 @@
  *   expand outward while the ends match and record the longest window.
  *
  * Time: O(n^2)   Space: O(1)
+ *
+ * Pattern: expand-around-center
+ * Key insight: Every palindrome is symmetric around a center, either a character or a gap
+ *   between two characters, so only 2n - 1 centers need checking. Expanding stops at the
+ *   first mismatch, giving O(n^2) time and O(1) space with no DP table.
+ * Real world: Bioinformatics tools finding palindromic DNA sequences, which mark
+ *   restriction-enzyme cut sites and hairpin structures.
  */
 
 import { test } from "node:test";

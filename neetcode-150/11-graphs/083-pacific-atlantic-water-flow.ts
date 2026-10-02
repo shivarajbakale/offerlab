@@ -35,6 +35,13 @@
  *   marks every cell that can drain into that ocean. Answer = intersection.
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: grid-dfs
+ * Key insight: Asking "where does water from each cell go" repeats the same work for
+ *   every cell. Running it backwards (from each ocean's border, only climbing to cells at
+ *   least as high) finds every cell that drains there in one O(m * n) sweep per ocean.
+ * Real world: Hydrology tools computing watersheds from a digital elevation model,
+ *   tracing uphill from each river outlet to find every cell that drains into it.
  */
 
 import { test } from "node:test";

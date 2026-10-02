@@ -30,6 +30,12 @@
  *   cancels every pair, leaving only the single number.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: bit-manipulation
+ * Key insight: XOR cancels any value with itself and order does not matter, so XOR-ing
+ *   everything removes every pair and leaves the single value, with no extra memory.
+ * Real world: RAID-5 parity uses the same XOR property: XOR of all surviving blocks and
+ *   the parity block recovers the one missing block.
  */
 
 import { test } from "node:test";

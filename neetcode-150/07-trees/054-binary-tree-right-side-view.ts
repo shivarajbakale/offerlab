@@ -32,6 +32,13 @@
  *   Traverse level by level and record the last node of every level.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: tree-bfs
+ * Key insight: The node visible from the right is simply the last node of each level in
+ *   left-to-right order, so a level-by-level BFS that records each level's last element
+ *   is enough.
+ * Real world: Computing which item is visible at each depth in a nested layout, such as
+ *   the rightmost node shown per row when drawing a collapsed tree view.
  */
 
 import { test } from "node:test";

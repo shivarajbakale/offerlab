@@ -27,6 +27,13 @@
  *   maxFreq never needs to decrease: only a larger maxFreq can beat the best.
  *
  * Time: O(n)   Space: O(1) (26 letters)
+ *
+ * Pattern: sliding-window
+ * Key insight: A window is fixable when its length minus its most common letter count is
+ *   at most k. The answer only grows if maxFreq grows, so maxFreq never needs to be
+ *   lowered when the window shrinks.
+ * Real world: A DNA analysis tool finding the longest region that becomes uniform with at
+ *   most k base corrections.
  */
 
 import { test } from "node:test";

@@ -28,6 +28,13 @@
  *   right to left so row[c + 1] is already the current row's value.
  *
  * Time: O(m * n)   Space: O(n)
+ *
+ * Pattern: dp-grid
+ * Key insight: Paths to a cell come only from the cell to its right or below, so its
+ *   count is their sum. One row array is enough because updating right to left keeps the
+ *   row below and the current row in the same array.
+ * Real world: Counting lattice paths in a robot or routing grid, for example estimating
+ *   the number of shortest routes through a city street grid.
  */
 
 import { test } from "node:test";

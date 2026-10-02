@@ -27,6 +27,12 @@
  *   their difference if non-zero. The remaining root (or 0) is the answer.
  *
  * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: heap-top-k
+ * Key insight: Each round needs the two heaviest stones from a changing set, which is
+ *   exactly what a max-heap gives in O(log n) instead of re-sorting every round.
+ * Real world: Huffman coding repeatedly pulls the two extreme weights from a heap and
+ *   pushes back their combination, the same smash-and-reinsert loop.
  */
 
 import { test } from "node:test";

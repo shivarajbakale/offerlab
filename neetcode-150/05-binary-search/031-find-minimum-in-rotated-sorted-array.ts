@@ -31,6 +31,13 @@
  *   Shrink until lo === hi.
  *
  * Time: O(log n)   Space: O(1)
+ *
+ * Pattern: binary-search
+ * Key insight: Comparing nums[mid] with nums[hi] tells which side the rotation drop is
+ *   on: if mid is larger, the minimum is right of mid, otherwise mid..hi is sorted and
+ *   the minimum is at or left of mid.
+ * Real world: Finding where a circular log buffer wraps around (its oldest entry) by
+ *   binary searching sorted timestamps.
  */
 
 import { test } from "node:test";

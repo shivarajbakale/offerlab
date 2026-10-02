@@ -34,6 +34,12 @@
  *   matching opener; pop it. The string is valid if the stack ends empty.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: stack
+ * Key insight: Brackets close in reverse order of opening, so the only opener a closer
+ *   may match is the most recent unmatched one, which is exactly the top of a stack.
+ * Real world: Code editors and linters matching brackets and HTML tags to highlight pairs
+ *   and report unclosed blocks.
  */
 
 import { test } from "node:test";
@@ -45,10 +51,10 @@ export function isValid(s: string): boolean {
   const stack: string[] = [];
   for (const ch of s) {
     const open = OPENER[ch];
-    if (open === undefined) stack.push(ch);
-    else if (stack.pop() !== open) return false;
+    if (open === undefined) stack.push(ch); // @say '{ch}' opens a bracket; push it and wait for its closer
+    else if (stack.pop() !== open) return false; // @say '{ch}' must close the most recent opener, which must be '{open}'
   }
-  return stack.length === 0;
+  return stack.length === 0; // @say Valid only if every opener was closed
 }
 
 test("20. Valid Parentheses", () => {

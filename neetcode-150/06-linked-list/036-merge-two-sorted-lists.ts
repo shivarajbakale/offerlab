@@ -29,6 +29,12 @@
  *   dummy-headed result list, then append whatever remains.
  *
  * Time: O(m + n)   Space: O(1)
+ *
+ * Pattern: linked-list
+ * Key insight: A dummy head removes the special case for the first node, and since both
+ *   lists are sorted, the smaller current head is always the next node in the result.
+ * Real world: The merge step of merge sort and of log-structured databases combining two
+ *   sorted runs into one.
  */
 
 import { test } from "node:test";

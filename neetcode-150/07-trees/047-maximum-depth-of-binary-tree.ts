@@ -23,6 +23,13 @@
  *   Depth of a node = 1 + max(depth of left, depth of right); empty tree is 0.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: A tree's depth is defined in terms of its subtrees' depths, so the answer
+ *   for a node is 1 plus the larger child answer, with an empty tree as 0. Each node is
+ *   visited once.
+ * Real world: Measuring the nesting depth of a DOM tree or a JSON document to enforce a
+ *   maximum depth limit in a parser.
  */
 
 import { test } from "node:test";

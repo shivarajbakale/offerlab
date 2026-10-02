@@ -28,6 +28,13 @@
  *   until r reaches the last index.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: greedy
+ * Key insight: All indices reachable with k jumps form one contiguous window, so this is
+ *   BFS by levels without a queue. The next window ends at the farthest point any index in
+ *   the current window can reach.
+ * Real world: A network planner counting the minimum number of relay hops along a line of
+ *   towers, where each tower covers a known forward range.
  */
 
 import { test } from "node:test";

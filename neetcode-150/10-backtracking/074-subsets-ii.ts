@@ -27,6 +27,13 @@
  *   generated exactly once.
  *
  * Time: O(n * 2^n)   Space: O(n) (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: After sorting, equal values sit together; if a value is excluded, then
+ *   skipping all its copies too means each multiset is generated once instead of once per
+ *   copy.
+ * Real world: Generating distinct bundles from an inventory that contains identical
+ *   items, so the same bundle is not listed twice.
  */
 
 import { test } from "node:test";

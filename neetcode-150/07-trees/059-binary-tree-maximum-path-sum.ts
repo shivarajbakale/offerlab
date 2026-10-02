@@ -29,6 +29,13 @@
  *   the parent, since a path can only continue upward through one child.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: A path can bend at only one node, so each node returns the best
+ *   single-branch gain to its parent while separately scoring the bent path through
+ *   itself. Clamping negative gains to 0 means a bad branch is simply not taken.
+ * Real world: Finding the most profitable route through a tree of network links or
+ *   pipeline stages where some segments cost more than they earn.
  */
 
 import { test } from "node:test";

@@ -35,6 +35,13 @@
  *   Keep only dp[i + 1] and dp[i + 2].
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-1d
+ * Key insight: The ways to decode a suffix depend only on taking one digit or a valid
+ *   two-digit code (10-26), and a leading "0" makes it 0 ways. So dp[i] needs only dp[i +
+ *   1] and dp[i + 2].
+ * Real world: Counting ambiguous parses when decoding a message format without
+ *   separators, such as numeric SMS encodings or variable-length codes.
  */
 
 import { test } from "node:test";

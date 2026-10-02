@@ -31,6 +31,12 @@
  *   For negative n, compute x^|n| and take the reciprocal.
  *
  * Time: O(log n)   Space: O(log n) recursion
+ *
+ * Pattern: math
+ * Key insight: x^n is (x^(n/2))^2, with one extra x when n is odd, so computing the half
+ *   once halves the work each level. That gives O(log n) multiplications instead of n.
+ * Real world: RSA and other public-key crypto compute huge modular powers with this same
+ *   square-and-multiply method.
  */
 
 import { test } from "node:test";

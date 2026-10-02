@@ -31,6 +31,13 @@
  *   only cover 0..n-1.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: bit-manipulation
+ * Key insight: XOR all indices 0..n with all values: every present number appears twice
+ *   and cancels, so only the missing one survives. Starting from n covers the index the
+ *   loop never reaches.
+ * Real world: Finding the one missing packet sequence number in a received batch, or the
+ *   one unused ID in a fully allocated range, in O(1) memory.
  */
 
 import { test } from "node:test";

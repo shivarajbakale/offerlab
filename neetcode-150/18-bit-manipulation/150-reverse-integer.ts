@@ -36,6 +36,13 @@
  *   so negative inputs work without special-casing.
  *
  * Time: O(log |x|)   Space: O(1)
+ *
+ * Pattern: math
+ * Key insight: Digits are popped with % 10 and pushed with res * 10 + digit. Overflow can
+ *   be caught before it happens by comparing res against MAX / 10 (and the last digit)
+ *   instead of computing a value that does not fit.
+ * Real world: Parsers such as atoi or JSON number readers check for 32-bit overflow before
+ *   each multiply-by-10 so they can reject out-of-range input safely.
  */
 
 import { test } from "node:test";

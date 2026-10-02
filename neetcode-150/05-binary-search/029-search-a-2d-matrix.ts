@@ -28,6 +28,13 @@
  *   that row.
  *
  * Time: O(log m + log n)   Space: O(1)
+ *
+ * Pattern: binary-search
+ * Key insight: Row ranges are disjoint and increasing, so the matrix behaves like one
+ *   sorted list: first binary search for the only row whose range can hold the target,
+ *   then search inside it.
+ * Real world: Looking up a key in a paged sorted index, where you binary search page
+ *   boundaries first and then within the chosen page.
  */
 
 import { test } from "node:test";

@@ -31,6 +31,13 @@
  *   rest). Answer: dp[0][0].
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: dp-two-strings
+ * Key insight: When the current characters match, they cost nothing, so skip both.
+ *   Otherwise one edit is spent and each of insert, delete and replace shrinks the problem
+ *   to a neighbouring (i, j) cell; take the cheapest.
+ * Real world: Spell checkers and fuzzy search rank suggestions by Levenshtein distance,
+ *   and diff tools use the same table to align two versions of a file.
  */
 
 import { test } from "node:test";

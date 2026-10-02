@@ -31,6 +31,13 @@
  *   i + 2 are needed, so we keep a handful of variables.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-state-machine
+ * Key insight: Each day you are in one of two modes (free to buy, or holding), and selling
+ *   moves you to day i + 2 instead of i + 1. Encoding the cooldown as that skip means the
+ *   whole rule lives in the transition, so three rolling variables replace the table.
+ * Real world: A trading bot with a mandatory settlement or wash-sale waiting period after
+ *   each sale, planning entries and exits around the lockout.
  */
 
 import { test } from "node:test";

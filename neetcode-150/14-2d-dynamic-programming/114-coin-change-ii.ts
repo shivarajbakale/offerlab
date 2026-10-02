@@ -37,6 +37,15 @@
  *   coins in the outer loop counts combinations, not permutations.
  *
  * Time: O(n * amount)   Space: O(amount)
+ *
+ * Pattern: knapsack
+ * Key insight: Looping coins on the outside and amounts on the inside means each
+ *   combination is built in one fixed coin order, so 1+2 and 2+1 are counted once.
+ *   Sweeping amounts upward lets dp[a - c] already include coin c, which is what makes
+ *   each coin reusable.
+ * Real world: A vending machine or cash register counting how many ways it can make change
+ *   from its denominations, e.g. to see if an odd amount can still be paid out when one
+ *   coin type runs out.
  */
 
 import { test } from "node:test";

@@ -26,6 +26,13 @@
  *   <= last end. If so, extend the last end; otherwise start a new block.
  *
  * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: intervals
+ * Key insight: After sorting by start, any interval that overlaps the merged set must
+ *   overlap the last merged block, so a single comparison with the last end decides extend
+ *   or start new.
+ * Real world: Combining overlapping busy times from several calendars into one free/busy
+ *   view, or merging overlapping byte ranges in an HTTP range request.
  */
 
 import { test } from "node:test";

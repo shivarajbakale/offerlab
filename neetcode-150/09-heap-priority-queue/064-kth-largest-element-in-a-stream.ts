@@ -31,6 +31,13 @@
  *   largest. On each add, push and evict the minimum if the heap exceeds k.
  *
  * Time: O(n log k) init, O(log k) per add   Space: O(k)
+ *
+ * Pattern: heap-top-k
+ * Key insight: Only the k largest values can ever be the answer, so a min-heap of size k
+ *   is enough; its root is the k-th largest, and each new value either replaces the root
+ *   or is ignored.
+ * Real world: Live leaderboards and monitoring that track the k-th highest score or
+ *   latency as events stream in, without storing every event.
  */
 
 import { test } from "node:test";

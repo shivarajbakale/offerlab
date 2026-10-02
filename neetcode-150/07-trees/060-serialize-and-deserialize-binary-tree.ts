@@ -28,6 +28,13 @@
  *   follow immediately.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: tree-dfs
+ * Key insight: Preorder alone is ambiguous, but writing an explicit marker for every null
+ *   child makes the encoding unique. The decoder reads tokens in the same order and
+ *   always knows when a subtree ends.
+ * Real world: Saving a scene graph, DOM or parse tree to a file or sending it over the
+ *   network, then rebuilding the exact same structure on the other side.
  */
 
 import { test } from "node:test";

@@ -33,6 +33,14 @@
  *   cell is computed once.
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: memoized-dfs
+ * Key insight: Moves only go to strictly larger values, so no path can revisit a cell and
+ *   the grid is a DAG. That makes the longest path from a cell a fixed number, so it can
+ *   be cached and every cell is solved exactly once.
+ * Real world: A terrain tool finding the longest strictly uphill hiking route on an
+ *   elevation map, where each cell's best climb is reused by every route that passes
+ *   through it.
  */
 
 import { test } from "node:test";

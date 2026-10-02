@@ -27,6 +27,13 @@
  *   handles single remaining rows/columns).
  *
  * Time: O(m * n)   Space: O(1) (excluding output)
+ *
+ * Pattern: matrix-simulation
+ * Key insight: Each full side you walk is never visited again, so shrink that boundary
+ *   right after walking it. Re-checking the bounds before the bottom row and left column
+ *   stops a single leftover row or column from being read twice.
+ * Real world: Printing or scanning a grid in spiral order, as in an LED matrix animation
+ *   or a spiral search pattern for a camera or drone sweep.
  */
 
 import { test } from "node:test";

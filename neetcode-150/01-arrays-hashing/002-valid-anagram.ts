@@ -25,6 +25,13 @@
  *   end at zero.
  *
  * Time: O(n)   Space: O(1) (26 letters)
+ *
+ * Pattern: hashing
+ * Key insight: Anagrams are equal as multisets, so order does not matter, only counts.
+ *   Adding for s and subtracting for t in one array means a single all-zero check settles
+ *   it.
+ * Real world: A spell checker suggesting words that use exactly the letters typed, by
+ *   comparing letter-count signatures.
  */
 
 import { test } from "node:test";

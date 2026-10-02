@@ -29,6 +29,13 @@
  *   (NeetCode uses a min-heap; iterating sorted distinct keys is equivalent.)
  *
  * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: greedy
+ * Key insight: The smallest card left cannot be anything but the start of a group, so it
+ *   forces its whole run. If it has count c, it starts c groups at once, so subtract c
+ *   from each of the next groupSize values in one step.
+ * Real world: A scheduler packing tasks into fixed-length batches of consecutive time
+ *   slots, failing fast when the earliest pending slot cannot start a full batch.
  */
 
 import { test } from "node:test";

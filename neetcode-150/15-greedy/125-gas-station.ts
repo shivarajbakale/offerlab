@@ -30,6 +30,13 @@
  *   the tank and try the next station as the start.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: greedy
+ * Key insight: If the tank goes negative between start and i, every station in that
+ *   stretch also fails (it would arrive with no more fuel than start did), so jump the
+ *   start to i + 1. If total gas covers total cost, the surviving start works.
+ * Real world: A delivery route planner choosing which depot on a circular route to start
+ *   from so a vehicle with charging stops never runs its battery empty.
  */
 
 import { test } from "node:test";

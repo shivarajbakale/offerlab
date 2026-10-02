@@ -25,17 +25,24 @@
  *   the best sale today is price - minSoFar; track the maximum of these.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: best-so-far
+ * Key insight: The best sale on any day uses the cheapest price seen before it, so
+ *   keeping one running minimum gives every day's best profit in O(1).
+ * Real world: A trading dashboard showing the maximum drawup of a price series in a
+ *   single streaming pass.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz hide:p
 export function maxProfit(prices: number[]): number {
   let minPrice = Infinity;
   let best = 0;
   for (const p of prices) {
-    minPrice = Math.min(minPrice, p);
-    best = Math.max(best, p - minPrice);
+    minPrice = Math.min(minPrice, p); // @say Today's price {p}: is it the cheapest day to buy so far?
+    best = Math.max(best, p - minPrice); // @say Selling today earns {p - minPrice} over the cheapest buy; keep the max
   }
   return best;
 }

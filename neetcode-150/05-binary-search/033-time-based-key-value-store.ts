@@ -27,6 +27,13 @@
  *   <= the query.
  *
  * Time: set O(1), get O(log n)   Space: O(n)
+ *
+ * Pattern: binary-search,design
+ * Key insight: Timestamps for a key arrive in increasing order, so appending keeps each
+ *   list sorted for free, and get becomes a binary search for the last timestamp <= the
+ *   query.
+ * Real world: Versioned config stores and MVCC databases answer "what was the value at
+ *   time t?" by searching a key's sorted version history.
  */
 
 import { test } from "node:test";

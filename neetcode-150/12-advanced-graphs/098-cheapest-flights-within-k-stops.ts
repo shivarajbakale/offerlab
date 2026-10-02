@@ -37,6 +37,14 @@
  *   the cheapest cost using at most k + 1 flights.
  *
  * Time: O(k * E)   Space: O(n)
+ *
+ * Pattern: shortest-path
+ * Key insight: Dijkstra's greedy pick ignores the stop limit, but Bellman-Ford's i-th
+ *   round finds the cheapest path using at most i flights. Reading from the previous
+ *   round's copy stops one round from chaining two flights, so k + 1 rounds enforce the
+ *   limit exactly.
+ * Real world: Flight search engines finding the cheapest fare with at most k connections,
+ *   where a cheaper route with too many stops must be rejected.
  */
 
 import { test } from "node:test";

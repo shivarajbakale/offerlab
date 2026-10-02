@@ -28,6 +28,13 @@
  *   don't; otherwise compare left with left and right with right.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: Two trees are equal exactly when their roots match and both pairs of
+ *   subtrees are equal, so the comparison recurses in lockstep and stops at the first
+ *   mismatch.
+ * Real world: Virtual DOM diffing in UI frameworks walks the old and new trees together
+ *   to find which subtrees changed.
  */
 
 import { test } from "node:test";

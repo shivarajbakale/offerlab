@@ -31,6 +31,13 @@
  *   there are log k rounds.
  *
  * Time: O(N log k), N = total nodes   Space: O(k) for the per-round array
+ *
+ * Pattern: k-way-merge,linked-list
+ * Key insight: Merging lists one by one into a growing result re-walks the long result k
+ *   times (O(Nk)). Merging in pairs like merge sort means every node takes part in only
+ *   log k merges, giving O(N log k).
+ * Real world: Log-structured storage engines (LevelDB, Cassandra compaction) and external
+ *   sort merge many sorted runs into one sorted output.
  */
 
 import { test } from "node:test";

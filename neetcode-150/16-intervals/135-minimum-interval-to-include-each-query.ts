@@ -30,6 +30,13 @@
  *   per query value and map back to original order.
  *
  * Time: O(n log n + q log q)   Space: O(n + q)
+ *
+ * Pattern: intervals,heap-top-k
+ * Key insight: Answering queries in sorted order lets intervals be added once as their
+ *   left end is passed, and removed for good once their right end falls behind the query.
+ *   A min-heap by size then gives the smallest live interval at the top.
+ * Real world: An IP-geolocation or routing table lookup that, for each address, finds the
+ *   most specific (smallest) range containing it, processing a batch of lookups offline.
  */
 
 import { test } from "node:test";

@@ -27,6 +27,13 @@
  *   everything right of i.
  *
  * Time: O(n)   Space: O(1) extra (output array not counted)
+ *
+ * Pattern: prefix-sum
+ * Key insight: The product of everything except i is just (product of all to the left)
+ *   times (product of all to the right); both are running products, so two passes replace
+ *   division and the O(n^2) rescan.
+ * Real world: Leave-one-out scoring in analytics, where each item's contribution is
+ *   measured by combining precomputed prefix and suffix aggregates.
  */
 
 import { test } from "node:test";

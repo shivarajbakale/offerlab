@@ -27,6 +27,13 @@
  *   tightens the lower bound.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: bst
+ * Key insight: Comparing a node only with its children misses violations deeper down;
+ *   every node must fit between bounds set by all its ancestors. Carrying (low, high)
+ *   down the recursion checks that in one pass.
+ * Real world: Integrity checks in databases and file systems that verify a B-tree's keys
+ *   respect the key ranges of all parent pages.
  */
 
 import { test } from "node:test";
@@ -45,9 +52,9 @@ export class TreeNode {
 
 export function isValidBST(root: TreeNode | null): boolean {
   const valid = (node: TreeNode | null, low: number, high: number): boolean => {
-    if (!node) return true;
-    if (node.val <= low || node.val >= high) return false;
-    return valid(node.left, low, node.val) && valid(node.right, node.val, high);
+    if (!node) return true; // @say An empty subtree breaks no rules
+    if (node.val <= low || node.val >= high) return false; // @say {node.val} must lie strictly between ancestors' bounds ({low}, {high})
+    return valid(node.left, low, node.val) && valid(node.right, node.val, high); // @say Left side must stay below {node.val}, right side above it
   };
   return valid(root, -Infinity, Infinity);
 }

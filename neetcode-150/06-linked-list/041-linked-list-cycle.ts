@@ -30,6 +30,14 @@
  *   fast eventually laps slow and they meet; otherwise fast hits null.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: fast-slow-pointers
+ * Key insight: Once both pointers are inside a cycle, the gap between them shrinks by
+ *   exactly one node per step, so fast cannot jump over slow and must land on it. Without
+ *   a cycle fast simply reaches null.
+ * Real world: Garbage collectors and serializers detecting circular references, and
+ *   Pollard's rho factoring, which uses the same tortoise-and-hare walk to find a
+ *   repeated value in O(1) memory.
  */
 
 import { test } from "node:test";
@@ -47,10 +55,10 @@ export class ListNode {
 export function hasCycle(head: ListNode | null): boolean {
   let slow = head;
   let fast = head;
-  while (fast && fast.next) {
-    slow = slow!.next;
-    fast = fast.next.next;
-    if (slow === fast) return true;
+  while (fast && fast.next) { // @say If fast hits the end, there is no loop to trap it
+    slow = slow!.next; // @say Tortoise moves one step
+    fast = fast.next.next; // @say Hare moves two steps, gaining one node per round
+    if (slow === fast) return true; // @say In a cycle the hare must eventually land on the tortoise
   }
   return false;
 }

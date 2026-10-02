@@ -29,6 +29,14 @@
  *   groupPrev to the old group head (now its tail).
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: linked-list
+ * Key insight: Check that k nodes remain before touching anything, so a short tail is
+ *   left as is. Starting the reversal with prev = the node after the group makes the
+ *   reversed group's tail already point at the rest of the list, so only groupPrev.next
+ *   needs fixing.
+ * Real world: Reordering fixed-size blocks in place inside a buffer chain, such as a
+ *   network stack reversing byte order per k-byte word in a list of packet buffers.
  */
 
 import { test } from "node:test";

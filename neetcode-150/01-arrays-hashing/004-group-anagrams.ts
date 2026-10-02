@@ -30,6 +30,12 @@
  *
  * Time: O(m * n) where m = number of strings, n = average length
  * Space: O(m * n)
+ *
+ * Pattern: hashing
+ * Key insight: All anagrams share the same 26-letter count vector, so that vector
+ *   serialized to a string is a canonical key; grouping becomes one map insert per word.
+ * Real world: Deduplicating near-identical records by computing a canonical signature for
+ *   each and bucketing records by signature.
  */
 
 import { test } from "node:test";

@@ -26,6 +26,12 @@
  *   target and discard the half that cannot contain it.
  *
  * Time: O(log n)   Space: O(1)
+ *
+ * Pattern: binary-search
+ * Key insight: Because the array is sorted, one comparison with the middle tells which
+ *   half cannot contain the target, so half the remaining range is discarded each step.
+ * Real world: Database B-tree indexes and sorted SSTable files binary search their keys
+ *   to locate a row in O(log n).
  */
 
 import { test } from "node:test";
@@ -35,10 +41,10 @@ export function search(nums: number[], target: number): number {
   let lo = 0;
   let hi = nums.length - 1;
   while (lo <= hi) {
-    const mid = lo + ((hi - lo) >> 1);
-    if (nums[mid] === target) return mid;
-    if (nums[mid] < target) lo = mid + 1;
-    else hi = mid - 1;
+    const mid = lo + ((hi - lo) >> 1); // @say Probe the middle of the remaining range [{lo}, {hi}]
+    if (nums[mid] === target) return mid; // @say Is the middle value the target {target}?
+    if (nums[mid] < target) lo = mid + 1; // @say Sorted: if {nums[mid]} < {target}, the target can only be to the right
+    else hi = mid - 1; // @say Middle is too big, so discard it and everything right of it
   }
   return -1;
 }

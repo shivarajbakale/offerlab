@@ -28,6 +28,13 @@
  *   (An array plus a head pointer acts as an O(1) deque here.)
  *
  * Time: O(n)   Space: O(k)
+ *
+ * Pattern: sliding-window,monotonic-stack
+ * Key insight: A value that is smaller than a newer value can never be the max of any
+ *   later window, so it is dropped; the deque stays decreasing and its front is always
+ *   the current maximum.
+ * Real world: Monitoring systems computing the rolling peak CPU usage over the last k
+ *   samples for alerting, in O(1) amortized per sample.
  */
 
 import { test } from "node:test";

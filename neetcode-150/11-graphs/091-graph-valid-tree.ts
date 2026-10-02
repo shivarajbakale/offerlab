@@ -27,6 +27,13 @@
  *   already-visited node means a cycle. Finally, every node must be visited.
  *
  * Time: O(V + E)   Space: O(V + E)
+ *
+ * Pattern: graph-dfs, union-find
+ * Key insight: A tree on n nodes has exactly n - 1 edges, and once that holds, being
+ *   connected is enough to rule out a cycle. The DFS skips only the edge back to its
+ *   parent, so meeting any visited node means a cycle. Union-find solves the same check.
+ * Real world: Validating that a network or org chart is a proper hierarchy: every node
+ *   reachable, no loops, and exactly one path between any two nodes.
  */
 
 import { test } from "node:test";

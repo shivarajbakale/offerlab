@@ -26,6 +26,14 @@
  *   check is O(1). Place, recurse to the next row, then remove (backtrack).
  *
  * Time: O(n!)   Space: O(n^2) for the board
+ *
+ * Pattern: backtracking
+ * Key insight: All squares on one diagonal share r + c, and all on one anti-diagonal
+ *   share r - c, so three sets answer "is this square attacked?" in O(1). Placing exactly
+ *   one queen per row removes row conflicts by construction.
+ * Real world: Constraint solvers for timetabling or seating plans, which place one item
+ *   per slot and keep sets of already-used resources so each conflict check is constant
+ *   time.
  */
 
 import { test } from "node:test";

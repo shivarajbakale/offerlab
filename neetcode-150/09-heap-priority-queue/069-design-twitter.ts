@@ -33,6 +33,13 @@
  *
  * Time: post/follow/unfollow O(1); getNewsFeed O(f + 10 log f) for f
  *       followees   Space: O(users + tweets + follows)
+ *
+ * Pattern: design,k-way-merge
+ * Key insight: Each user's tweets are already in time order, so the feed is a merge of
+ *   sorted lists. A max-heap seeded with each followee's newest tweet yields the 10
+ *   newest overall while only touching about 10 tweets.
+ * Real world: Social media news feeds and log viewers that merge several time-ordered
+ *   streams (per user or per server) into one timeline.
  */
 
 import { test } from "node:test";

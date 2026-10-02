@@ -30,6 +30,13 @@
  *   (window satisfies t), record it and shrink from the left.
  *
  * Time: O(|s| + |t|)   Space: O(charset)
+ *
+ * Pattern: sliding-window
+ * Key insight: Tracking how many distinct characters are fully satisfied turns "does the
+ *   window cover t?" into one integer comparison, so the window can grow until valid and
+ *   then shrink greedily to the smallest valid form.
+ * Real world: Finding the shortest log excerpt that mentions every service involved in an
+ *   incident, to show an on-call engineer the tightest context.
  */
 
 import { test } from "node:test";
@@ -50,18 +57,18 @@ export function minWindow(s: string, t: string): string {
   for (let r = 0; r < s.length; r++) {
     const ch = s[r];
     window.set(ch, (window.get(ch) ?? 0) + 1);
-    if (window.get(ch) === need.get(ch)) have++;
+    if (window.get(ch) === need.get(ch)) have++; // @say Does '{ch}' now fully satisfy one required character?
 
-    while (have === required) {
-      if (r - l + 1 < bestLen) {
+    while (have === required) { // @say Window covers all of t, so try shrinking from the left
+      if (r - l + 1 < bestLen) { // @say Is this valid window of length {r - l + 1} the smallest yet?
         bestL = l;
         bestLen = r - l + 1;
       }
       const out = s[l];
       window.set(out, window.get(out)! - 1);
       const needed = need.get(out);
-      if (needed !== undefined && window.get(out)! < needed) have--;
-      l++;
+      if (needed !== undefined && window.get(out)! < needed) have--; // @say Dropping '{out}' may break coverage of t
+      l++; // @say Shrink: move l right past '{s[l]}'
     }
   }
   return bestLen === Infinity ? "" : s.slice(bestL, bestL + bestLen);

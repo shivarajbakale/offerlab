@@ -29,6 +29,13 @@
  *   occurrence. Track the max window length.
  *
  * Time: O(n)   Space: O(min(n, charset))
+ *
+ * Pattern: sliding-window
+ * Key insight: When a repeated character enters the window, everything up to its previous
+ *   position can never be in a valid answer, so jump l just past it instead of shrinking
+ *   one step at a time.
+ * Real world: A network monitor finding the longest run of distinct session IDs in a live
+ *   log stream, keeping only the current window in memory.
  */
 
 import { test } from "node:test";
@@ -39,10 +46,10 @@ export function lengthOfLongestSubstring(s: string): number {
   let l = 0;
   let best = 0;
   for (let r = 0; r < s.length; r++) {
-    const prev = lastSeen.get(s[r]);
-    if (prev !== undefined && prev >= l) l = prev + 1;
-    lastSeen.set(s[r], r);
-    best = Math.max(best, r - l + 1);
+    const prev = lastSeen.get(s[r]); // @say Where did '{s[r]}' last appear?
+    if (prev !== undefined && prev >= l) l = prev + 1; // @say A repeat inside the window means jump l just past its old spot
+    lastSeen.set(s[r], r); // @say Record '{s[r]}' at index {r} for future repeat checks
+    best = Math.max(best, r - l + 1); // @say Window has no repeats; its length is {r - l + 1}
   }
   return best;
 }

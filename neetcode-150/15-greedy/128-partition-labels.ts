@@ -27,6 +27,13 @@
  *   appears later, so close it and start a new one.
  *
  * Time: O(n)   Space: O(1) (at most 26 letters)
+ *
+ * Pattern: greedy
+ * Key insight: Once you know each letter's last index, a partition must extend at least to
+ *   the last occurrence of every letter inside it. When the scan reaches that running end,
+ *   nothing inside appears later, so cutting there is safe and earliest.
+ * Real world: Splitting a log or event stream into the most independent chunks so every
+ *   session ID lives entirely in one chunk, letting chunks be processed in parallel.
  */
 
 import { test } from "node:test";

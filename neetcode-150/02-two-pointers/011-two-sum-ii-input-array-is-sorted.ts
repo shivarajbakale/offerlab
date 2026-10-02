@@ -31,6 +31,13 @@
  *   the left pointer right. Sortedness guarantees we never skip the answer.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: two-pointers
+ * Key insight: In a sorted array, if the sum is too big the right element cannot pair
+ *   with anything at or after l, so it can be discarded; each step removes one candidate
+ *   for good.
+ * Real world: Matching two sorted price lists to find an item pair that exactly fits a
+ *   gift card balance.
  */
 
 import { test } from "node:test";

@@ -31,6 +31,14 @@
  *   node after `head`.
  *
  * Time: O(1) per operation   Space: O(capacity)
+ *
+ * Pattern: design,linked-list
+ * Key insight: A map alone finds keys in O(1) but cannot say which is oldest; a list
+ *   alone keeps order but cannot find keys. Storing list nodes in the map lets every get
+ *   or put unlink and relink a node in O(1), and the sentinels remove all head/tail edge
+ *   cases.
+ * Real world: Memcached, Redis allkeys-lru and the OS page cache evict the least recently
+ *   used entry when memory is full, keeping recency order alongside the key index.
  */
 
 import { test } from "node:test";

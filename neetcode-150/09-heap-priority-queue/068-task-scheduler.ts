@@ -35,6 +35,13 @@
  *   time forward to the next ready task.
  *
  * Time: O(m) where m = total cycles (heap size <= 26)   Space: O(1)
+ *
+ * Pattern: heap-top-k,greedy
+ * Key insight: Idle time comes from the most frequent task, so always running the task
+ *   with the most copies left keeps idle slots minimal. A cooldown queue returns a task
+ *   to the heap exactly when it may run again.
+ * Real world: CPU and job schedulers that enforce a cooldown or rate limit per job type
+ *   while keeping the processor busy with the most backlogged work.
  */
 
 import { test } from "node:test";

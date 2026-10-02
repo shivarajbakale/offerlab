@@ -28,6 +28,13 @@
  *   its value is >= that max; then update the max for its children.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: Whether a node is good depends only on the maximum on its root-to-node
+ *   path, so passing that single number down the recursion replaces storing the whole
+ *   path.
+ * Real world: Flagging new all-time highs along each branch of a hierarchy, like a
+ *   manager chain where an employee is flagged if their score beats everyone above them.
  */
 
 import { test } from "node:test";

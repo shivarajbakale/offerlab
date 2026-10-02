@@ -26,6 +26,14 @@
  *   move the goal to i. At the end, we succeed if the goal reached index 0.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: greedy
+ * Key insight: If index i can reach the goal, reaching i is as good as reaching the goal,
+ *   so the goal can move back to i. Walking right to left, you only ever need the nearest
+ *   index that works.
+ * Real world: A route planner checking whether a vehicle with refuel stops of known range
+ *   can reach the destination, by pulling the target back to the last stop that can reach
+ *   it.
  */
 
 import { test } from "node:test";

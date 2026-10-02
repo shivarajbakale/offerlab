@@ -33,6 +33,13 @@
  *   the level at which endWord is popped is the answer.
  *
  * Time: O(m^2 * n)  (n words of length m)   Space: O(m^2 * n)
+ *
+ * Pattern: graph-bfs, hashing
+ * Key insight: Comparing every pair of words to find one-letter neighbours is O(n^2).
+ *   Bucketing words by wildcard patterns like "h*t" finds all neighbours through a hash
+ *   lookup, and BFS levels give the shortest chain length.
+ * Real world: Spell checkers and fuzzy search finding words one edit away by indexing
+ *   wildcard or deletion variants instead of comparing against the whole dictionary.
  */
 
 import { test } from "node:test";

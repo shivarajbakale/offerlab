@@ -31,6 +31,13 @@
  *   Special-case a single house.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-1d
+ * Key insight: The circle only adds one constraint: the first and last house cannot both
+ *   be robbed. So solve the straight-line version twice, once without the last house and
+ *   once without the first, and take the better.
+ * Real world: Circular scheduling like round-the-clock duty rosters, where the last shift
+ *   of the day neighbours the first one and you split the cycle into two linear cases.
  */
 
 import { test } from "node:test";

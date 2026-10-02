@@ -32,6 +32,13 @@
  *   Base: dp[m][*] = dp[*][n] = 0. Answer: dp[0][0].
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: dp-two-strings
+ * Key insight: If the first characters match, they can always be paired, giving 1 + the
+ *   rest. Otherwise one of them is unused, so skip one from either string and take the
+ *   better. Each pair of suffixes is solved once in an (m+1) x (n+1) table.
+ * Real world: The diff utility and git aligning two versions of a file by their longest
+ *   common subsequence of lines to show what was added or removed.
  */
 
 import { test } from "node:test";
@@ -41,9 +48,9 @@ export function longestCommonSubsequence(text1: string, text2: string): number {
   const m = text1.length;
   const n = text2.length;
   const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
-  for (let i = m - 1; i >= 0; i--) {
-    for (let j = n - 1; j >= 0; j--) {
-      dp[i][j] =
+  for (let i = m - 1; i >= 0; i--) { // @say dp[i][j] = LCS of the suffixes text1[i..] and text2[j..]
+    for (let j = n - 1; j >= 0; j--) { // @say Fill from the end so dp[i+1] and dp[j+1] are ready
+      dp[i][j] = // @say {text1[i]} vs {text2[j]}: match extends diagonal, else best of skip one
         text1[i] === text2[j]
           ? 1 + dp[i + 1][j + 1]
           : Math.max(dp[i + 1][j], dp[i][j + 1]);

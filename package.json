@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"neetcode-150/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "viz": "npm --prefix viz run dev",
+    "viz:check": "npm --prefix viz run check"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

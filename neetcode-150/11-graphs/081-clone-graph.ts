@@ -32,6 +32,14 @@
  *   clone in a map so cycles resolve to the already-created copy.
  *
  * Time: O(V + E)   Space: O(V)
+ *
+ * Pattern: graph-dfs, hashing
+ * Key insight: Storing the copy in the old-to-new map BEFORE recursing into neighbors is
+ *   what makes cycles safe: when the DFS loops back to a node, it finds the clone already
+ *   exists and just links to it.
+ * Real world: Deep-copying an object graph with cycles, such as structuredClone in
+ *   browsers or a serializer that tracks already-copied objects to preserve shared
+ *   references.
  */
 
 import { test } from "node:test";

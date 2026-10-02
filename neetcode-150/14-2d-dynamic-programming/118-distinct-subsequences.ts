@@ -30,6 +30,13 @@
  *   Answer: dp[0][0].
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: dp-two-strings
+ * Key insight: At s[i] you either skip it or, if it equals t[j], use it to match t[j]; the
+ *   two choices never overlap, so their counts simply add. Empty t is matched in exactly
+ *   one way, which seeds every count.
+ * Real world: A bioinformatics tool counting how many ways a short motif occurs as a
+ *   gapped subsequence in a DNA read, a measure of how strongly the motif is supported.
  */
 
 import { test } from "node:test";

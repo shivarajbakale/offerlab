@@ -36,6 +36,14 @@
  *   post-order DFS with cycle detection; reverse the post-order.
  *
  * Time: O(total characters)   Space: O(unique characters + edges)
+ *
+ * Pattern: topological-sort, graph-dfs
+ * Key insight: Only the first differing character of each adjacent word pair gives
+ *   information, and it gives exactly one edge. Any letter order consistent with those
+ *   edges is a topological sort, and a cycle (or a word before its own prefix) means no
+ *   valid order exists.
+ * Real world: Inferring a collation or ordering rule from a sorted export, such as
+ *   recovering a custom sort order from an already-sorted list of records.
  */
 
 import { test } from "node:test";

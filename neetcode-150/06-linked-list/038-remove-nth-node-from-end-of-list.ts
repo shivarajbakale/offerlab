@@ -30,6 +30,13 @@
  *   just before the node to delete.
  *
  * Time: O(sz)   Space: O(1)
+ *
+ * Pattern: linked-list
+ * Key insight: If right starts n nodes ahead of left, then when right falls off the end,
+ *   left is exactly one node before the nth-from-last, which finds it in one pass without
+ *   knowing the length.
+ * Real world: Trimming the nth most recent entry from a singly linked event log in a
+ *   single pass when the log length is not stored.
  */
 
 import { test } from "node:test";

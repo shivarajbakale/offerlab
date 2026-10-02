@@ -33,6 +33,13 @@
  *
  * Time: O(n * m * k)  (n = |s|, m = words, k = max word length)
  * Space: O(n)
+ *
+ * Pattern: dp-1d
+ * Key insight: Whether s[i..] can be segmented depends only on whether some word matches
+ *   at i and the rest s[i + len..] is segmentable. Each suffix is solved once, so there
+ *   is no exponential re-checking.
+ * Real world: Splitting text written without spaces into words, such as hashtags, URLs or
+ *   Chinese and Thai text, by checking dictionary words against the remaining suffix.
  */
 
 import { test } from "node:test";

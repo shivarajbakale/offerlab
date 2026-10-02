@@ -29,6 +29,13 @@
  *   compare the lowercase characters at each step.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: two-pointers
+ * Key insight: A palindrome mirrors around its center, so comparing the outermost valid
+ *   characters and moving inward checks it in place; skipping punctuation on each side
+ *   keeps the pointers aligned.
+ * Real world: A search engine normalizing a query and testing for symmetric patterns
+ *   without allocating a cleaned copy of the string.
  */
 
 import { test } from "node:test";

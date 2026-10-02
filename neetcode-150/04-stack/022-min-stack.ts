@@ -26,6 +26,13 @@
  *   of all values at or below that position. Push/pop both together.
  *
  * Time: O(1) per operation   Space: O(n)
+ *
+ * Pattern: design,stack
+ * Key insight: The minimum only changes when values are pushed or popped, so storing the
+ *   min at every stack level lets pop restore the previous min instantly instead of
+ *   rescanning.
+ * Real world: An undo stack in an editor that also shows the smallest font size used so
+ *   far, restoring it correctly as actions are undone.
  */
 
 import { test } from "node:test";

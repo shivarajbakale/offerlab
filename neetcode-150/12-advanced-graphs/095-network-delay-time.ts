@@ -32,6 +32,13 @@
  *   answer is the time of the last node finalized, if all n were reached.
  *
  * Time: O(E log V)   Space: O(V + E)
+ *
+ * Pattern: shortest-path, heap-top-k
+ * Key insight: With non-negative weights, the node popped first from the min-heap can
+ *   never be reached more cheaply later, so its time is final. The answer is the last
+ *   finalized time, since the signal must reach everyone.
+ * Real world: Link-state routing protocols like OSPF running Dijkstra to compute the
+ *   fastest path and arrival time from a router to every other router.
  */
 
 import { test } from "node:test";

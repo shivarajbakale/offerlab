@@ -28,6 +28,12 @@
  *   back at prev, then advance. `prev` ends up as the new head.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: linked-list
+ * Key insight: Reversing needs only one saved pointer: keep the next node before
+ *   overwriting cur.next, and the rest of the list is never lost.
+ * Real world: Undo history or a browser back stack that flips a singly linked chain of
+ *   actions in place to replay it in the other direction.
  */
 
 import { test } from "node:test";
@@ -45,11 +51,11 @@ export class ListNode {
 export function reverseList(head: ListNode | null): ListNode | null {
   let prev: ListNode | null = null;
   let cur = head;
-  while (cur) {
-    const next: ListNode | null = cur.next;
-    cur.next = prev;
-    prev = cur;
-    cur = next;
+  while (cur) { // @say Keep going while there are nodes left to flip
+    const next: ListNode | null = cur.next; // @say Save the rest of the list before we break the link
+    cur.next = prev; // @say Flip the arrow: {cur.val} now points back to the reversed part
+    prev = cur; // @say {cur.val} becomes the head of the reversed part
+    cur = next; // @say Step forward into the saved remainder
   }
   return prev;
 }

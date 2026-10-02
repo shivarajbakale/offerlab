@@ -29,6 +29,13 @@
  *   any of its three sets means the board is invalid.
  *
  * Time: O(81) = O(1)   Space: O(81) = O(1)
+ *
+ * Pattern: hashing
+ * Key insight: Each cell belongs to exactly one row, one column and one box (index
+ *   floor(r/3)*3 + floor(c/3)), so 27 sets checked in a single scan find any conflict
+ *   without rescanning units.
+ * Real world: A form validator enforcing several uniqueness constraints at once, such as
+ *   unique username per tenant and unique email per region, with one set per scope.
  */
 
 import { test } from "node:test";

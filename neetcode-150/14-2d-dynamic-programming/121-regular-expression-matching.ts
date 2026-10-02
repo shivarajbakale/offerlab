@@ -40,6 +40,13 @@
  *   the pattern still has x* pieces), j from n - 1 down to 0.
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: dp-two-strings
+ * Key insight: A star pair x* is a choice: skip it entirely (j + 2) or, if the current
+ *   char matches x, consume one character and stay on x* (i + 1, j). Filling i from m down
+ *   lets an exhausted s still match trailing x* pieces.
+ * Real world: A backtracking-free glob or regex matcher, as in a file-pattern filter or
+ *   firewall rule engine, that guarantees O(m * n) time instead of exponential blowup.
  */
 
 import { test } from "node:test";

@@ -28,6 +28,13 @@
  *   We walk right to left, reusing two variables for dp[i + 1] and dp[i + 2].
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-1d
+ * Key insight: The cheapest cost from stair i depends only on the cheapest costs from i +
+ *   1 and i + 2, so walking right to left with two variables solves every stair once.
+ *   Starting at stair 0 or 1 just means taking the min of the last two.
+ * Real world: Choosing the cheapest sequence of short or long hops along a route, such as
+ *   picking refuelling stops when each stop has a cost.
  */
 
 import { test } from "node:test";

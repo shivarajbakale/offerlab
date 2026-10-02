@@ -30,6 +30,14 @@
  *   and recurse on digit i + 1. When every digit is consumed, record it.
  *
  * Time: O(n * 4^n)   Space: O(n) (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: Each digit is an independent slot with 3-4 options, so the answer is a
+ *   Cartesian product; recursion depth equals the number of digits and every leaf is a
+ *   complete string. There is nothing to prune, so the recursion is just a clean way to
+ *   nest a variable number of loops.
+ * Real world: T9 predictive text on old phones expanding a keypress sequence into
+ *   candidate letter strings before filtering them against a dictionary.
  */
 
 import { test } from "node:test";

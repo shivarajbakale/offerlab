@@ -27,6 +27,13 @@
  *   `subRoot`; otherwise recurse into the left and right children.
  *
  * Time: O(m * n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: Any match must be rooted at some node of the big tree, so try the
+ *   same-tree check at every node. The check fails fast on the first differing value, so
+ *   most attempts end quickly.
+ * Real world: Code clone detectors search an abstract syntax tree for a subtree identical
+ *   to a given snippet's tree.
  */
 
 import { test } from "node:test";

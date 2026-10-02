@@ -28,6 +28,13 @@
  *   is one level; collect their values and enqueue their children.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: tree-bfs
+ * Key insight: Processing the queue one whole level at a time gives a natural boundary
+ *   between levels, so each level's values can be grouped without storing depths on
+ *   nodes.
+ * Real world: Showing an org chart or file tree level by level, or crawling a site
+ *   breadth-first so pages close to the start URL are fetched first.
  */
 
 import { test } from "node:test";

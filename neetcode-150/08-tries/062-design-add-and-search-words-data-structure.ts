@@ -31,6 +31,13 @@
  * Time: addWord O(L); search O(L) without dots, O(26^d * L) worst case with
  *       d dots
  * Space: O(total characters inserted)
+ *
+ * Pattern: trie
+ * Key insight: Normal letters follow exactly one child, so only the '.' positions branch
+ *   the search. A trie keeps that branching limited to children that actually exist
+ *   instead of scanning every stored word.
+ * Real world: Crossword and word-game helpers that match patterns like 'c.t', or a
+ *   command palette supporting single-character wildcards.
  */
 
 import { test } from "node:test";

@@ -30,6 +30,13 @@
  *   If we never emitted newInterval, append it at the end.
  *
  * Time: O(n)   Space: O(n) for the output
+ *
+ * Pattern: intervals
+ * Key insight: Because the list is sorted and disjoint, each interval is either fully left
+ *   of the new one, fully right of it, or overlapping. Overlaps just widen the new
+ *   interval; the first interval fully to the right means everything after is untouched.
+ * Real world: A calendar app inserting a new booking into a sorted list of busy blocks,
+ *   merging it with any blocks it touches.
  */
 
 import { test } from "node:test";

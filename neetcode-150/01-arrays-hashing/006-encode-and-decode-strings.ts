@@ -27,6 +27,13 @@
  *   length, '#' characters inside the strings are never misread.
  *
  * Time: O(n) total characters   Space: O(n)
+ *
+ * Pattern: design
+ * Key insight: No delimiter is safe when strings can contain any character, but a length
+ *   prefix is: the decoder reads the length, then jumps exactly that far, so it never
+ *   inspects the payload for separators.
+ * Real world: Network protocols like HTTP/2 frames and Redis RESP prefix each message
+ *   with its length so arbitrary binary data can be streamed and split reliably.
  */
 
 import { test } from "node:test";

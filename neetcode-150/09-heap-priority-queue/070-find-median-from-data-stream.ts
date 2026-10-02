@@ -28,6 +28,13 @@
  *   top of small (odd count) or the mean of both tops (even count).
  *
  * Time: addNum O(log n), findMedian O(1)   Space: O(n)
+ *
+ * Pattern: two-heaps
+ * Key insight: The median only depends on the boundary between the lower and upper
+ *   halves. A max-heap for the lower half and a min-heap for the upper half expose both
+ *   boundary values in O(1), and each insert only needs O(log n) rebalancing.
+ * Real world: Monitoring systems reporting a running median latency, and trading systems
+ *   tracking the median price of a live stream of trades.
  */
 
 import { test } from "node:test";

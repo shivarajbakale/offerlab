@@ -25,6 +25,13 @@
  *   max is the bottleneck, so we can settle that side's bar and move inward.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: two-pointers
+ * Key insight: Water at a bar is min(maxLeft, maxRight) - height. When height[l] <
+ *   height[r], the right side is guaranteed to have a wall at least that tall, so leftMax
+ *   alone decides bar l and it can be settled now.
+ * Real world: Estimating how much water pools on an uneven terrain profile in flood and
+ *   drainage modeling.
  */
 
 import { test } from "node:test";

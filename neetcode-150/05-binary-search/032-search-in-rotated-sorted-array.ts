@@ -31,6 +31,13 @@
  *   there, otherwise search the other half.
  *
  * Time: O(log n)   Space: O(1)
+ *
+ * Pattern: binary-search
+ * Key insight: Any midpoint splits the rotated array into at least one sorted half, and
+ *   with a sorted half a range check says for sure whether the target is there, so half
+ *   can still be discarded.
+ * Real world: Searching a ring buffer of time-ordered records whose start point has
+ *   rotated, without first unrotating it.
  */
 
 import { test } from "node:test";

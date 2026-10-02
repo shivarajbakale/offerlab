@@ -34,6 +34,13 @@
  *   areas of the four neighbors. Track the maximum.
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: grid-dfs
+ * Key insight: The DFS returns 1 plus the area of its four neighbours, so the size of an
+ *   island falls out of the recursion with no extra counting pass. Sinking each cell as
+ *   it is counted stops any cell from being added twice.
+ * Real world: Finding the largest contiguous region in a map, such as the biggest
+ *   wildfire burn area or the largest flooded zone in a raster of satellite pixels.
  */
 
 import { test } from "node:test";

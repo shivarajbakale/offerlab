@@ -28,6 +28,13 @@
  *   position i + j + 1. Finally strip leading zeros and reverse.
  *
  * Time: O(m * n)   Space: O(m + n)
+ *
+ * Pattern: math
+ * Key insight: Digit i of num1 times digit j of num2 always lands in position i + j of the
+ *   product (counted from the right). Accumulating every pair there and carrying as you go
+ *   is grade-school multiplication with no big-integer type.
+ * Real world: Arbitrary-precision libraries (like BigInt implementations) multiply digit
+ *   arrays this way when numbers exceed native integer size.
  */
 
 import { test } from "node:test";

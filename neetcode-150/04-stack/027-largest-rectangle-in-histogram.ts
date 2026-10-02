@@ -27,6 +27,13 @@
  *   the stack at the end extend all the way to the right edge.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: monotonic-stack
+ * Key insight: A bar's rectangle ends at the first shorter bar to its right, and when a
+ *   bar is popped its start can be inherited by the shorter bar, so each bar's maximal
+ *   width is known when it leaves the stack.
+ * Real world: Finding the largest free rectangular block in a memory or disk-allocation
+ *   bitmap, row by row.
  */
 
 import { test } from "node:test";

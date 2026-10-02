@@ -26,6 +26,13 @@
  *   palindromic substring.
  *
  * Time: O(n^2)   Space: O(1)
+ *
+ * Pattern: expand-around-center
+ * Key insight: Each successful expansion from a center is a new, distinct palindromic
+ *   substring, so the count is just the number of expansions. No substring is checked
+ *   from scratch.
+ * Real world: Text-analysis or DNA tools counting all mirrored motifs in a sequence as a
+ *   feature, without building a quadratic table.
  */
 
 import { test } from "node:test";

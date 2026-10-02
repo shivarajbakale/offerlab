@@ -33,6 +33,13 @@
  *   path means a cycle -> return [].
  *
  * Time: O(V + E)   Space: O(V + E)
+ *
+ * Pattern: topological-sort, graph-dfs
+ * Key insight: A course is appended only after all its prerequisites have been appended,
+ *   so DFS post-order is already a valid order. The separate on-path set catches cycles,
+ *   while the visited set skips courses already placed.
+ * Real world: Make or a task runner computing the order in which to build targets so
+ *   every dependency is built before the things that need it.
  */
 
 import { test } from "node:test";

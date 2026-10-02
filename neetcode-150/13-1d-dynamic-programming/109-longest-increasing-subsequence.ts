@@ -31,6 +31,13 @@
  *   (A patience-sorting + binary search variant runs in O(n log n).)
  *
  * Time: O(n^2)   Space: O(n)
+ *
+ * Pattern: dp-1d
+ * Key insight: The longest increasing subsequence starting at i is 1 plus the best one
+ *   starting at any later, larger element. Solving right to left means those later
+ *   answers are ready, giving O(n^2).
+ * Real world: Diff tools like patience diff, which use the longest increasing subsequence
+ *   of matching unique lines to align two file versions.
  */
 
 import { test } from "node:test";

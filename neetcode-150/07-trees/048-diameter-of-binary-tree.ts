@@ -25,6 +25,13 @@
  *   Track the max of that while returning 1 + max(height(left), height(right)).
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: The longest path must bend at some highest node, where its length is
+ *   height(left) + height(right). One post-order pass that returns heights can compute
+ *   that at every node and keep the best, instead of recomputing heights per node.
+ * Real world: Finding the two most distant routers in a tree-shaped network (the
+ *   worst-case hop count) to size timeouts.
  */
 
 import { test } from "node:test";

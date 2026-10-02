@@ -26,6 +26,13 @@
  *   string means the current partition is complete.
  *
  * Time: O(n * 2^n)   Space: O(n) (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: A partition is just a choice of where to cut, so from index i only try
+ *   ends j where s[i..j] is already a palindrome. Rejecting a non-palindrome prefix
+ *   immediately prunes every partition that would have started with it.
+ * Real world: A text segmenter enumerating every way to split a token into valid
+ *   dictionary pieces, where each piece must pass a validity check before going deeper.
  */
 
 import { test } from "node:test";

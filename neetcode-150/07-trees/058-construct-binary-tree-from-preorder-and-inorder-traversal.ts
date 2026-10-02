@@ -29,6 +29,13 @@
  *   preorder pointer advances as we build left before right.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: tree-dfs,hashing
+ * Key insight: Preorder always reveals the current subtree's root next, and that root's
+ *   position in inorder splits the remaining values into left and right subtrees. A value
+ *   -> index map makes each split O(1), so the whole build is O(n).
+ * Real world: Rebuilding a tree from two flat traversal dumps, such as restoring a
+ *   document outline or call tree from serialized logs.
  */
 
 import { test } from "node:test";

@@ -29,6 +29,14 @@
  *   list so later visits return immediately.
  *
  * Time: O(V + E)   Space: O(V + E)
+ *
+ * Pattern: topological-sort, graph-dfs
+ * Key insight: The courses can all be finished exactly when the prerequisite graph has no
+ *   cycle, so the problem reduces to cycle detection. Clearing a course's prerequisite
+ *   list once it is proven doable memoizes the result, so each course is explored only
+ *   once.
+ * Real world: Build systems and package managers (npm, Bazel) rejecting a dependency
+ *   graph that contains a circular dependency before starting any work.
  */
 
 import { test } from "node:test";
@@ -41,12 +49,12 @@ export function canFinish(numCourses: number, prerequisites: number[][]): boolea
   const visiting = new Set<number>();
 
   const dfs = (course: number): boolean => {
-    if (visiting.has(course)) return false;
-    if (pre[course].length === 0) return true;
-    visiting.add(course);
-    for (const req of pre[course]) if (!dfs(req)) return false;
+    if (visiting.has(course)) return false; // @say Reaching a course already on our path means a cycle
+    if (pre[course].length === 0) return true; // @say A course with no prereqs left can always be taken
+    visiting.add(course); // @say Mark {course} as on the current DFS path
+    for (const req of pre[course]) if (!dfs(req)) return false; // @say Course {course} is only doable if every prereq is
     visiting.delete(course);
-    pre[course] = []; // memoize: this course is completable
+    pre[course] = []; // @say Memoize: {course} is completable, so skip it next time
     return true;
   };
 

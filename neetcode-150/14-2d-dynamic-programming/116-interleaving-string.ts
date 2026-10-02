@@ -35,6 +35,13 @@
  *   Base: dp[m][n] = true. Answer: dp[0][0].
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: dp-two-strings
+ * Key insight: Position i + j in s3 is fully determined by how many characters were taken
+ *   from s1 (i) and s2 (j), so the state is just (i, j). Each cell asks: does the next s3
+ *   char come from s1 or from s2, and is the rest still formable?
+ * Real world: A log merger checking that a combined event stream is a valid interleaving
+ *   of two services' logs, with each service's own event order preserved.
  */
 
 import { test } from "node:test";

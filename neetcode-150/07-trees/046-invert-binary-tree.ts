@@ -27,6 +27,12 @@
  *   Swap the children of the current node, then invert each subtree.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: Mirroring a tree is just swapping left and right at every node; the order
+ *   of visits does not matter because each swap is local and independent of the others.
+ * Real world: Rendering a right-to-left layout by mirroring the UI layout tree, or
+ *   flipping a scene graph horizontally in a drawing tool.
  */
 
 import { test } from "node:test";
@@ -44,10 +50,10 @@ export class TreeNode {
 }
 
 export function invertTree(root: TreeNode | null): TreeNode | null {
-  if (!root) return null;
-  [root.left, root.right] = [root.right, root.left];
-  invertTree(root.left);
-  invertTree(root.right);
+  if (!root) return null; // @say Empty subtree: nothing to invert
+  [root.left, root.right] = [root.right, root.left]; // @say Mirror node {root.val}: swap its left and right children
+  invertTree(root.left); // @say Now invert the (new) left subtree of {root.val}
+  invertTree(root.right); // @say Then invert the (new) right subtree of {root.val}
   return root;
 }
 

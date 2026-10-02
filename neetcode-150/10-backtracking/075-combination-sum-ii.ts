@@ -29,6 +29,14 @@
  *   sorted, stop the loop once a candidate exceeds the remaining target.
  *
  * Time: O(n * 2^n)   Space: O(n) (excluding output)
+ *
+ * Pattern: backtracking
+ * Key insight: In sorted order, using the same value twice as the next choice at the same
+ *   depth produces identical combinations, so later copies are skipped at that level.
+ *   Sorting also means once one value is too big, every later one is too, so the loop can
+ *   stop.
+ * Real world: Finding which unique sets of invoice line items add up to a payment amount
+ *   when some line items have the same value.
  */
 
 import { test } from "node:test";

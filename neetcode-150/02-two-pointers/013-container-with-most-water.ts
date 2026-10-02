@@ -26,6 +26,12 @@
  *   moving the taller line inward can never help; always move the shorter one.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: two-pointers
+ * Key insight: The area is capped by the shorter wall, and every narrower container using
+ *   that wall is worse, so the shorter wall can be dropped without missing the optimum.
+ * Real world: Choosing two support posts for the widest, tallest banner span, where
+ *   moving the limiting post is the only way to improve.
  */
 
 import { test } from "node:test";
@@ -36,9 +42,9 @@ export function maxArea(height: number[]): number {
   let r = height.length - 1;
   let best = 0;
   while (l < r) {
-    best = Math.max(best, (r - l) * Math.min(height[l], height[r]));
-    if (height[l] < height[r]) l++;
-    else r--;
+    best = Math.max(best, (r - l) * Math.min(height[l], height[r])); // @say Width {r - l} times the shorter wall {Math.min(height[l], height[r])}
+    if (height[l] < height[r]) l++; // @say The shorter wall caps the area; only moving it inward can help
+    else r--; // @say Right wall is the limit (or a tie), so move r inward
   }
   return best;
 }

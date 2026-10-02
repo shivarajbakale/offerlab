@@ -26,6 +26,13 @@
  *   roots reduces the component count by one.
  *
  * Time: O(n + E * α(n))   Space: O(n)
+ *
+ * Pattern: union-find
+ * Key insight: Every successful union merges two components into one, so the answer is n
+ *   minus the number of unions that actually merged. No traversal or adjacency list is
+ *   needed.
+ * Real world: Counting clusters of users linked by shared devices or payment cards in
+ *   fraud detection, adding links one at a time as they are observed.
  */
 
 import { test } from "node:test";

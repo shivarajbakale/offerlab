@@ -26,6 +26,13 @@
  *   Track only rob1 = dp[i - 2] and rob2 = dp[i - 1].
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-1d
+ * Key insight: At each house you either skip it (keep the best so far) or rob it (best
+ *   from two houses back plus this one). Those two numbers capture everything about the
+ *   past, so the answer needs O(1) memory.
+ * Real world: Scheduling non-adjacent ad slots or shifts to maximize value when two
+ *   neighbouring slots cannot both be used.
  */
 
 import { test } from "node:test";

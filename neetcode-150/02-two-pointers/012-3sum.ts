@@ -31,31 +31,39 @@
  *   the left pointer past duplicates to avoid repeated triplets.
  *
  * Time: O(n^2)   Space: O(1) extra (ignoring sort / output)
+ *
+ * Pattern: two-pointers
+ * Key insight: Sorting turns the problem into n runs of Two Sum II, and also places equal
+ *   values next to each other, so duplicate triplets are skipped by comparing with the
+ *   neighbor.
+ * Real world: Finding three ledger entries that net to zero in a sorted transaction list
+ *   during an audit.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz array:sorted hide:a
 export function threeSum(nums: number[]): number[][] {
   const sorted = [...nums].sort((x, y) => x - y);
   const result: number[][] = [];
 
   for (let i = 0; i < sorted.length - 2; i++) {
     const a = sorted[i];
-    if (a > 0) break; // remaining numbers are all positive
-    if (i > 0 && a === sorted[i - 1]) continue;
+    if (a > 0) break; // @say Sorted: once the fixed number is positive, no triplet can sum to 0
+    if (i > 0 && a === sorted[i - 1]) continue; // @say Same fixed value as last time would repeat triplets, so skip it
 
     let l = i + 1;
     let r = sorted.length - 1;
     while (l < r) {
       const sum = a + sorted[l] + sorted[r];
-      if (sum > 0) r--;
-      else if (sum < 0) l++;
+      if (sum > 0) r--; // @say Fixing {sorted[i]}; sum too big means move r left to a smaller number
+      else if (sum < 0) l++; // @say Sum too small, so move l right to a larger number
       else {
-        result.push([a, sorted[l], sorted[r]]);
+        result.push([a, sorted[l], sorted[r]]); // @say {a} + {sorted[l]} + {sorted[r]} = 0, record the triplet
         l++;
         r--;
-        while (l < r && sorted[l] === sorted[l - 1]) l++;
+        while (l < r && sorted[l] === sorted[l - 1]) l++; // @say Skip repeated left values so the same triplet isn't added twice
       }
     }
   }

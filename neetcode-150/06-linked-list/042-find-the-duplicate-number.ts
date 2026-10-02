@@ -34,6 +34,14 @@
  *   both moving one step, meet at the cycle entrance.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: fast-slow-pointers
+ * Key insight: Reading nums as a function i -> nums[i] turns the array into a linked
+ *   list; the duplicate value has two incoming arrows, so it is exactly where the cycle
+ *   starts. Floyd's second phase (one pointer from 0, one from the meeting point) lands
+ *   on that entrance without modifying the array or using extra memory.
+ * Real world: Detecting a loop in a chain of redirects or symlinks stored as an id ->
+ *   next-id table, finding where the loop begins without allocating a visited set.
  */
 
 import { test } from "node:test";

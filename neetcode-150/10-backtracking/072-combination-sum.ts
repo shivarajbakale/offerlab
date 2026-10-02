@@ -32,6 +32,13 @@
  *   duplicate combinations. Prune when the running total exceeds target.
  *
  * Time: O(2^(t/m)) where t = target, m = min candidate   Space: O(t/m)
+ *
+ * Pattern: backtracking
+ * Key insight: Staying at index i allows reusing a number, and only ever moving forward
+ *   forbids revisiting earlier ones, so each combination is built in one canonical order
+ *   and never appears twice. Stopping when the total exceeds target cuts dead branches.
+ * Real world: Making change or packing orders from unlimited stock in fixed sizes, such
+ *   as listing every way to fill a quantity with standard package sizes.
  */
 
 import { test } from "node:test";

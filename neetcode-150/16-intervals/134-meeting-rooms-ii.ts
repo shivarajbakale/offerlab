@@ -27,6 +27,13 @@
  *   peak number of simultaneous meetings.
  *
  * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: intervals
+ * Key insight: Which meeting ends does not matter, only how many have ended by each start
+ *   time. Sorting starts and ends separately and sweeping them like events counts the peak
+ *   number of meetings in progress at once.
+ * Real world: Capacity planning for meeting rooms, servers or gates: the peak number of
+ *   overlapping sessions is how many resources you must provision.
  */
 
 import { test } from "node:test";

@@ -28,6 +28,13 @@
  *   other unvisited point. Stop once all n points are in the tree.
  *
  * Time: O(n^2 log n)   Space: O(n^2)
+ *
+ * Pattern: mst, heap-top-k
+ * Key insight: Any spanning tree that reaches a new point must cross the cut between
+ *   connected and unconnected points, and the cheapest crossing edge is always safe to
+ *   take. A min-heap hands Prim's algorithm that cheapest edge each step.
+ * Real world: Laying out the cheapest cable, pipe or fiber network connecting all sites,
+ *   or clustering points by cutting the most expensive MST edges.
  */
 
 import { test } from "node:test";

@@ -24,6 +24,13 @@
  *   explicit stack and stop at the k-th node popped.
  *
  * Time: O(h + k)   Space: O(h)
+ *
+ * Pattern: bst
+ * Key insight: In-order traversal of a BST yields values in sorted order, so the k-th
+ *   popped node is the answer. The explicit stack allows stopping right there instead of
+ *   visiting the whole tree.
+ * Real world: Paginating sorted results from an ordered index: a database cursor walks a
+ *   B-tree in key order and stops after the k-th row.
  */
 
 import { test } from "node:test";

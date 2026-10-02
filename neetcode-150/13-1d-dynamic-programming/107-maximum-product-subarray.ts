@@ -28,6 +28,13 @@
  *   The answer is the largest curMax seen.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: best-so-far
+ * Key insight: A negative number turns the smallest product into the largest, so keep
+ *   both the running max and the running min ending here. Each step only needs those two
+ *   values, the current number and the best seen so far.
+ * Real world: Finding the best run of compounding returns in a series of growth factors,
+ *   where a negative factor can flip a loss into a gain.
  */
 
 import { test } from "node:test";

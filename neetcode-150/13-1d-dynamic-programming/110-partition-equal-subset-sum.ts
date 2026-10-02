@@ -28,6 +28,13 @@
  *   (Iterating t downward ensures each number is used at most once.)
  *
  * Time: O(n * target)   Space: O(target)
+ *
+ * Pattern: knapsack
+ * Key insight: Two equal halves exist exactly when some subset sums to total / 2, so it
+ *   becomes a reachable-sum question. Updating sums from high to low means each number is
+ *   used at most once in a pass.
+ * Real world: Splitting jobs or files across two machines or disks so both get the same
+ *   total load.
  */
 
 import { test } from "node:test";

@@ -31,6 +31,13 @@
  *   complement (target - n) was already seen; if so, we have the pair.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: hashing
+ * Key insight: For each number the partner it needs is fixed (target - n), so instead of
+ *   searching for it later you look it up among numbers already seen; storing value ->
+ *   index makes that lookup O(1).
+ * Real world: A reconciliation tool matching an incoming refund to the earlier charge
+ *   that cancels it, by looking up the needed amount in a map of open charges.
  */
 
 import { test } from "node:test";
@@ -39,9 +46,9 @@ import assert from "node:assert/strict";
 export function twoSum(nums: number[], target: number): number[] {
   const indexOf = new Map<number, number>();
   for (let i = 0; i < nums.length; i++) {
-    const j = indexOf.get(target - nums[i]);
-    if (j !== undefined) return [j, i];
-    indexOf.set(nums[i], i);
+    const j = indexOf.get(target - nums[i]); // @say {nums[i]} needs a partner of {target - nums[i]}; have we seen it before?
+    if (j !== undefined) return [j, i]; // @say If the complement was stored earlier, those two indices are the pair
+    indexOf.set(nums[i], i); // @say Remember {nums[i]} at index {i} so a later number can pair with it
   }
   return [];
 }

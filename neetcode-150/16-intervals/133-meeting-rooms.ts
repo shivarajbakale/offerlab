@@ -27,6 +27,12 @@
  *   the previous one ends.
  *
  * Time: O(n log n)   Space: O(1) extra (besides sorting)
+ *
+ * Pattern: intervals
+ * Key insight: Once meetings are sorted by start time, if any two overlap then some
+ *   adjacent pair overlaps, so checking neighbours is enough.
+ * Real world: A calendar app warning that a person is double-booked when a new invite
+ *   arrives.
  */
 
 import { test } from "node:test";

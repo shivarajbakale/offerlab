@@ -40,6 +40,13 @@
  *   enqueue. Only INF cells are ever updated, which doubles as "visited".
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: graph-bfs
+ * Key insight: Seeding the queue with every gate makes BFS reach each room first from its
+ *   nearest gate, so the first distance written is final. Only INF cells are updated, so
+ *   the grid doubles as the visited set.
+ * Real world: Indoor navigation or game AI precomputing a distance map to the nearest
+ *   exit from every walkable tile, so any agent can step downhill to safety.
  */
 
 import { test } from "node:test";

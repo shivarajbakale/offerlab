@@ -31,6 +31,12 @@
  *   either way, and the loop terminates when n reaches 0.
  *
  * Time: O(1) (at most 32 iterations)   Space: O(1)
+ *
+ * Pattern: bit-manipulation
+ * Key insight: n & (n - 1) clears exactly the lowest set bit, so looping until n is 0 runs
+ *   once per 1 bit instead of once per bit position.
+ * Real world: Counting set bits (popcount) is used to count permissions in a bitmask,
+ *   compute Hamming distance between hashes, or count filled slots in a bitmap index.
  */
 
 import { test } from "node:test";

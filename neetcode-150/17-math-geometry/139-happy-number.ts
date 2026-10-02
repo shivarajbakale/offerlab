@@ -27,6 +27,13 @@
  *   the number is happy iff the meeting point is 1.
  *
  * Time: O(log n)   Space: O(1)
+ *
+ * Pattern: fast-slow-pointers,math
+ * Key insight: Repeated digit-square sums always fall into a cycle, and reaching 1 is just
+ *   a cycle of length one. Floyd's slow/fast pointers find the cycle without storing seen
+ *   values; the number is happy iff they meet at 1.
+ * Real world: Detecting that an iterated function such as a pseudo-random generator or a
+ *   redirect chain has entered a loop, using constant memory.
  */
 
 import { test } from "node:test";

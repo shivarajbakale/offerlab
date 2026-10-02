@@ -25,6 +25,13 @@
  *   the second half, then alternately weave nodes from the two halves.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: linked-list,fast-slow-pointers
+ * Key insight: The reordered list alternates the first half with the second half
+ *   reversed, so finding the middle (slow/fast), reversing the back half and weaving does
+ *   it in O(1) extra space.
+ * Real world: A playlist shuffle mode that alternates songs from the start and end of a
+ *   queue stored as a linked list.
  */
 
 import { test } from "node:test";

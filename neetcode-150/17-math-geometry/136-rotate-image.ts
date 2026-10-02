@@ -28,6 +28,13 @@
  *   using a single temporary variable.
  *
  * Time: O(n^2)   Space: O(1)
+ *
+ * Pattern: matrix-simulation
+ * Key insight: A 90-degree turn moves every cell in a closed cycle of four positions
+ *   within the same ring. Rotating those four cells together with one temp value needs no
+ *   extra matrix.
+ * Real world: Image editors and phone galleries rotate photos in place this way to avoid
+ *   allocating a second full-size buffer.
  */
 
 import { test } from "node:test";

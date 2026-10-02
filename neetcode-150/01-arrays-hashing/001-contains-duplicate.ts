@@ -24,6 +24,12 @@
  *   meet a value already in the set, we have a duplicate.
  *
  * Time: O(n)   Space: O(n)
+ *
+ * Pattern: hashing
+ * Key insight: A set answers "have I seen this before?" in O(1), so the first repeat can
+ *   be caught the moment it appears instead of comparing every pair.
+ * Real world: A payment service rejecting a webhook whose event ID it has already
+ *   processed, using a set of seen IDs for idempotency.
  */
 
 import { test } from "node:test";

@@ -28,6 +28,13 @@
  *   unbalanced, so the whole check finishes in a single pass.
  *
  * Time: O(n)   Space: O(h) recursion stack
+ *
+ * Pattern: tree-dfs
+ * Key insight: Checking balance top-down recomputes heights again and again (O(n^2)).
+ *   Returning the height bottom-up and using -1 as an 'already unbalanced' signal lets
+ *   one pass both measure and validate, and stop early.
+ * Real world: Self-balancing trees such as AVL trees compare child heights after every
+ *   insert to decide whether a rotation is needed.
  */
 
 import { test } from "node:test";

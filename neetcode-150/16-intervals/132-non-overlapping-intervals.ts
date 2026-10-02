@@ -32,6 +32,13 @@
  *   whichever ends sooner (it leaves the most room for the rest).
  *
  * Time: O(n log n)   Space: O(1) extra (besides sorting)
+ *
+ * Pattern: intervals,greedy
+ * Key insight: When two intervals overlap, one must go, and keeping the one that ends
+ *   sooner always leaves at least as much room for the rest. That makes the local choice
+ *   safe and the count of drops minimal.
+ * Real world: A conference room booking system deciding which conflicting reservations to
+ *   cancel to keep the most meetings in a single room.
  */
 
 import { test } from "node:test";

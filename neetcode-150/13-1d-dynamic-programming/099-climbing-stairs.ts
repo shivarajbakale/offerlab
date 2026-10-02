@@ -25,6 +25,13 @@
  *   Only the last two values are needed, so keep two variables.
  *
  * Time: O(n)   Space: O(1)
+ *
+ * Pattern: dp-1d
+ * Key insight: The last move onto any step is either 1 or 2 stairs, so ways(n) = ways(n -
+ *   1) + ways(n - 2), the Fibonacci recurrence. Since only the last two values are
+ *   needed, two variables replace the whole table.
+ * Real world: Counting how many ways a fixed total can be built from 1- and 2-unit
+ *   pieces, as in tiling, packet framing or music rhythm generators.
  */
 
 import { test } from "node:test";
@@ -34,9 +41,9 @@ export function climbStairs(n: number): number {
   let one = 1; // ways from step i + 1
   let two = 1; // ways from step i + 2
   for (let i = 0; i < n - 1; i++) {
-    const next = one + two;
-    two = one;
-    one = next;
+    const next = one + two; // @say Ways = take 1 step ({one}) + take 2 steps ({two})
+    two = one; // @say Slide the window down one stair
+    one = next; // @say Only the last two answers are ever needed
   }
   return one;
 }

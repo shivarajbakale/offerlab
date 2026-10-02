@@ -32,6 +32,13 @@
  *   Only the previous layer is kept.
  *
  * Time: O(n * S)   Space: O(S)   (S = sum(nums))
+ *
+ * Pattern: knapsack
+ * Key insight: Only the running sum matters, not which signs produced it, so many sign
+ *   choices merge into one state. A map of sum -> count per layer replaces the 2^n
+ *   enumeration with at most 2 * sum(nums) + 1 states.
+ * Real world: A budgeting tool counting how many ways to mark line items as credit or
+ *   debit so a ledger nets out to a given balance, used to spot ambiguous reconciliations.
  */
 
 import { test } from "node:test";

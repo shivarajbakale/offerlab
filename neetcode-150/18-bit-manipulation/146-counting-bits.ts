@@ -25,6 +25,12 @@
  *   power of two.
  *
  * Time: O(n)   Space: O(n) for the output
+ *
+ * Pattern: bit-manipulation,dp-1d
+ * Key insight: Removing the highest power of two from i drops exactly one 1 bit and leaves
+ *   a smaller number whose count is already known, so dp[i] = 1 + dp[i - offset].
+ * Real world: Building a popcount lookup table once (for example for all bytes) so later
+ *   bit counts in a compression or chess engine are a single table read.
  */
 
 import { test } from "node:test";

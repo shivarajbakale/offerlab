@@ -35,6 +35,14 @@
  *   key is the answer.
  *
  * Time: O(n^2 log n)   Space: O(n^2)
+ *
+ * Pattern: shortest-path, heap-top-k
+ * Key insight: The cost of a path is its highest cell, not its sum, but Dijkstra still
+ *   works because max(t, height) never decreases along a path. The first time the
+ *   bottom-right cell is popped, no lower water level could reach it.
+ * Real world: Robot or vehicle route planning that minimizes the worst obstacle on a
+ *   route, such as the highest pass on a road trip or the deepest water a vehicle must
+ *   ford.
  */
 
 import { test } from "node:test";

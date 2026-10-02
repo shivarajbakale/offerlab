@@ -32,6 +32,13 @@
  *   oranges remain. If some fresh oranges are left over, return -1.
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: graph-bfs
+ * Key insight: Starting BFS from all rotten oranges at once means each BFS level is
+ *   exactly one minute of spread from every source at the same time. The fresh counter
+ *   tells you at the end whether any orange was never reached.
+ * Real world: Simulating how a malware infection or a rumor spreads through a network
+ *   minute by minute from several initial sources, and how long until it saturates.
  */
 
 import { test } from "node:test";

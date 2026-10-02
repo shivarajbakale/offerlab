@@ -28,6 +28,13 @@
  *   3) If matrix[0][0] == 0, zero column 0. If rowZero, zero row 0.
  *
  * Time: O(m * n)   Space: O(1)
+ *
+ * Pattern: matrix-simulation
+ * Key insight: The first row and first column can store the zero flags for every column
+ *   and row, because they are only overwritten at the very end. One extra boolean handles
+ *   the shared corner cell, giving O(1) extra space.
+ * Real world: A spreadsheet or data-cleaning job that blanks out every row and column
+ *   touched by an invalid cell, done in place on a large table.
  */
 
 import { test } from "node:test";

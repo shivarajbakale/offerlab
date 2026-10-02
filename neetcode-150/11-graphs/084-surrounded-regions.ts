@@ -37,6 +37,13 @@
  *   3. Turn every "T" back into "O".
  *
  * Time: O(m * n)   Space: O(m * n)
+ *
+ * Pattern: grid-dfs
+ * Key insight: Proving an "O" region is enclosed is hard, but proving it escapes is easy:
+ *   any "O" connected to the border is safe. Mark those from the border first, and
+ *   everything left over must be surrounded.
+ * Real world: Paint-bucket and game logic like Go captures, where a region is captured
+ *   unless it can reach a liberty or edge, found by flooding out from the safe cells.
  */
 
 import { test } from "node:test";
