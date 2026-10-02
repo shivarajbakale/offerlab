@@ -1,0 +1,13 @@
+{
+  "name": "interview-prep",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"neetcode-150/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
+  }
+}

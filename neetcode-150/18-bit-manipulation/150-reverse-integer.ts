@@ -1,0 +1,70 @@
+/**
+ * 7. Reverse Integer
+ * Difficulty: Medium
+ * Category: Bit Manipulation
+ * LeetCode: https://leetcode.com/problems/reverse-integer/
+ *
+ * Given a signed 32-bit integer `x`, return x with its digits reversed. If
+ * reversing causes the value to go outside the signed 32-bit range
+ * [-2^31, 2^31 - 1], return 0. Assume the environment cannot store 64-bit
+ * integers.
+ *
+ * Example 1:
+ *   Input: x = 123
+ *   Output: 321
+ *
+ * Example 2:
+ *   Input: x = -123
+ *   Output: -321
+ *
+ * Example 3:
+ *   Input: x = 120
+ *   Output: 21
+ *
+ * Constraints:
+ *   -2^31 <= x <= 2^31 - 1
+ *
+ * Approach: Pop and push digits with an overflow check
+ *   Repeatedly pop the last digit (x % 10, truncating division) and push it
+ *   onto the result (res * 10 + digit). Before pushing, check that the result
+ *   would stay within range:
+ *     res > MAX / 10, or res === floor(MAX / 10) and digit > 7  -> overflow
+ *     res < MIN / 10, or res === ceil(MIN / 10) and digit < -8  -> overflow
+ *   JS note: JS numbers are 64-bit floats, so the multiplication would NOT
+ *   overflow on its own; we check explicitly to honor the 32-bit contract.
+ *   `%` in JS keeps the sign of the dividend and Math.trunc rounds toward 0,
+ *   so negative inputs work without special-casing.
+ *
+ * Time: O(log |x|)   Space: O(1)
+ */
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+const INT_MAX = 2 ** 31 - 1; // 2147483647
+const INT_MIN = -(2 ** 31); // -2147483648
+
+export function reverse(x: number): number {
+  const maxDiv = Math.trunc(INT_MAX / 10); // 214748364
+  const minDiv = Math.trunc(INT_MIN / 10); // -214748364
+  let res = 0;
+  while (x !== 0) {
+    const digit = x % 10;
+    x = Math.trunc(x / 10);
+
+    if (res > maxDiv || (res === maxDiv && digit > INT_MAX % 10)) return 0;
+    if (res < minDiv || (res === minDiv && digit < INT_MIN % 10)) return 0;
+
+    res = res * 10 + digit;
+  }
+  return res;
+}
+
+test("7. Reverse Integer", () => {
+  assert.equal(reverse(123), 321);
+  assert.equal(reverse(-123), -321);
+  assert.equal(reverse(120), 21);
+  assert.equal(reverse(0), 0);
+  assert.equal(reverse(1534236469), 0); // reversed overflows INT_MAX
+  assert.equal(reverse(-2147483648), 0); // reversed overflows INT_MIN
+});
