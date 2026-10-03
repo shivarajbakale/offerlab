@@ -51,9 +51,37 @@ export default function App() {
   const [problemId, selectProblem] = useProblemId();
   const problem = problems.find((p) => p.id === problemId);
   const overview = overviewTab(problemId);
+  // Phones and portrait tablets show the sidebar as a drawer behind a menu button.
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+  const select = useCallback(
+    (id: string) => {
+      selectProblem(id);
+      setNavOpen(false);
+    },
+    [selectProblem],
+  );
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setNavOpen(false);
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [navOpen]);
   return (
     <div className="app">
-      <Sidebar activeId={problemId} onSelect={selectProblem} />
+      <div className="topbar">
+        <button className="menu-btn" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="brand">
+          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+          Offerlab
+        </div>
+      </div>
+      <Sidebar activeId={problemId} onSelect={select} open={navOpen} onClose={closeNav} />
+      {navOpen && <div className="scrim" onClick={closeNav} />}
       {overview || !problem ? (
         <OverviewView key={problemId} tab={overview ?? "algorithms"} onSelect={selectProblem} />
       ) : problem.engine === "kernel" ? (
@@ -244,7 +272,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
           )}
         </div>
         {(problem.approach || problem.approachName) && (
-          <div className="approach">
+          <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             <b>{problem.approachName || "Approach"}.</b> {problem.approach} <span className="complexity">· {problem.complexity}</span>
           </div>
         )}
@@ -312,8 +340,10 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
         )}
       </section>
 
-      <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />
-      <Controls player={player} />
+      <div className="dock">
+        <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />
+        <Controls player={player} />
+      </div>
     </main>
   );
 }

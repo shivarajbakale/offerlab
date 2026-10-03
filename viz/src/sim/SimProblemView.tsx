@@ -126,7 +126,7 @@ export function SimProblemView({ problem }: { problem: Problem }) {
           )}
         </div>
         {(problem.approach || problem.approachName) && (
-          <div className="approach">
+          <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             <b>{problem.approachName || "Approach"}.</b> {problem.approach}{" "}
             <span className="complexity">· {problem.complexity}</span>
           </div>
@@ -208,8 +208,10 @@ export function SimProblemView({ problem }: { problem: Problem }) {
         )}
       </section>
 
-      <NarrationBar narration={narration} hasNotes={false} />
-      <Controls player={player} />
+      <div className="dock">
+        <NarrationBar narration={narration} hasNotes={false} />
+        <Controls player={player} />
+      </div>
     </main>
   );
 }

@@ -159,12 +159,14 @@ export function FailureDrill({ drill, play, answerTitle }: { drill: Drill; play:
           </div>
         )}
       </section>
-      <div className="narration" />
-      <Controls
-        player={player}
-        counter={`t = ${((k + 1) / 10).toFixed(1)} s / ${run.seconds} s`}
-        marks={answered ? run.faults.map((f) => ({ index: Math.max(0, Math.round(f.at / FRAME_MS) - 1), label: `${f.kind} ${"region" in f ? f.region : f.target} at ${f.at / 1000} s` })) : undefined}
-      />
+      <div className="dock">
+        <div className="narration" />
+        <Controls
+          player={player}
+          counter={`t = ${((k + 1) / 10).toFixed(1)} s / ${run.seconds} s`}
+          marks={answered ? run.faults.map((f) => ({ index: Math.max(0, Math.round(f.at / FRAME_MS) - 1), label: `${f.kind} ${"region" in f ? f.region : f.target} at ${f.at / 1000} s` })) : undefined}
+        />
+      </div>
     </>
   );
 }

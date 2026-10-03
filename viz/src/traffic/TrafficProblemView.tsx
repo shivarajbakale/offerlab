@@ -156,7 +156,7 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
           )}
         </div>
         {run && (
-          <div className="approach">
+          <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             {run.design.name}
             {money && Number.isFinite(money.costPerMillion) && (
               <span className="cost">
@@ -240,12 +240,14 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
         )}
       </section>
 
-      <NarrationBar narration={narration} hasNotes={false} />
-      <Controls
-        player={player}
-        counter={`t = ${((k + 1) / 10).toFixed(1)} s / ${run?.seconds ?? 0} s`}
-        marks={run?.faults.map((f) => ({ index: Math.max(0, Math.round(f.at / FRAME_MS) - 1), label: `${faultLabel(f)} at ${f.at / 1000} s` }))}
-      />
+      <div className="dock">
+        <NarrationBar narration={narration} hasNotes={false} />
+        <Controls
+          player={player}
+          counter={`t = ${((k + 1) / 10).toFixed(1)} s / ${run?.seconds ?? 0} s`}
+          marks={run?.faults.map((f) => ({ index: Math.max(0, Math.round(f.at / FRAME_MS) - 1), label: `${faultLabel(f)} at ${f.at / 1000} s` }))}
+        />
+      </div>
     </main>
   );
 }
