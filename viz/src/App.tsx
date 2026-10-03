@@ -328,7 +328,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
           <div className="status error">{trace.error ?? "No calls to the solution were recorded."}</div>
         )}
         {run && scene && (
-          <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
+          <div className="visual-col">
             {(run.truncated || run.error) && (
               <div className="notice" style={{ padding: "8px 20px 0" }}>
                 {run.error && <div>⚠ {run.error}</div>}

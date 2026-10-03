@@ -54,7 +54,22 @@ export function Controls({ player, counter, marks }: { player: Player; counter?:
         }}
       />
       </div>
-      <span className="counter">{counter ?? `step ${count ? index + 1 : 0} / ${count}`}</span>
+      <span className="counter">
+        {counter ?? (
+          <>
+            <span className="counter-word">step </span>
+            {count ? index + 1 : 0} / {count}
+          </>
+        )}
+      </span>
+      {/* Narrow screens show one button that cycles through the speeds instead of the full row. */}
+      <button
+        className="speed-cycle"
+        title="Speed"
+        onClick={() => player.setSpeed(SPEEDS[(SPEEDS.indexOf(player.speed) + 1) % SPEEDS.length])}
+      >
+        {player.speed}x
+      </button>
       <div className="speeds" title="Speed ([ and ])">
         {SPEEDS.map((s) => (
           <button key={s} className={s === player.speed ? "on" : ""} onClick={() => player.setSpeed(s)}>
