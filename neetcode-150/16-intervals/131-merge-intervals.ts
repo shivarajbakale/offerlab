@@ -1,0 +1,66 @@
+/**
+ * 56. Merge Intervals
+ * Difficulty: Medium
+ * Category: Intervals
+ * LeetCode: https://leetcode.com/problems/merge-intervals/
+ *
+ * Given an array of `intervals` where intervals[i] = [start, end], merge all
+ * overlapping intervals and return an array of the non-overlapping intervals
+ * that cover exactly the same ranges. Touching intervals (e.g. [1,4] and
+ * [4,5]) count as overlapping.
+ *
+ * Example 1:
+ *   Input: intervals = [[1,3],[2,6],[8,10],[15,18]]
+ *   Output: [[1,6],[8,10],[15,18]]
+ *
+ * Example 2:
+ *   Input: intervals = [[1,4],[4,5]]
+ *   Output: [[1,5]]
+ *
+ * Constraints:
+ *   1 <= intervals.length <= 10^4
+ *   0 <= start <= end <= 10^4
+ *
+ * Approach: Sort by start, then sweep
+ *   After sorting, an interval overlaps the last merged one iff its start
+ *   <= last end. If so, extend the last end; otherwise start a new block.
+ *
+ * Time: O(n log n)   Space: O(n)
+ *
+ * Pattern: intervals
+ * Key insight: After sorting by start, any interval that overlaps the merged set must
+ *   overlap the last merged block, so a single comparison with the last end decides extend
+ *   or start new.
+ * Real world: Combining overlapping busy times from several calendars into one free/busy
+ *   view, or merging overlapping byte ranges in an HTTP range request.
+ */
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+// @why Returns the intervals with all overlapping ones combined.
+export function merge(intervals: number[][]): number[][] {
+  // @why Sort by start so any overlapping intervals end up next to each other; copy to keep the input intact.
+  const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
+  // @why Merged intervals; seeded with the first one (copied so we do not change the input).
+  const result: number[][] = [[...sorted[0]]];
+
+  // @why Go through the rest in start order.
+  for (const [start, end] of sorted.slice(1)) {
+    // @why The most recent merged interval, the only one the next can overlap.
+    const last = result[result.length - 1];
+    // @why Next one starts before `last` ends, so they overlap: stretch `last` to the later end (it may sit inside).
+    if (start <= last[1]) last[1] = Math.max(last[1], end);
+    // @why No overlap, so this interval begins a new group.
+    else result.push([start, end]);
+  }
+  // @why The merged intervals.
+  return result;
+}
+
+test("56. Merge Intervals", () => {
+  assert.deepEqual(merge([[1, 3], [2, 6], [8, 10], [15, 18]]), [[1, 6], [8, 10], [15, 18]]);
+  assert.deepEqual(merge([[1, 4], [4, 5]]), [[1, 5]]);
+  assert.deepEqual(merge([[1, 4]]), [[1, 4]]);
+  assert.deepEqual(merge([[1, 4], [0, 0], [2, 3]]), [[0, 0], [1, 4]]);
+});

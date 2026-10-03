@@ -1,0 +1,126 @@
+.ring-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+}
+.ring-svg {
+  width: 360px;
+  max-width: 100%;
+  flex: 0 0 auto;
+  display: block;
+}
+.ring-base {
+  fill: none;
+  stroke: var(--line-2);
+  stroke-width: 1.5;
+}
+.ring-arc {
+  fill: none;
+  stroke-width: 7;
+  opacity: 0.38;
+}
+.ring-token {
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.ring-zero {
+  font: 10px var(--mono);
+  fill: var(--muted);
+  text-anchor: middle;
+}
+.ring-key {
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+.ring-moved {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+}
+.ring-pointer-line {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.ring-pointer {
+  fill: var(--ink);
+}
+.ring-pointer-label {
+  font: 600 13px var(--mono);
+  fill: var(--ink);
+  text-anchor: middle;
+}
+.ring-pointer-sub {
+  font: 10px var(--mono);
+  fill: var(--muted);
+  text-anchor: middle;
+}
+.ring-side {
+  flex: 1 1 220px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.ring-moved-count {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.ring-moved-count b {
+  font-size: 20px;
+  color: var(--ink);
+  margin-right: 2px;
+}
+.ring-moved-count.some b {
+  color: var(--warn);
+}
+.ring-legend {
+  border-collapse: collapse;
+}
+.ring-legend th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 2px 12px 4px 0;
+}
+.ring-legend td {
+  padding: 3px 12px 3px 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ring-legend td.ring-heavy {
+  color: var(--bad);
+  font-weight: 600;
+}
+.ring-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: -1px;
+}
+.ring-bar {
+  display: inline-block;
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  margin-right: 8px;
+  vertical-align: 1px;
+  overflow: hidden;
+}
+.ring-bar span {
+  display: block;
+  height: 100%;
+}
+.ring-note {
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 300px;
+}

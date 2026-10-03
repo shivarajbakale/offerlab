@@ -1,0 +1,122 @@
+/* BitArrayView: bits and counters, with the current item's cells outlined. */
+.bits {
+  font-family: var(--mono);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bits-item {
+  font-size: 12px;
+  color: var(--muted);
+}
+.bits-item b {
+  color: var(--accent);
+  font-weight: 650;
+}
+.bits-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bits-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.bits-line .bits-cell {
+  width: var(--cell);
+  height: var(--cell);
+}
+.bits-label {
+  min-width: 34px;
+  padding-right: 6px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bits-grid {
+  display: inline-grid;
+  gap: 3px;
+  align-items: center;
+}
+.bits-grid .bits-cell {
+  height: 28px;
+  padding: 0 4px;
+}
+.bits-idx {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+}
+.bits-cell {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.bits-cell.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--ink);
+  font-weight: 600;
+}
+.bits-cell.touched {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  position: relative;
+  z-index: 1;
+}
+.bits-cell.touched.new {
+  outline-color: var(--p2);
+}
+.bits-cell.touched.had {
+  outline: 2px dashed var(--p1);
+}
+.bits-cell.touched.zero {
+  outline: 2px dotted var(--muted);
+}
+.bits-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.bits-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bits-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid var(--p2);
+  box-sizing: border-box;
+}
+.bits-swatch.had {
+  border-style: dashed;
+  border-color: var(--p1);
+}
+.bits-swatch.zero {
+  border-style: dotted;
+  border-color: var(--muted);
+}
+.bits-verdict {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 0 6px 6px 0;
+  max-width: 560px;
+}
+.bits-verdict.bad {
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+}

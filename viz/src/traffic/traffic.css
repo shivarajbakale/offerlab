@@ -1,0 +1,287 @@
+.traffic-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+.stage-tabs {
+  display: flex;
+  gap: 4px;
+}
+.stage-tabs button {
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  color: var(--ink-2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.stage-tabs button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.knobs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 20px 0;
+  font-size: 12px;
+}
+.knob {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.knob input {
+  width: 160px;
+  accent-color: var(--accent);
+}
+.knob-name {
+  color: var(--muted);
+}
+.knob-value {
+  font-family: var(--mono);
+  min-width: 48px;
+}
+.knob-busy {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.arch {
+  padding: 8px 20px 0;
+}
+.arch-svg {
+  width: 100%;
+  max-height: 640px;
+  display: block;
+}
+.arch-link {
+  stroke: var(--line-2);
+}
+.arch-link-label,
+.arch-bar-label,
+.arch-stat {
+  font-size: 11px;
+  fill: var(--muted);
+  font-family: var(--mono);
+}
+.arch-box {
+  fill: var(--panel);
+  stroke: var(--line-2);
+  stroke-width: 1.5;
+}
+.arch-box.ok {
+  stroke: var(--ok);
+}
+.arch-box.warn {
+  stroke: var(--warn);
+  fill: var(--flash-soft);
+}
+.arch-box.bad {
+  stroke: var(--bad);
+  fill: var(--bad-soft);
+}
+.arch-box.diff {
+  stroke-dasharray: 5 3;
+  stroke-width: 2.5;
+}
+.arch-title {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.arch-tag {
+  font-size: 10px;
+  fill: var(--accent);
+  font-weight: 600;
+}
+.arch-bar-bg {
+  fill: var(--line);
+}
+.arch-bar {
+  fill: var(--ok);
+}
+.arch-bar.warm {
+  fill: var(--warn);
+}
+.arch-bar.hot {
+  fill: var(--bad);
+}
+.arch-up {
+  fill: var(--ok);
+}
+.arch-down {
+  fill: var(--bad);
+}
+.arch-dot {
+  cursor: pointer;
+  fill: var(--accent);
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.arch-dot.rejected,
+.arch-dot.failed {
+  fill: var(--bad);
+}
+.arch-dot.timeout {
+  fill: var(--warn);
+}
+.arch-dot.sel {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.arch-note {
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 5px 7px;
+  border-radius: 6px;
+  border-left: 3px solid var(--line-2);
+  background: var(--panel-2);
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+.arch-note.sev3 {
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+}
+.arch-note.sev2 {
+  border-left-color: var(--warn);
+  background: var(--flash-soft);
+}
+
+.journey {
+  margin: 8px 20px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--ink-2);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 10px 20px 12px;
+}
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.metric-legend {
+  display: flex;
+  gap: 8px;
+  font-family: var(--mono);
+}
+.metric-svg {
+  width: 100%;
+  height: 56px;
+  display: block;
+  background: var(--panel-2);
+  border-radius: 4px;
+}
+.metric-cursor {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.arch-slow {
+  font-size: 10px;
+  fill: var(--bad);
+  font-weight: 600;
+}
+.cost {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.traffic-chaos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 0;
+  font-size: 12px;
+}
+.traffic-chaos select,
+.traffic-chaos button {
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  color: var(--ink-2);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+.traffic-chaos .fault {
+  color: var(--bad);
+  font-family: var(--mono);
+}
+.arch-badge {
+  fill: var(--warn);
+}
+.arch-badge.sev3 {
+  fill: var(--bad);
+}
+.arch-badge.sev1 {
+  fill: var(--muted);
+}
+.arch-badge-text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #fff;
+}
+.arch-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px;
+  padding: 8px 20px 0;
+}
+.arch-notes .arch-note b {
+  color: var(--ink);
+}
+.arch-link.broken {
+  stroke: var(--bad);
+  stroke-dasharray: 4 3;
+}
+.arch-breaker {
+  font-size: 10px;
+  fill: var(--bad);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.arch-region {
+  font-size: 10px;
+  fill: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.kind-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.kind-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+}
+.kind-table td,
+.kind-table th {
+  padding: 1px 4px 1px 0;
+}
+.kind-table tr.bad td {
+  color: var(--bad);
+}

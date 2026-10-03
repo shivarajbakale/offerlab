@@ -1,0 +1,135 @@
+.spatial-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-start;
+}
+.spatial-svg {
+  width: 360px;
+  max-width: 100%;
+  flex: 0 0 auto;
+  display: block;
+}
+.spatial-plane {
+  fill: var(--panel-2);
+  stroke: var(--line);
+}
+.spatial-rect {
+  fill: transparent;
+  stroke: var(--line-2);
+  stroke-width: 1;
+  transition: fill 0.3s;
+}
+.spatial-rect.hot {
+  fill: var(--accent-soft);
+  stroke: var(--accent-line);
+  stroke-width: 1.5;
+}
+.spatial-rect.hot.inner {
+  fill: transparent;
+}
+.spatial-rect.focus {
+  stroke: var(--ink);
+  stroke-width: 2.2;
+}
+.spatial-label {
+  font: 9.5px var(--mono);
+  fill: var(--muted);
+}
+.spatial-label.big {
+  font-size: 11px;
+}
+.spatial-label.hot {
+  fill: var(--accent);
+}
+.spatial-query {
+  fill: none;
+  stroke: var(--p3);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+.spatial-point {
+  fill: var(--ink-2);
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.spatial-point.hot {
+  fill: var(--p1);
+}
+.spatial-point-label {
+  font: 10px var(--mono);
+  fill: var(--muted);
+}
+.spatial-point-label.hot {
+  fill: var(--p1);
+  font-weight: 600;
+}
+.spatial-marker line {
+  stroke: var(--bad);
+  stroke-width: 1.6;
+}
+.spatial-marker circle {
+  fill: none;
+  stroke: var(--bad);
+  stroke-width: 1.6;
+}
+.spatial-side {
+  flex: 1 1 200px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 12px var(--mono);
+  color: var(--ink-2);
+}
+.spatial-side b {
+  color: var(--ink);
+  font-size: 14px;
+}
+.spatial-side b.hot {
+  color: var(--accent);
+}
+.spatial-side b.found {
+  color: var(--p1);
+}
+.spatial-key {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+}
+.spatial-key .sw {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  text-align: center;
+}
+.spatial-key .sw.rect {
+  border: 1px solid var(--line-2);
+}
+.spatial-key .sw.rect.hot {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.spatial-key .sw.query {
+  border: 1.5px dashed var(--p3);
+}
+.spatial-key .sw.dot {
+  width: 10px;
+  border-radius: 50%;
+  margin-left: 2px;
+  margin-right: 10px;
+}
+.spatial-key .sw.found {
+  background: var(--p1);
+}
+.spatial-key .sw.marker {
+  color: var(--bad);
+  font-weight: 700;
+  height: auto;
+}

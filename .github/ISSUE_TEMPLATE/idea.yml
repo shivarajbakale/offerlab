@@ -1,0 +1,11 @@
+name: Idea or new lesson
+description: Suggest a problem, case study, drill or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should Offerlab teach or do, and why would it help?
+    validations:
+      required: true

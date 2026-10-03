@@ -1,0 +1,11 @@
+import { readFileSync } from "node:fs";
+import { instrument } from "../src/tracer/instrument.ts";
+import { traceSource } from "../src/tracer/trace.ts";
+const file = process.argv[2];
+const src = readFileSync(file, "utf8");
+if (process.argv[3] === "code") console.log(instrument(src));
+const t = traceSource(src);
+console.log(t.error, t.skippedRuns);
+for (const r of t.runs) console.log(r.label, r.passed, r.steps.length, r.truncated, r.error ?? "");
+const r = t.runs[0];
+if (r && process.argv[3] === "steps") for (const s of r.steps.slice(0, 40)) console.log(s.line, s.event, s.stack.map(f => f.fn + "{" + f.vars.map(([k, v]) => k + "=" + JSON.stringify(v)).join(" ") + "}").join(" | "));

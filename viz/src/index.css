@@ -1,0 +1,105 @@
+:root {
+  --bg: #f6f6f3;
+  --panel: #ffffff;
+  --panel-2: #fafaf8;
+  --ink: #18181b;
+  --ink-2: #3f3f46;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --line-2: #d4d4d8;
+  --accent: #4f46e5;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(79, 70, 229, 0.1);
+  --accent-line: rgba(79, 70, 229, 0.45);
+  --flash: #fde68a;
+  --flash-soft: rgba(253, 230, 138, 0.55);
+  --ok: #15803d;
+  --ok-soft: rgba(21, 128, 61, 0.1);
+  --bad: #b91c1c;
+  --bad-soft: rgba(185, 28, 28, 0.1);
+  --warn: #c2410c;
+  --code-active: rgba(79, 70, 229, 0.13);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --p0: #4f46e5;
+  --p1: #ea580c;
+  --p2: #0d9488;
+  --p3: #db2777;
+  --p4: #65a30d;
+  --p5: #0284c7;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  font: 14px/1.5 var(--sans);
+  color: var(--ink);
+  background: var(--bg);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1014;
+    --panel: #15181e;
+    --panel-2: #1a1e25;
+    --ink: #e8e8ec;
+    --ink-2: #c4c4cc;
+    --muted: #8b8b97;
+    --line: #262a33;
+    --line-2: #333844;
+    --accent: #8b8cf8;
+    --accent-ink: #0e1014;
+    --accent-soft: rgba(139, 140, 248, 0.14);
+    --accent-line: rgba(139, 140, 248, 0.55);
+    --flash: rgba(251, 191, 36, 0.45);
+    --flash-soft: rgba(251, 191, 36, 0.22);
+    --ok: #4ade80;
+    --ok-soft: rgba(74, 222, 128, 0.12);
+    --bad: #f87171;
+    --bad-soft: rgba(248, 113, 113, 0.12);
+    --warn: #fb923c;
+    --code-active: rgba(139, 140, 248, 0.18);
+    --shadow: none;
+    --p0: #8b8cf8;
+    --p1: #fb923c;
+    --p2: #2dd4bf;
+    --p3: #f472b6;
+    --p4: #a3e635;
+    --p5: #38bdf8;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+}
+
+::selection {
+  background: var(--accent-soft);
+}

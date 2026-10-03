@@ -1,0 +1,126 @@
+/* LevelsView: stacked rows of blocks (memtable / SSTable levels, memory / WAL). */
+.lv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--mono);
+  min-width: 0;
+}
+.lv-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.lv-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.lv-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-top: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lv-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 34px;
+}
+.lv-block {
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 5px 8px 6px;
+  min-width: 54px;
+  max-width: 340px;
+  height: 100%;
+  box-sizing: border-box;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.lv-block.hot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  background: var(--accent-soft);
+}
+.lv-block.hot.changed {
+  animation: flash 0.9s ease-out forwards;
+}
+.lv-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.lv-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lv-block.hot .lv-label {
+  color: var(--accent);
+}
+.lv-range {
+  color: var(--muted);
+}
+.lv-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.lv-item {
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lv-item.tomb {
+  color: var(--bad);
+  border-color: var(--bad-soft);
+  background: var(--bad-soft);
+}
+.lv-more {
+  font-size: 11px;
+  color: var(--muted);
+  align-self: center;
+}
+.lv-mark {
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 34px;
+  color: var(--ok);
+  font-size: 10.5px;
+}
+.lv-mark::before {
+  content: "";
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ok);
+}
+.lv-mark span {
+  align-self: center;
+  white-space: nowrap;
+}
+.lv-empty {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  padding-top: 7px;
+}
