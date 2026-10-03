@@ -3,6 +3,7 @@ import { isWhyLine, type Problem } from "../parseProblem.ts";
 import { useTokens } from "./highlight.ts";
 import { WhyText } from "./WhyText.tsx";
 import { scrollWithin } from "./scrollWithin.ts";
+import { usePhone } from "../player/usePhone.ts";
 
 export function CodePanel({
   problem,
@@ -20,6 +21,8 @@ export function CodePanel({
   const tokens = useTokens(problem.id, problem.source);
   const ref = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState<number | null>(null);
+  // Phones show no playback, so no line is highlighted as running.
+  const phone = usePhone();
 
   useEffect(() => {
     scrollWithin(ref.current?.querySelector(".code-line.active"), "smooth");
@@ -60,7 +63,7 @@ export function CodePanel({
     }
     shown++;
     const note = why[n];
-    const state = n === activeLine ? "active" : callerLines.includes(n) ? "caller" : "";
+    const state = phone ? "" : n === activeLine ? "active" : callerLines.includes(n) ? "caller" : "";
     rows.push(
       <div
         key={n}

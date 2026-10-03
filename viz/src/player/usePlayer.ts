@@ -1,6 +1,7 @@
 // Playback state: current step, playing, speed. Advances on a timer while playing.
 
 import { useCallback, useEffect, useState } from "react";
+import { usePhone } from "./usePhone.ts";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
 const BASE_MS = 1100;
@@ -36,7 +37,9 @@ export function usePlayer(count: number, resetKey: string, dwell: (i: number) =>
   const clamp = useCallback((i: number) => Math.max(0, Math.min(count - 1, i)), [count]);
 
   const atEnd = index >= count - 1;
-  const isPlaying = playing && !atEnd && count > 0;
+  // Phones have no visual or player, so nothing plays there.
+  const phone = usePhone();
+  const isPlaying = playing && !phone && !atEnd && count > 0;
 
   useEffect(() => {
     if (!isPlaying) return;

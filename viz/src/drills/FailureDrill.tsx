@@ -89,7 +89,13 @@ export function FailureDrill({ drill, play, answerTitle }: { drill: Drill; play:
                 );
               })}
             </div>
-            {!answered && <p className="drill-muted">Press play and read the canvas and charts. Pick an answer to see what really happened.</p>}
+            {!answered && (
+              <p className="drill-muted">
+                <span className="not-phone">Press play and read the canvas and charts. </span>
+                <span className="phone-only">Read the symptoms above. </span>
+                Pick an answer to see what really happened.
+              </p>
+            )}
             {answered && (
               <>
                 <div className={`drill-verdict ${drill.options[picked].correct ? "ok" : "bad"}`}>

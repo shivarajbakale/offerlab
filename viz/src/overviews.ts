@@ -92,3 +92,6 @@ export const DRILL_INTROS = {
   failure: "This system has one problem. Watch the charts and callouts, decide what is causing it, then pick an answer to see the cause and the fix run side by side.",
   flashcards: "Say the answer before you flip. Mark each card honestly: missed cards come back sooner, known ones less often.",
 } as const;
+/** Phones have no simulation to watch, so the failure drill is read instead. */
+export const FAILURE_INTRO_PHONE =
+  "This system has one problem. Read the setup and the symptoms, decide what is causing it, then pick an answer to see the cause and the fix.";

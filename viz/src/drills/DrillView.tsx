@@ -6,7 +6,8 @@ import { EstimationDrill } from "./EstimationDrill.tsx";
 import { FailureDrill } from "./FailureDrill.tsx";
 import { Flashcards } from "./Flashcards.tsx";
 import { useDrill } from "./useDrill.ts";
-import { DRILL_INTROS } from "../overviews.ts";
+import { DRILL_INTROS, FAILURE_INTRO_PHONE } from "../overviews.ts";
+import { usePhone } from "../player/usePhone.ts";
 import "./drills.css";
 
 const KIND = { estimation: "Estimation drill", failure: "Failure drill", flashcards: "Flashcards" } as const;
@@ -16,6 +17,7 @@ export function DrillView({ problem, onSelect }: { problem: Problem; onSelect: (
   const result = state.status === "ready" ? state.result : null;
   const drill = result && "drill" in result ? result.drill : null;
   const failure = drill?.kind === "failure" && result && "play" in result ? result.play : undefined;
+  const phone = usePhone();
 
   return (
     <main className={`main ${failure ? "" : "drill-main"}`}>
@@ -27,7 +29,11 @@ export function DrillView({ problem, onSelect }: { problem: Problem; onSelect: (
           {problem.drill && <span className="badge drill">{KIND[problem.drill]}</span>}
           {problem.level && <span className={`badge ${problem.level}`}>{problem.level}</span>}
         </div>
-        {problem.drill && <p className="drill-intro">{DRILL_INTROS[problem.drill]}</p>}
+        {problem.drill && (
+          <p className="drill-intro">
+            {phone && problem.drill === "failure" ? FAILURE_INTRO_PHONE : DRILL_INTROS[problem.drill]}
+          </p>
+        )}
       </header>
       {state.status === "loading" && <div className="status">{problem.drill === "failure" ? "Simulating…" : "Loading…"}</div>}
       {result && "error" in result && <div className="status error">{result.error}</div>}

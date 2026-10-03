@@ -1783,7 +1783,8 @@
 .topbar,
 .drawer-close,
 .scrim,
-.speed-cycle {
+.speed-cycle,
+.phone-only {
   display: none;
 }
 .visual-col {
@@ -2186,5 +2187,38 @@
   }
   .speed-cycle {
     height: 34px;
+  }
+}
+
+/* Phones: a reading view with the lesson, code, notes and intuition, and no visual or player.
+   Keep this query in step with PHONE_QUERY in player/usePhone.ts. */
+@media (max-width: 640px), (max-height: 500px) and (orientation: landscape) {
+  .main:has(> .dock) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "header" "code";
+  }
+  .main:has(> .dock) > .dock,
+  .main:has(> .dock) > .stage > :not(.left),
+  .main:has(> .dock) .example-select,
+  .main:has(> .dock) .stage-tabs,
+  .not-phone {
+    display: none;
+  }
+  .phone-only {
+    display: inline;
+  }
+  .main:has(> .dock) .left {
+    border: 0;
+  }
+  /* Lesson links that would play a scenario read as plain emphasis. */
+  .play-link {
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-size: inherit;
   }
 }
