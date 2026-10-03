@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { isWhyLine, type Problem } from "../parseProblem.ts";
 import { useTokens } from "./highlight.ts";
 import { WhyText } from "./WhyText.tsx";
+import { scrollWithin } from "./scrollWithin.ts";
 
 export function CodePanel({
   problem,
@@ -21,8 +22,7 @@ export function CodePanel({
   const [pinned, setPinned] = useState<number | null>(null);
 
   useEffect(() => {
-    const el = ref.current?.querySelector(".code-line.active");
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    scrollWithin(ref.current?.querySelector(".code-line.active"), "smooth");
   }, [activeLine, problem.id]);
 
   useEffect(() => {

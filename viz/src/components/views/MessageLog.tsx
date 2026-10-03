@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { SimStep } from "../../../../system-design/kernel/types.ts";
 import { logLine } from "../../sim/narrate.ts";
+import { scrollWithin } from "../scrollWithin.ts";
 
 /** Rows rendered either side of the current step, so long runs stay cheap. */
 const WINDOW = 150;
@@ -10,7 +11,7 @@ const WINDOW = 150;
 export function MessageLog({ steps, index, onJump }: { steps: SimStep[]; index: number; onJump: (i: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.querySelector(".log-row.active")?.scrollIntoView({ block: "nearest" });
+    scrollWithin(ref.current?.querySelector(".log-row.active"));
   }, [index]);
   const from = Math.max(0, index - WINDOW);
   const rows = steps.slice(from, Math.min(steps.length, index + WINDOW));
