@@ -14,7 +14,8 @@ import { DrillView } from "./drills/DrillView.tsx";
 import { OverviewView } from "./components/OverviewView.tsx";
 import { LandingView } from "./landing/LandingView.tsx";
 import { overviewTab } from "./sidebarTabs.ts";
-import { findRun, markLocate, parseLesson, scenarioOptionLabel, type PlayLink } from "./sim/lesson.ts";
+import { findRun, markLocate, parseLesson, scenarioOptionLabel, storyChapters, type PlayLink } from "./sim/lesson.ts";
+import { ChapterStrip } from "./components/ChapterStrip.tsx";
 import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
 import { explain as explainStep, type Explanation } from "./model/explain.ts";
@@ -24,6 +25,9 @@ import { buildStory, leftWindow } from "./model/story.ts";
 import { usePlayer } from "./player/usePlayer.ts";
 import { useTrace } from "./player/useTrace.ts";
 import { problems, type Problem } from "./problems.ts";
+import { isRevealed, reveal } from "./progress.ts";
+import { getProgress, updateProgress, useProgress } from "./useProgress.ts";
+import { QuestionPanel, SolutionHidden } from "./components/QuestionPanel.tsx";
 import type { Run, Step } from "./tracer/types.ts";
 
 const EMPTY_STEPS: Step[] = [];
@@ -129,11 +133,12 @@ export default function App() {
   );
 }
 
-type LeftTab = "learn" | "code" | "intuition";
+type LeftTab = "learn" | "problem" | "code" | "intuition";
 const TAB_KEY = "viz:left-tab";
 function initialTab(): LeftTab {
   try {
-    return localStorage.getItem(TAB_KEY) === "intuition" ? "intuition" : "code";
+    const t = localStorage.getItem(TAB_KEY);
+    return t === "intuition" || t === "problem" ? t : "code";
   } catch {
     return "code";
   }
@@ -169,7 +174,12 @@ function initialExplain(): boolean {
 function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: string) => void }) {
   // Systems primitives open on their lesson; algorithms remember the last tab used.
   const systems = problem.track === "systems";
-  const [tab, setTabState] = useState<LeftTab>(() => (systems ? (problem.lesson ? "learn" : "code") : initialTab()));
+  // Algorithms open on the question, with the solution hidden until asked for.
+  const progress = useProgress();
+  const revealed = systems || isRevealed(progress, problem.id);
+  const [tab, setTabState] = useState<LeftTab>(() =>
+    systems ? (problem.lesson ? "learn" : "code") : isRevealed(getProgress(), problem.id) ? initialTab() : "problem",
+  );
   const setTab = useCallback((t: LeftTab) => {
     setTabState(t);
     if (systems) return;
@@ -179,6 +189,10 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       // Remembering the tab is a convenience only.
     }
   }, [systems]);
+  const showSolution = useCallback(() => {
+    updateProgress((p, now) => reveal(p, problem.id, now));
+    setTab("code");
+  }, [problem.id, setTab]);
   const [explain, setExplainState] = useState(initialExplain);
   const setExplain = useCallback((on: boolean) => {
     setExplainState(on);
@@ -191,12 +205,15 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   const hasNotes = Object.keys(problem.why).length > 0;
   const traceOptions = useMemo(() => ({ scenarios: problem.track === "systems" }), [problem.track]);
   const state = useTrace(problem.id, problem.source, traceOptions);
-  const [runIndex, setRunIndex] = useState(0);
   const trace = state.status === "ready" ? state.trace : null;
+  const lesson = useMemo(() => parseLesson(problem.lesson), [problem.lesson]);
+  // Building blocks tell their scenarios as a story; until one is picked, start at chapter 1.
+  const chapters = useMemo(() => (systems && trace ? storyChapters(trace.runs, lesson) : []), [systems, trace, lesson]);
+  const [pickedRun, setRunIndex] = useState<number | null>(null);
+  const runIndex = pickedRun ?? chapters[0]?.run ?? 0;
   const run: Run | undefined = trace?.runs[runIndex];
   const steps = run?.steps ?? EMPTY_STEPS;
 
-  const lesson = useMemo(() => parseLesson(problem.lesson), [problem.lesson]);
   const locate = useMemo(() => markLocate(problem.hints.marks), [problem.hints]);
   // A play link picks a scenario and a marked line; the jump happens once that scenario is showing.
   const [jump, setJump] = useState<{ run: number; link: PlayLink } | null>(null);
@@ -282,7 +299,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
     [narrationAt, keySteps, explainAt],
   );
 
-  const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell, keyOnly && keyStops.length > 1 ? keyStops : null);
+  const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell, keyOnly && keyStops.length > 1 ? keyStops : null, !revealed);
   const k = player.index;
 
   // "Ask me first": arriving at a step that moves a pointer pauses on the step before it,
@@ -439,7 +456,8 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       else if (e.key === "]") player.faster();
       else if (e.key === "[") player.slower();
       else if (e.key === "k" && keyStops.length > 1) setKeyOnly(!keyOnly);
-      else if (e.key === "i" && !systems) setTab(tab === "code" ? "intuition" : "code");
+      else if (e.key === "i" && !systems) setTab(tab === "intuition" ? "code" : "intuition");
+      else if (e.key === "p" && !systems) setTab("problem");
       else if (e.key === "e" && hasNotes) {
         setTab("code");
         setExplain(tab === "code" ? !explain : true);
@@ -468,7 +486,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
               LeetCode ↗
             </a>
           )}
-          {trace && trace.runs.length > 0 && (
+          {revealed && trace && trace.runs.length > 0 && (
             <select
               className="example-select"
               value={runIndex}
@@ -483,7 +501,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             </select>
           )}
         </div>
-        {(problem.approach || problem.approachName) && (
+        {revealed && (problem.approach || problem.approachName) && (
           <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             <b>{problem.approachName || "Approach"}.</b> {problem.approach} <span className="complexity">· {problem.complexity}</span>
           </div>
@@ -496,6 +514,11 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             {systems && problem.lesson && (
               <button role="tab" className={`tab ${tab === "learn" ? "on" : ""}`} onClick={() => setTab("learn")}>
                 Learn
+              </button>
+            )}
+            {!systems && (
+              <button role="tab" className={`tab ${tab === "problem" ? "on" : ""}`} onClick={() => setTab("problem")} title="The question, hints and your progress (press p)">
+                Problem<kbd>p</kbd>
               </button>
             )}
             <button role="tab" className={`tab ${tab === "code" ? "on" : ""}`} onClick={() => setTab("code")}>
@@ -511,7 +534,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
                 Intuition<kbd>i</kbd>
               </button>
             )}
-            {tab === "code" && hasNotes && (
+            {tab === "code" && hasNotes && revealed && (
               <label
                 className={`explain-toggle ${explain ? "on" : ""}`}
                 title="Show a plain-English note under every line (press e). Otherwise hover or click a line's dot."
@@ -523,6 +546,10 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
           </div>
           {tab === "learn" && systems && problem.lesson ? (
             <LessonView lesson={lesson} onPlay={onPlay} ready={Boolean(trace)} />
+          ) : tab === "problem" && !systems ? (
+            <QuestionPanel problem={problem} onShowSolution={showSolution} />
+          ) : !revealed ? (
+            <SolutionHidden onShow={showSolution} onProblem={() => setTab("problem")} />
           ) : tab === "code" || systems ? (
             <CodePanel
               problem={problem}
@@ -534,12 +561,17 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             <IntuitionPanel problem={problem} onSelect={onSelect} />
           )}
         </div>
-        {state.status === "loading" && <div className="status">Tracing…</div>}
-        {state.status === "error" && <div className="status error">{state.message}</div>}
-        {trace && !run && (
+        {!revealed && (
+          <div className="visual-col">
+            <SolutionHidden onShow={showSolution} />
+          </div>
+        )}
+        {revealed && state.status === "loading" && <div className="status">Tracing…</div>}
+        {revealed && state.status === "error" && <div className="status error">{state.message}</div>}
+        {revealed && trace && !run && (
           <div className="status error">{trace.error ?? "No calls to the solution were recorded."}</div>
         )}
-        {run && scene && (
+        {revealed && run && scene && (
           <div className="visual-col">
             {(run.truncated || run.error) && (
               <div className="notice" style={{ padding: "8px 20px 0" }}>
@@ -547,6 +579,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
                 {run.truncated && <div>Showing the first {steps.length} steps of a long run.</div>}
               </div>
             )}
+            <ChapterStrip chapters={chapters} current={runIndex} onPick={setRunIndex} />
             {explanation && <ExplainCard ex={explanation} />}
             <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} />
           </div>
@@ -554,12 +587,20 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       </section>
 
       <div className="dock">
-        {systems && <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />}
-        <Controls
-          player={player}
-          marks={story?.marks}
-          keyOnly={keyStops.length > 1 ? { on: keyOnly, toggle: () => setKeyOnly(!keyOnly), count: keyStops.length } : undefined}
-        />
+        {systems && (
+          <NarrationBar
+            narration={scene?.panels.some((p) => "caption" in p) ? null : narration}
+            why={step ? problem.why[step.line] : undefined}
+            hasNotes={hasNotes}
+          />
+        )}
+        {revealed && (
+          <Controls
+            player={player}
+            marks={story?.marks}
+            keyOnly={keyStops.length > 1 ? { on: keyOnly, toggle: () => setKeyOnly(!keyOnly), count: keyStops.length } : undefined}
+          />
+        )}
       </div>
     </main>
   );

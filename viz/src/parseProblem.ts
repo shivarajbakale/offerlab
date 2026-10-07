@@ -80,6 +80,11 @@ export type Problem = {
   engine: "tracer" | "kernel" | "traffic" | "drill";
   /** Drills only: which practice screen shows it. */
   drill?: DrillKind;
+  /** Algorithms only: the question as the file header states it. Paragraphs; "\n" marks a hard line break. */
+  statement: string[];
+  /** Algorithms only: "Example 1", with its lines as written (dedented). */
+  examples: { title: string; body: string }[];
+  constraints: string[];
   /** Systems only: "Senior" or "Staff". */
   level: string;
   /** Systems only: header blocks for the Intuition panel. */
@@ -138,6 +143,56 @@ function titles(header: string, failureSource: string): { title: string; answerT
   } catch {
     return { title: header };
   }
+}
+
+const STOP = /^(Example \d+:|Constraints:|Approach\b)/;
+
+/**
+ * The question part of an algorithm header: the prose between the metadata and the first example,
+ * the examples, and the constraints. Wrapped lines are joined; indented lines keep their own line.
+ */
+export function parseQuestion(headerText: string[]): Pick<Problem, "statement" | "examples" | "constraints"> {
+  const blank = headerText.findIndex((l, i) => i > 0 && !l.trim());
+  const statement: string[] = [];
+  const examples: Problem["examples"] = [];
+  const constraints: string[] = [];
+  if (blank < 0) return { statement, examples, constraints };
+  let i = blank + 1;
+  let para: string[] = [];
+  // Indent of the hard line being built: a deeper line continues it, anything else starts a new one.
+  let lineIndent = 0;
+  const flush = () => {
+    if (para.length) statement.push(para.join(""));
+    para = [];
+  };
+  for (; i < headerText.length && !STOP.test(headerText[i]); i++) {
+    const l = headerText[i];
+    const indent = l.match(/^\s*/)![0].length;
+    if (!l.trim()) flush();
+    else if (para.length && (indent === 0 ? lineIndent === 0 : lineIndent > 0 && indent > lineIndent)) para.push(" " + l.trim());
+    else {
+      para.push((para.length ? "\n" : "") + l.trim());
+      lineIndent = indent;
+    }
+  }
+  flush();
+  for (; i < headerText.length && !headerText[i].startsWith("Approach"); i++) {
+    const head = headerText[i];
+    const body: string[] = [];
+    for (i++; i < headerText.length && headerText[i].trim() && !STOP.test(headerText[i]); i++) body.push(headerText[i]);
+    i--;
+    if (head.startsWith("Example")) {
+      const indent = Math.min(...body.map((l) => l.match(/^\s*/)![0].length));
+      examples.push({ title: head.replace(/:$/, ""), body: body.map((l) => l.slice(indent).trimEnd()).join("\n") });
+    } else if (head.startsWith("Constraints")) {
+      const indent = body[0]?.match(/^\s*/)![0].length ?? 0;
+      for (const l of body) {
+        if (constraints.length && l.match(/^\s*/)![0].length > indent) constraints[constraints.length - 1] += " " + l.trim();
+        else constraints.push(l.trim());
+      }
+    }
+  }
+  return { statement, examples, constraints };
 }
 
 export function parseProblem(path: string, source: string): Problem {
@@ -242,6 +297,7 @@ export function parseProblem(path: string, source: string): Problem {
     track,
     engine: drill ? "drill" : track === "systems" && isKernelSource(source) ? "kernel" : isTrafficSource(source) ? "traffic" : "tracer",
     ...(drill ? { drill: drill[1] as DrillKind } : {}),
+    ...(track === "algorithms" ? parseQuestion(headerText) : { statement: [], examples: [], constraints: [] }),
     level: field("Level"),
     problemStatement: block("Problem"),
     tradeoffs: block("Tradeoffs"),

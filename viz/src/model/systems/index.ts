@@ -2,6 +2,7 @@
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 import type { Hints } from "../hints.ts";
+import { buildBalancer, type BalancerPanel } from "./balancer.ts";
 import { buildBits, type BitsPanel } from "./bits.ts";
 import { buildLevels, type LevelsPanel } from "./levels.ts";
 import { buildPages, type PagesPanel } from "./pages.ts";
@@ -10,7 +11,7 @@ import { buildSpatial, type SpatialPanel } from "./spatial.ts";
 import { buildTimeline, type TimelinePanel } from "./timeline.ts";
 import type { Builder, SystemsCtx, SystemsKind } from "./types.ts";
 
-export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel;
+export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel | BalancerPanel;
 /** Scene variables, as collected by buildScene: `this` fields are flattened in. */
 export type SceneVar = { name: string; v: Value; frame: number; inner: boolean; field?: boolean };
 export type Builders = Partial<Record<SystemsKind, Builder<SystemsPanel>>>;
@@ -22,6 +23,7 @@ export const BUILDERS: Builders = {
   levels: buildLevels,
   pages: buildPages,
   timeline: buildTimeline,
+  balancer: buildBalancer,
 };
 
 /** A variable by name (innermost frame first), then through object fields or array indexes. */
@@ -96,6 +98,9 @@ export function buildSystemsPanels(
   const uses = new Set<HeapId>();
   if (hints.systems.length === 0) return { panels, uses };
   const prevVars = prev ? sceneVars(prev) : [];
+  // The app draws the state after a line ran (step) with that line's step as `prev`.
+  const ran = prev?.line ?? step.line;
+  const mark = Object.entries(hints.marks).find(([, line]) => line === ran)?.[0];
   for (const hint of hints.systems) {
     const build = builders[hint.kind];
     if (!build) continue;
@@ -107,6 +112,9 @@ export function buildSystemsPanels(
       findPrev: (name) => (prev ? findVar(prev, prevVars, name) : undefined),
       js: (v) => toJs(step, v),
       jsPrev: (v) => (prev ? toJs(prev, v) : undefined),
+      ...(mark ? { mark } : {}),
+      ran,
+      markLine: (name) => hints.marks[name],
     };
     const built = build(ctx);
     if (!built) continue;

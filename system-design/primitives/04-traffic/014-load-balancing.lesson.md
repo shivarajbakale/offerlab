@@ -8,6 +8,14 @@
 - **Not the right tool when:** Each request must reach one particular server because that server holds its data, such as a cache shard; route by key with [consistent hashing](#/sd-01-partitioning/001-consistent-hashing) instead. With equal servers and equal requests, plain round robin is enough.
 - **Where you'll meet it:** NGINX, HAProxy, Envoy and cloud load balancers such as AWS Elastic Load Balancing. NGINX offers `random two least_conn`, and Envoy's least-request balancer picks the better of two random hosts by default. Mitzenmacher's "power of two choices" work explains why. Nearly every "Design X" interview has a load-balanced tier.
 
+## In plain words
+
+A popular website does not run on one computer. It runs the same program on several computers, called servers, so that together they can answer more people at once. Every user still types the same address, so something has to decide which server answers each request. That something is the load balancer.
+
+Think of the host at a busy restaurant. Guests (requests) arrive at the door, and the host (the load balancer) seats each party at one of several tables (servers). A good host doesn't just seat parties in turn: if one waiter is slow, the host stops sending guests to that waiter's tables. This lesson is about how the host decides.
+
+In the picture on the right, requests come in from the users on the left, the load balancer is in the middle, and each server on the right shows its queue: one small square per unfinished request. Green squares start this tick, orange ones wait a tick, and red ones wait two ticks or more, which is too slow. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Server** — a machine that does the work for requests. Here there are three: s0, s1 and s2.
@@ -93,6 +101,15 @@ The big win is with many balancers. Different balancers sample different pairs, 
   A: s1, the less loaded of the two. [▶ See it](play:power of two choices@at=two#13)
 - **Q:** Can two choices send a request to a server with a queue while another server is empty?
   A: Yes, when the empty server isn't one of the two sampled. Here s0 is empty, the samples are s1 and s2 with 2 each, and s2 gets a request that will wait 2 ticks. [▶ See it](play:power of two choices@at=two#22)
+
+## When to use which
+
+- **Round robin** — when the servers are identical and requests cost about the same, such as a fleet of identical web servers returning similar pages. It needs no information at all.
+- **Least connections** — when servers differ in speed or some requests are much heavier than others (an API where most calls take 5 ms but some take 2 s), and one balancer sees all the traffic, so its counts are accurate.
+- **Power of two choices** — when there are many balancers, or the load counts are a little out of date. It is the default in Envoy, where every client has its own balancer. A safe default if you are unsure.
+- **Weighted versions** of any of these — when some servers are bigger than others. A server with twice the CPUs gets twice the share.
+- **Don't balance; route by key** — when a request must reach the one server that holds its data, such as a cache shard or a user's open chat connection. Use [consistent hashing](#/sd-01-partitioning/001-consistent-hashing).
+- **In an interview:** say "a load balancer in front of N stateless servers, least connections or two choices", then mention health checks so dead servers are taken out.
 
 ## Deep dive
 

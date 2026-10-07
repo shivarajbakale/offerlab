@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { problems } from "../problems.ts";
+import { tally } from "../progress.ts";
+import { useProgress } from "../useProgress.ts";
 import { GROUP_INTROS } from "../overviews.ts";
 import { groupKeyOf, groupsFor, overviewId, overviewTab, TABS, tabOf, type TabId } from "../sidebarTabs.ts";
 
@@ -22,6 +24,7 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const progress = useProgress();
   const active = problems.find((p) => p.id === activeId);
   const activeGroup = active ? groupKeyOf(active) : "";
   const [open, setOpen] = useState<Set<string>>(() => new Set([activeGroup]));
@@ -91,6 +94,7 @@ export function Sidebar({
           if (!items.length) return null;
           const isOpen = Boolean(q) || open.has(g.key);
           const bodyId = `cat-${g.key}`;
+          const solved = tab === "algorithms" && !q ? tally(progress, g.problems.map((p) => p.id)).solved : 0;
           return (
             <div key={g.key} className={`cat ${isOpen ? "open" : ""}`}>
               {g.section && <div className="sidebar-section">{g.section}</div>}
@@ -110,7 +114,10 @@ export function Sidebar({
               >
                 <Chevron />
                 <span className="cat-label">{g.label}</span>
-                <span className="cat-count">{q ? items.length : g.problems.length}</span>
+                <span className="cat-count" title={solved ? `${solved} of ${g.problems.length} solved` : undefined}>
+                  {solved > 0 && `${solved}/`}
+                  {q ? items.length : g.problems.length}
+                </span>
               </button>
               <div className="cat-body" id={bodyId} inert={!isOpen}>
                 <div className="cat-items">
@@ -122,6 +129,9 @@ export function Sidebar({
                     >
                       <span className="prob-num">{p.number}</span>
                       <span>{p.title}</span>
+                      {progress.entries[p.id]?.status && (
+                        <span className={`prob-mark ${progress.entries[p.id].status}`} title={progress.entries[p.id].status === "solved" ? "Solved" : "Attempted"} />
+                      )}
                     </button>
                   ))}
                 </div>

@@ -10,7 +10,7 @@ export const TAB_INTROS: Record<TabId, TabIntro> = {
     title: "Algorithms",
     what: "The NeetCode 150: classic coding-interview problems, each solved once in its best-known way and played step by step so you can watch the data structure change.",
     solves: "Coding rounds test whether you can spot which technique a problem needs and write it without bugs under time pressure. The problems are grouped by technique, so each group trains one way of seeing a problem.",
-    howToUse: "Work a group from top to bottom. Read the problem, guess the technique and its cost, then play the solution and check the Intuition tab for why it works.",
+    howToUse: "Work a group from top to bottom. Each problem opens on its question with the solution hidden: try it in the practice folder, open a hint if stuck, then reveal and play the solution and mark it solved.",
   },
   blocks: {
     title: "Building blocks",

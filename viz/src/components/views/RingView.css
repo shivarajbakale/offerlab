@@ -124,3 +124,75 @@
   line-height: 1.45;
   max-width: 300px;
 }
+.ring-view > .callout {
+  flex: 1 1 100%;
+  margin-bottom: 0;
+}
+.ring-token-label {
+  font: 700 12px var(--sans);
+  text-anchor: middle;
+}
+.ring-key-label {
+  font: 9.5px var(--mono);
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+.ring-key-legend text {
+  font: 10.5px var(--sans);
+  fill: var(--muted);
+}
+.ring-servers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ring-server {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.ring-server-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sans);
+}
+.ring-server-meta {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.ring-heavy {
+  color: var(--bad);
+  font-weight: 600;
+}
+.ring-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.ring-chip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--line);
+  font-size: 10.5px;
+  color: var(--ink-2);
+}
+.ring-chip.moved {
+  background: var(--warn);
+  color: var(--panel);
+}
+.ring-chip.moved i {
+  font-style: normal;
+  opacity: 0.85;
+}
+.ring-chip.changed {
+  outline: 2px solid var(--ink);
+}
+.ring-chip-none {
+  font-size: 10.5px;
+  color: var(--muted);
+}

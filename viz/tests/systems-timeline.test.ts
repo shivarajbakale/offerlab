@@ -2,8 +2,6 @@
 // optional level line and state bands, and the arrays it draws are not drawn again.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { parseHints } from "../src/model/hints.ts";
 import { buildScene } from "../src/model/scene.ts";
 import type { TimelinePanel } from "../src/model/systems/timeline.ts";
@@ -214,10 +212,4 @@ test("timeline: ok= and bad= in the hint name the two outcomes (default accepted
   assert.deepEqual(panel?.words, { ok: "fast", bad: "slow" });
   const plain = runOf(NO_ROWS).steps;
   assert.deepEqual(timelineAt(NO_ROWS, plain, plain.length - 1).panel?.words, { ok: "accepted", bad: "rejected" });
-});
-
-test("timeline: 014 load balancing calls its outcomes fast and slow, not accepted and rejected", () => {
-  const src = readFileSync(join(import.meta.dirname, "../../system-design/primitives/04-traffic/014-load-balancing.ts"), "utf8");
-  const hint = parseHints(src).systems.find((s) => s.kind === "timeline");
-  assert.ok(hint?.args.includes("ok=fast") && hint.args.includes("bad=slow"));
 });

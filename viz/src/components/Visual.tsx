@@ -5,6 +5,7 @@ import { colorOf } from "./colors.ts";
 import type { Deps } from "../model/deps.ts";
 import type { Story } from "../model/story.ts";
 import { ArrayView, type ArrayLens } from "./views/ArrayView.tsx";
+import { BalancerView } from "./views/BalancerView.tsx";
 import { BitArrayView } from "./views/BitArrayView.tsx";
 import { CallTreeView } from "./views/CallTreeView.tsx";
 import { GraphView } from "./views/GraphView.tsx";
@@ -36,9 +37,10 @@ const KIND_LABEL: Record<Panel["kind"], string> = {
   levels: "levels",
   pages: "pages",
   timeline: "timeline",
+  balancer: "servers",
 };
 
-const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline"]);
+const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer"]);
 
 function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
   const kind =
@@ -127,6 +129,8 @@ function renderPanel(p: Panel, story?: StoryView, step?: StepLens) {
       return <PagesView panel={p} />;
     case "timeline":
       return <TimelineView panel={p} />;
+    case "balancer":
+      return <BalancerView panel={p} />;
   }
 }
 

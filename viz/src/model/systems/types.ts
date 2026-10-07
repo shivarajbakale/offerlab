@@ -4,8 +4,8 @@
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 
-export type SystemsKind = "ring" | "spatial" | "bits" | "levels" | "pages" | "timeline";
-export const SYSTEMS_KINDS: SystemsKind[] = ["ring", "spatial", "bits", "levels", "pages", "timeline"];
+export type SystemsKind = "ring" | "spatial" | "bits" | "levels" | "pages" | "timeline" | "balancer";
+export const SYSTEMS_KINDS: SystemsKind[] = ["ring", "spatial", "bits", "levels", "pages", "timeline", "balancer"];
 
 export type SystemsCtx = {
   step: Step;
@@ -20,7 +20,15 @@ export type SystemsCtx = {
   js: (v: Value | undefined) => unknown;
   /** The same, for a value read with `findPrev`. */
   jsPrev: (v: Value | undefined) => unknown;
+  /** The `@mark` name of the line that just ran, if it has one, so a view can caption the moment. */
+  mark?: string;
+  /** The line that just ran, and the line a `@mark` name is on, to tell where in a function a step is. */
+  ran?: number;
+  markLine?: (name: string) => number | undefined;
 };
+
+/** A plain-English note drawn inside a view: what just happened and why it matters. */
+export type Caption = { text: string; tone: "info" | "good" | "bad" };
 
 export type Built<P> = { panel: P; uses: HeapId[] } | null;
 export type Builder<P> = (ctx: SystemsCtx) => Built<P>;

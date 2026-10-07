@@ -31,8 +31,11 @@ export const REQUIRED_SECTIONS = [
   "Staff notes",
   "Check yourself",
 ];
-/** "What it is" opens a lesson (see intro.ts); "Deep dive" closes one. */
-const OPTIONAL_SECTIONS = ["What it is", "Deep dive"];
+/**
+ * "What it is" opens a lesson (see intro.ts) and "In plain words" may follow it; "When to use
+ * which" compares the lesson's options with their neighbours; "Deep dive" closes one.
+ */
+const OPTIONAL_SECTIONS = ["What it is", "In plain words", "When to use which", "Deep dive"];
 
 // A link target may contain one level of parentheses, as in "play:scenario (#2)@t=10".
 const INLINE = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\[[^\]]+\]\((?:[^()]|\([^()]*\))+\))/g;
@@ -248,4 +251,27 @@ export function lessonProblems(lesson: Lesson, runs: { label: string; steps: unk
     if (typeof where === "string") problems.push(where);
   }
   return problems;
+}
+
+/** One scenario as a chapter of the lesson's story: where the lesson first plays it, and its role. */
+export type Chapter = { run: number; title: string; role: "problem" | "works" };
+
+/**
+ * The scenarios in the order the lesson first plays them (unplayed ones last, in file order), each
+ * tagged as a problem (a "broken:" run) or the working design.
+ */
+export function storyChapters(runs: { label: string }[], lesson: Lesson): Chapter[] {
+  const order: number[] = [];
+  for (const section of lesson.sections) {
+    for (const link of playLinksIn(section.blocks)) {
+      const r = findRun(runs, link.scenario);
+      if (r >= 0 && !order.includes(r)) order.push(r);
+    }
+  }
+  runs.forEach((_, i) => order.includes(i) || order.push(i));
+  return order.map((i) => {
+    const broken = runs[i].label.startsWith("broken: ");
+    const text = broken ? runs[i].label.slice(8) : runs[i].label;
+    return { run: i, title: text.charAt(0).toUpperCase() + text.slice(1), role: broken ? "problem" : "works" };
+  });
 }

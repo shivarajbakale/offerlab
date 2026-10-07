@@ -1,0 +1,35 @@
+.callout {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.callout.good {
+  border-left-color: var(--ok);
+  background: var(--ok-soft);
+}
+.callout.bad {
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+}
+.callout-tag {
+  flex: 0 0 auto;
+  font: 600 10px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.callout.good .callout-tag {
+  color: var(--ok);
+}
+.callout.bad .callout-tag {
+  color: var(--bad);
+}

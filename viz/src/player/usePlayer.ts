@@ -23,9 +23,10 @@ export type Player = {
 
 /**
  * `dwell(i)` scales how long step i stays on screen (1 = normal). With `stops`, a sorted list of
- * step indexes, stepping and playing jump from stop to stop and skip the steps between.
+ * step indexes, stepping and playing jump from stop to stop and skip the steps between. While
+ * `hold` is set (the solution is still hidden) nothing plays; it starts once `hold` clears.
  */
-export function usePlayer(count: number, resetKey: string, dwell: (i: number) => number, stops?: number[] | null): Player {
+export function usePlayer(count: number, resetKey: string, dwell: (i: number) => number, stops?: number[] | null, hold = false): Player {
   const [index, setIndexRaw] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -42,7 +43,7 @@ export function usePlayer(count: number, resetKey: string, dwell: (i: number) =>
   const atEnd = index >= count - 1;
   // Phones have no visual or player, so nothing plays there.
   const phone = usePhone();
-  const isPlaying = playing && !phone && !atEnd && count > 0;
+  const isPlaying = playing && !hold && !phone && !atEnd && count > 0;
 
   /** The index `delta` steps (or stops) away from `i`. */
   const move = useCallback(

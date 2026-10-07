@@ -50,7 +50,7 @@ type Point = { t: number; v: number };
 const SLOW_WAIT = 2;
 
 export class Balancer {
-  // @viz array:inflight timeline:history,longestQueue,lanes,ok=fast,bad=slow
+  // @viz balancer:inflight,speed,history hide:strategy,next,seed,lanes,from,refreshEvery,twoChoices,longestQueue,rule,speed,inflight,history,seen,i,n,a,b,chosen,wait,t,balancer,best,counts,view
   strategy: Strategy;
   // @why Requests each server finishes per tick. Servers are not all equally fast.
   speed: number[];
@@ -78,7 +78,7 @@ export class Balancer {
     const i = this.pick();
     // @why How long this request will wait: the requests ahead of it, divided by how many the server finishes per tick.
     const wait = Math.floor(this.inflight[i] / this.speed[i]);
-    this.inflight[i]++;
+    this.inflight[i]++; // @mark count
     this.history.push({ t, row: `s${i}`, ok: wait < SLOW_WAIT, label: `waits ${wait} tick${wait === 1 ? "" : "s"}` }); // @mark assign
     return i;
   }

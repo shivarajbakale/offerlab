@@ -61,7 +61,7 @@ class Hash {
 }
 
 export class ConsistentHashRing {
-  // @viz ring:tokens,keys hide:key
+  // @viz ring:tokens,keys hide:key,hash,lo,hi,mid,i,owner,moved,node,vnodes,servers,k
   // @why Kept sorted by hash, so "first token clockwise" is a binary search instead of a scan.
   tokens: Token[] = [];
   // @why A sample of keys to watch. The ring itself does not store keys; this is only to see who owns what.

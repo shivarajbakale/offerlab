@@ -8,6 +8,14 @@
 - **Not the right tool when:** The server list never changes, or a central directory already records where each key lives. Then plain mod hashing or a lookup table is simpler. For a small server list, [rendezvous hashing](#/sd-01-partitioning/002-rendezvous-hashing) is simpler and spreads load evenly without virtual nodes.
 - **Where you'll meet it:** Amazon's Dynamo paper and Apache Cassandra place data on a token ring; memcached clients pick a cache node with the ketama scheme; load balancers use variants to keep a user on the same backend.
 
+## In plain words
+
+When there is too much data for one machine, it is split across several servers. A cache with a billion entries, for example, might be spread over ten cache servers. Then every time the app wants `user:7`, it needs to know which of the ten holds it, and it needs to know instantly, without asking anyone.
+
+Think of a coat check with several attendants. You could say "coats whose ticket number ends in 0–3 go to Ann, 4–6 to Bob, 7–9 to Cat". That works until a fourth attendant joins: now the rule changes, and almost every coat has to be carried to a different attendant. Consistent hashing is a rule where a new attendant only takes some coats from their neighbours, and nobody else's coats move.
+
+In the picture on the right, the circle is the ring, like a clock face. Coloured tick marks on it are server markers, and the dots inside are keys (pieces of data). A key belongs to the first marker you meet going clockwise. Below the ring, each server box lists the keys it stores, and a key with "←" has just been moved there from another server. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Key** — the name a piece of data is stored under, such as `user:7`.
@@ -106,6 +114,15 @@ It also spreads a change around: a new server's 32 tokens take a little from eve
   A: Only about a quarter: those whose hash gives the same remainder mod 3 and mod 4. The other three quarters move. [▶ See it](play:broken: hash mod N@at=moved#15)
 - **Q:** Why not give each server a single token?
   A: A few random points cut the ring into very unequal arcs, so one server can end up with most of the keys. Here B owns about 80%. [▶ See it](play:broken: one token per server@at=sorted#3)
+
+## When to use which
+
+- **Hash mod N** — when the number of servers is fixed and never changes, or when moving every key at once is acceptable (a nightly rebuild). Simplest and perfectly even.
+- **Consistent hashing with virtual nodes** — when servers join and leave while the system is running and moving data is costly: cache clusters, Dynamo-style databases such as Cassandra. The usual answer in interviews.
+- **[Rendezvous hashing](#/sd-01-partitioning/002-rendezvous-hashing)** — when the server list is small (tens, not thousands). No ring to build or ship around, perfectly even, and picking the top 3 servers for replicas is easy.
+- **A lookup table (directory)** — when you need to place data on purpose, such as moving one huge customer to their own server, and can run a small, reliable service that stores the table. MongoDB's config servers keep such a table.
+- **Jump consistent hash** — when servers are numbered 0 to N−1 and only ever added or removed at the end. Tiny and fast, but it can't remove a server from the middle.
+- **Not about data at all?** If any server can answer any request, you don't need any of these: use a [load balancer](#/sd-04-traffic/014-load-balancing).
 
 ## Deep dive
 
