@@ -45,17 +45,29 @@ import assert from "node:assert/strict";
 
 // @rule indexOf holds every number before i, mapped to its index
 // @why Return the two indices whose numbers add up to `target`.
+// @goal which two numbers in {JSON.stringify(nums)} add up to {target}?
 export function twoSum(nums: number[], target: number): number[] {
   // @why Map from a number to its index, for numbers already passed.
+  // @phase Setup: an empty memory of numbers seen so far
+  // @say Checking every pair is n² work. Instead, remember each number as we pass it, so a later number can ask "is my partner here?" in one lookup.
   const indexOf = new Map<number, number>();
   // @why Visit each number once; earlier numbers are already in the map.
+  // @phase One pass: each number looks back for its partner, then waits for later ones
+  // @yes Next up is index {i} (value {nums[i]}). Everything before it is already in the map, so one lookup covers all pairs that end at {i}.
+  // @no Every number has looked back and none found a partner. The problem promises a pair, so this only happens on bad input.
   for (let i = 0; i < nums.length; i++) {
     // @why The partner this number needs is `target - nums[i]`; look for it in the map.
-    const j = indexOf.get(target - nums[i]); // @ask j!==undefined // @say {nums[i]} needs a partner of {target - nums[i]}; have we seen it before?
+    // @say {nums[i]} can only pair with exactly {target} − {nums[i]} = {target - nums[i]}. No other value works, so instead of scanning, ask the map one question: was {target - nums[i]} seen before?
+    const j = indexOf.get(target - nums[i]); // @ask j!==undefined
     // @why The partner was seen earlier, so these two indices are the answer.
-    if (j !== undefined) return [j, i]; // @say If the complement was stored earlier, those two indices are the pair
+    // @yes Found it: nums[{j}] + nums[{i}] = {nums[j]} + {nums[i]} = {target}. The partner came earlier, so its index {j} is the first half of the answer.
+    // @returns indices {j} and {i}. The problem promises exactly one pair, so the first one found is the answer.
+    // @no {target - nums[i]} hasn't appeared yet. That does not rule {nums[i]} out: its partner may still be ahead, so keep it around instead of giving up on it.
+    if (j !== undefined) return [j, i];
     // @why No partner yet, so store this number for the numbers that come later.
-    indexOf.set(nums[i], i); // @say Remember {nums[i]} at index {i} so a later number can pair with it
+    // @say Store {nums[i]} → index {i}. Now if any later number needs {nums[i]}, it finds it in one lookup, without rescanning the array.
+    // @then The map now covers indices 0..{i}, and every pair ending at index {i} has been checked.
+    indexOf.set(nums[i], i);
   }
   // @why Just a safe default; the problem promises an answer exists.
   return [];

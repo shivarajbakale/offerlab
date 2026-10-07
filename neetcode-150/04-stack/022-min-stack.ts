@@ -42,35 +42,52 @@ import assert from "node:assert/strict";
 // @why A stack that can also report its smallest value in O(1).
 export class MinStack {
   // @why The normal stack of values.
+  // @phase Two stacks that grow and shrink together
+  // @say Scanning the stack for its minimum costs O(n) per getMin. Instead, next to every value, remember the minimum of everything at or below it. Popping a value then reveals the minimum that held before it was pushed.
   private stack: number[] = [];
   // @why `mins[k]` is the smallest value among everything at or below position k of the stack.
   private mins: number[] = [];
 
   // @why Add a value to both stacks so they stay the same height.
+  // @goal push {val}, and record what the minimum will be while {val} is on the stack
   push(val: number): void {
     // @why Store the value itself for `top()`.
+    // @say {val} goes on top of the value stack.
     this.stack.push(val);
     // @why Find the minimum so far; the first value has nothing below it, so it is its own min.
+    // @say {this.mins.length ? "The minimum of everything below is " + this.mins[this.mins.length - 1] + ", the top of mins." : "Nothing is below " + val + ", so it is its own minimum."}
     const curMin = this.mins.length ? this.mins[this.mins.length - 1] : val; // @ask curMin
     // @why Save the smaller of the new value and the old min at this level.
+    // @say The minimum with {val} on top is min({val}, {curMin}) = {Math.min(val, curMin)}. {val < curMin ? val + " is the new minimum." : val === curMin ? "Equal, so the minimum stays " + val + "." : "The old minimum still holds."}
+    // @then mins is {JSON.stringify(this.mins)}: entry k is the smallest of the bottom k + 1 values.
     this.mins.push(Math.min(val, curMin)); // @ask this.mins[this.mins.length-1] // @moment push {val}
   }
 
   // @why Remove from both stacks so they stay in step.
+  // @goal remove the top value, {this.stack[this.stack.length - 1]}, and bring back the minimum from before it
   pop(): void {
     // @why Drop the value itself.
+    // @say {this.stack[this.stack.length - 1]} leaves the value stack.
     this.stack.pop();
     // @why Dropping the matching min entry brings the previous minimum back for free.
+    // @say Its mins entry, {this.mins[this.mins.length - 1]}, leaves too. The entry below was recorded before {this.mins.length > 1 ? "it was pushed, so it is exactly the minimum of what remains: " + this.mins[this.mins.length - 2] : "it was pushed, and nothing remains"}.
+    // @returns nothing; both stacks shrank by one, so they stay in step.
     this.mins.pop(); // @moment pop; min back to {this.mins[this.mins.length - 2]}
   }
 
   // @why The newest value is at the end of the stack.
+  // @goal what value is on top?
   top(): number {
+    // @say The newest value is the last one pushed: {this.stack[this.stack.length - 1]}.
+    // @returns {this.stack[this.stack.length - 1]}, without removing it.
     return this.stack[this.stack.length - 1];
   }
 
   // @why The top of `mins` is already the smallest value now in the stack, so no scanning needed.
+  // @goal what is the smallest value on the stack right now?
   getMin(): number {
+    // @say No scan needed: the top of mins, {this.mins[this.mins.length - 1]}, was computed as the minimum of the whole stack when its value was pushed.
+    // @returns {this.mins[this.mins.length - 1]} in O(1).
     return this.mins[this.mins.length - 1];
   }
 }

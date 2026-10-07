@@ -24,19 +24,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export function isAnagram(s: string, t: string): boolean {
-  // Get the char code of a  // 97
-  // Char code of current element- 97 gives us the element index to update
-  const charCodeA='a'.charCodeAt(0);
-  const counts= new Array(26).fill(0);
-
+  // Anagram, is two words have the same letter with different arrangeemnts
   if(s.length!==t.length){
     return false
   }
+  const counts=new Array(26).fill(0)
+  const charAtA='a'.charCodeAt(0); //97
   for(let i=0;i<s.length;i++){
-    counts[s.charCodeAt(i)-charCodeA]++;
-    counts[t.charCodeAt(i)-charCodeA]--;
+    counts[s.charCodeAt(i)-charAtA]++;
+    counts[t.charCodeAt(i)-charAtA]--;
   }
-  return counts.every((x)=>x==0);
+  return counts.every((x)=>x===0);
 }
 
 test("242. Valid Anagram", () => {

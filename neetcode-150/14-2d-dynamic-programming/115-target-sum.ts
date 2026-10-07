@@ -46,24 +46,35 @@ import assert from "node:assert/strict";
 
 // @rule dp maps each running sum to how many sign choices for the numbers so far reach it
 // @why Returns how many ways to put + or - before each number so the total equals `target`.
+// @goal how many +/- sign choices for {JSON.stringify(nums)} total {target}?
 export function findTargetSumWays(nums: number[], target: number): number {
   // @why `dp` maps a running sum to how many sign choices so far reach it; before any number, sum 0 has 1 way.
+  // @phase Setup: before any number, the only sum is 0
+  // @say Trying every sign pattern is 2^{nums.length} = {2 ** nums.length} expressions. But later numbers only care about the running sum, not which signs made it, so merge all patterns with the same sum into one count.
   let dp = new Map<number, number>([[0, 1]]);
   // @why Each number must get a sign, so process them one by one.
+  // @phase Give each number a sign: every sum splits two ways
+  // @say Number {n}. Reachable sums so far: {JSON.stringify([...dp.entries()])} as [sum, ways].
   for (const n of nums) {
     // @why Fresh map for the sums after this number, so old sums are not mixed in.
     const next = new Map<number, number>();
     // @why Take every sum reached so far and extend it.
+    // @say Sum {sum} is reached {count} {count === 1 ? "way, which" : "ways; each"} can take +{n} or -{n}.
     for (const [sum, count] of dp) {
       // @why Choosing + moves the sum to `sum + n`, carrying over all `count` ways.
+      // @say +{n}: {sum} becomes {sum + n}, which gains {count} {count === 1 ? "way" : "ways"} (it had {next.get(sum + n) ?? 0}).
       next.set(sum + n, (next.get(sum + n) ?? 0) + count); // @ask next.get(sum+n)
       // @why Choosing - moves the sum to `sum - n`, carrying over all `count` ways.
+      // @say -{n}: {sum} becomes {sum - n}, which gains {count} {count === 1 ? "way" : "ways"} (it had {next.get(sum - n) ?? 0}).{n === 0 ? " With 0, + and - land on the same sum, so the count doubles: both signs really are different expressions." : ""}
       next.set(sum - n, (next.get(sum - n) ?? 0) + count);
     }
     // @why The new map becomes the state for the next number.
+    // @then After {n}: {JSON.stringify([...dp.entries()])} as [sum, ways].
     dp = next;
   }
   // @why How many sign choices end at `target` (0 if none).
+  // @phase Answer
+  // @returns {dp.get(target) ?? 0}: {dp.get(target) === 1 ? "exactly one sign pattern lands on " + target : dp.has(target) ? "that many sign patterns land on " + target : "no sign pattern lands on " + target}.{2 ** nums.length > dp.size ? " Merging by sum left only " + dp.size + " states to track at the end, not " + 2 ** nums.length + " separate expressions." : ""}
   return dp.get(target) ?? 0;
 }
 

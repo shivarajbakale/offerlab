@@ -56,29 +56,42 @@ export class ListNode {
 
 // @rule dummy..tail holds the sum's low digits so far; carry spills into the next column
 // @why Digits are stored in reverse, so we add from the front, like adding by hand.
+// @goal what is the sum of these two reversed-digit numbers, as a list?
 export function addTwoNumbers(l1: ListNode | null, l2: ListNode | null): ListNode | null {
   // @why A fake first node so the result list is easy to start.
+  // @phase Setup: an empty result and no carry
+  // @say Converting both lists to numbers and adding overflows once they pass about 15 digits. The digits are stored ones-first, the same order you add by hand, so add column by column and carry, with no size limit.
   const dummy = new ListNode();
   // @why `tail` is where the next digit node is attached.
   let tail = dummy;
   // @why `carry` is the extra 1 that moves to the next digit (0 or 1).
   let carry = 0;
   // @why Keep going while any digit or a leftover carry remains.
+  // @phase Add one column per step, ones first
+  // @yes {l1 || l2 ? "Column digits remain" : "Both numbers are used up, but a carry of " + carry + " is left over and needs its own digit"}, so add another column.
+  // @no Both numbers are used up and the carry is 0, so every column is written.
   while (l1 || l2 || carry) {
     // @why Add the two digits (a missing list counts as 0) plus the carry.
+    // @say {l1 ? l1.val : "0 (number 1 has no digit here)"} + {l2 ? l2.val : "0 (number 2 has no digit here)"} + carry {carry} = {(l1 ? l1.val : 0) + (l2 ? l2.val : 0) + carry}.
     const sum = (l1?.val ?? 0) + (l2?.val ?? 0) + carry; // @ask sum
     // @why The carry for the next column is the tens part of the sum.
+    // @say {sum >= 10 ? sum + " doesn't fit in one digit, so carry 1 into the next column." : sum + " fits in one digit, so nothing carries."}
     carry = Math.floor(sum / 10); // @ask carry
     // @why The digit to keep in this column is the ones part.
+    // @say Write {sum % 10}, the ones part of {sum}, as this column's digit.
     tail.next = new ListNode(sum % 10); // @moment write digit {sum % 10}
     // @why Move `tail` to the new node.
     tail = tail.next;
     // @why Step `l1` forward, or stay at null if it ended.
+    // @say Number 1 moves to its next digit{l1 && l1.next ? ", " + l1.next.val : " (none left, so it counts as 0 from here)"}.
     l1 = l1?.next ?? null;
     // @why Step `l2` forward, or stay at null if it ended.
+    // @say Number 2 moves to its next digit{l2 && l2.next ? ", " + l2.next.val : " (none left, so it counts as 0 from here)"}.
     l2 = l2?.next ?? null;
   }
   // @why Skip the fake node and return the real head.
+  // @phase Answer
+  // @returns the sum's ones digit, {dummy.next.val}, heading the list, still ones-first. One pass over the longer number: O(max(m, n)).
   return dummy.next;
 }
 

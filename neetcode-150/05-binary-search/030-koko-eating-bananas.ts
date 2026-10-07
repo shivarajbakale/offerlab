@@ -48,33 +48,51 @@ import assert from "node:assert/strict";
 // @viz hide:p values:lo,hi,k range:lo..hi@k best:best
 // @rule every speed below lo is too slow; every speed above hi finishes in time
 // @why Finds the slowest eating speed that still finishes within `h` hours.
+// @goal what is the slowest speed that finishes {JSON.stringify(piles)} within {h} hours?
 export function minEatingSpeed(piles: number[], h: number): number {
   // @why The slowest possible speed is 1 banana per hour.
+  // @phase Setup: every possible speed lies in one range
+  // @say Trying speeds 1, 2, 3, … one by one could take up to {Math.max(...piles)} tries. But speed has a cut-off: once a speed is fast enough, every faster speed is too. So binary search for the cut-off between "too slow" and "fast enough".
   let lo = 1;
   // @why Eating the biggest pile in one hour is always fast enough, so this is the top of the range.
+  // @say At speed {Math.max(...piles)} every pile takes one hour, {piles.length} hours total, and h ≥ number of piles, so this speed always works. Nothing faster is ever needed.
   let hi = Math.max(...piles);
   // @why Remember the slowest speed that worked; the top speed works for sure.
   let best = hi;
   // @why Binary search on the speed, since faster speeds only make it easier.
+  // @phase Halve the range of speeds
+  // @yes Speeds {lo}..{hi} are still undecided, so test the middle one.
+  // @no Every speed has been sorted into "too slow" (below {lo}) or "fast enough", so {best} is the cut-off.
   while (lo <= hi) {
     // @why Try the middle speed.
-    const k = Math.floor((lo + hi) / 2); // @say Binary search on the speed: try the middle of [{lo}, {hi}]
+    // @say Test speed {Math.floor((lo + hi) / 2)}, the middle of [{lo}, {hi}]. Its result settles half the remaining speeds at once.
+    const k = Math.floor((lo + hi) / 2);
     // @why Count the total hours needed at this speed.
     let hours = 0;
     // @why Each pile takes whole hours, so round up.
-    for (const p of piles) hours += Math.ceil(p / k); // @say Each pile takes ceil(pile / {k}) hours at this speed
+    // @say Pile {p} takes ceil({p} / {k}) = {Math.ceil(p / k)} {Math.ceil(p / k) === 1 ? "hour" : "hours"}: Koko never switches piles mid-hour, so a partial hour counts as a whole one. Running total: {hours + Math.ceil(p / k)}.
+    for (const p of piles) hours += Math.ceil(p / k);
     // @why Fast enough? Then this speed is a candidate.
-    if (hours <= h) { // @ask hours<=h // @say Can Koko finish in {h} hours eating {k} per hour?
+    // @yes {hours} hours ≤ {h}: speed {k} is fast enough, and so is every speed above it.
+    // @no {hours} hours > {h}: speed {k} is too slow, and so is every speed below it.
+    if (hours <= h) { // @ask hours<=h
       // @why Keep this speed as the best so far.
+      // @say {k} is the slowest working speed found so far{best !== k ? " (was " + best + ")" : ""}.
       best = k;
       // @why Try slower speeds to see if something smaller still works.
-      hi = k - 1; // @ask hi // @say {k} works; look for an even slower speed
+      // @say Everything above {k} is settled as "works". Look below it for an even slower speed.
+      // @then Undecided speeds: {lo <= hi ? lo + ".." + hi : "none"}.
+      hi = k - 1; // @ask hi
     } else {
       // @why Too slow, so only faster speeds can work.
-      lo = k + 1; // @ask lo // @say {k} is too slow, so she must eat faster
+      // @say Everything at or below {k} is too slow. Koko must eat faster.
+      // @then Undecided speeds: {lo <= hi ? lo + ".." + hi : "none"}.
+      lo = k + 1; // @ask lo
     }
   }
   // @why The slowest speed that worked.
+  // @phase Answer
+  // @returns {best}: the slowest speed that finishes in {h} hours, found in about log2(max pile) tests.
   return best;
 }
 

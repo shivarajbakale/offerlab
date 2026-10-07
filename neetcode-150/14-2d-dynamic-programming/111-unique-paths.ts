@@ -42,18 +42,29 @@ import assert from "node:assert/strict";
 
 // @rule row[c] is the number of paths from cell (r, c) down to the bottom-right corner
 // @why Returns how many paths lead from top-left to bottom-right moving only right or down.
+// @goal how many right/down paths cross a {m} x {n} grid from top-left to bottom-right?
 export function uniquePaths(m: number, n: number): number {
   // @why One row of the grid: `row[c]` means paths from the current row's cell `c` to the goal; the bottom row has 1 path each.
+  // @phase Setup: the bottom row, where the answer is obvious
+  // @say Listing every path is exponential. But the paths from a cell are just the paths from the cell below plus the paths from the cell to its right, so one row of counts is enough. On the bottom row you can only go right: exactly 1 path from each of its {n} cells.
   const row = new Array<number>(n).fill(1);
   // @why Move up one row at a time; the bottom row is already filled.
+  // @phase Climb row by row: each cell adds its two ways out
+  // @yes Row {r} is next. The array still holds the counts for row {r + 1}, which is exactly the "go down" option for every cell of row {r}.
+  // @no {m === 1 ? "There is only one row, so the bottom row is the whole grid." : "Row 0 is done, so the array now holds the top row's counts."}
   for (let r = m - 2; r >= 0; r--) {
     // @why Go right to left so `row[c + 1]` is already updated for this row.
+    // @yes Cell ({r}, {c}). Its right neighbour was updated a moment ago, so it already counts paths on row {r}.
+    // @no Row {r} is finished. The last column stays 1: from there you can only go straight down.
     for (let c = n - 2; c >= 0; c--) {
       // @why Paths from a cell = paths going down (old `row[c]`) + paths going right (`row[c + 1]`).
+      // @say Every path from ({r}, {c}) starts by going down or right, never both, so add the two counts: {row[c]} down + {row[c + 1]} right = {row[c] + row[c + 1]}.
       row[c] += row[c + 1]; // @ask row[c]
     }
   }
   // @why Top-left cell holds the total paths.
+  // @phase Answer
+  // @returns {row[0]}: the count for the top-left cell, built from about m x n additions instead of listing paths.
   return row[0];
 }
 

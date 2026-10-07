@@ -53,23 +53,35 @@ export class ListNode {
 
 // @rule prev holds the reversed nodes, cur..end is untouched; no node is lost
 // @why Return the new head, which is the old tail.
+// @goal how do you turn every arrow of this list around?
 export function reverseList(head: ListNode | null): ListNode | null {
   // @why `prev` is the already-reversed part; it starts empty.
+  // @phase Setup: two pointers split the list into done and not done
+  // @say Copying values into an array and rebuilding takes O(n) extra space. Instead flip each arrow in place, which needs to remember just two things: the reversed part (`prev`) and the next node to flip (`cur`).
   let prev: ListNode | null = null;
   // @why `cur` is the node we are flipping right now.
   let cur = head;
   // @why Stop when every node has been flipped.
-  while (cur) { // @say Keep going while there are nodes left to flip
+  // @phase Flip one arrow per step
+  // @yes Node {cur.val} still points forward, so flip it.
+  // @no `cur` fell off the end: every arrow has been flipped.
+  while (cur) {
     // @why Save the rest of the list first, or flipping the link would lose it.
-    const next: ListNode | null = cur.next; // @say Save the rest of the list before we break the link
+    // @say {cur.next ? "Remember " + cur.next.val + " and everything after it" : "Nothing comes after " + cur.val + ", but save that too"}. The next line overwrites {cur.val}'s only link forward, and without this the rest of the list would be lost.
+    const next: ListNode | null = cur.next;
     // @why The actual reversal: point this node backward.
-    cur.next = prev; // @ask cur.next?.val // @moment flip {cur.val} // @say Flip the arrow: {cur.val} now points back to the reversed part
+    // @say Flip the arrow: {cur.val} now points back to {prev ? prev.val : "nothing (it will be the new tail)"}.
+    cur.next = prev; // @ask cur.next?.val // @moment flip {cur.val}
     // @why Grow the reversed part by one node.
-    prev = cur; // @say {cur.val} becomes the head of the reversed part
+    // @say {cur.val} is now the front of the reversed part.
+    prev = cur;
     // @why Move on to the saved rest of the list.
-    cur = next; // @ask cur?.val // @say Step forward into the saved remainder
+    // @say Step forward to the saved remainder{next ? ", starting at " + next.val : ""}.
+    // @then Reversed so far starts at {prev.val}; still to flip: {cur ? "from " + cur.val : "nothing"}.
+    cur = next; // @ask cur?.val
   }
   // @why When `cur` runs out, `prev` is the last node seen, which is the new head.
+  // @returns the old tail{prev ? ", " + prev.val : ""}, which is now the head. Each node was touched once, O(n) time and O(1) space.
   return prev;
 }
 

@@ -45,23 +45,37 @@ import assert from "node:assert/strict";
 
 // @rule dp[a] is the fewest coins that make amount a, using any of the coins
 // @why Returns the fewest coins that add up to `amount`, or -1 if impossible.
+// @goal what is the fewest coins from {JSON.stringify(coins)} that add up to exactly {amount}?
 export function coinChange(coins: number[], amount: number): number {
   // @why `dp[a]` means the fewest coins to make amount `a`; start at `amount + 1`, which stands for impossible.
+  // @phase Setup: one answer slot per amount from 0 to {amount}
+  // @say Greedy (biggest coin first) can fail, e.g. coins [1, 3, 4] for 6 gives 4+1+1 instead of 3+3, and trying every combination is exponential. But the best way to make any amount ends with some coin c, after the best way to make (amount − c). So solve every smaller amount once, smallest first. {amount + 1} means "impossible": no real answer can use more than {amount} coins.
   const dp = new Array<number>(amount + 1).fill(amount + 1);
   // @why Making amount 0 takes no coins; every other amount builds on this.
-  dp[0] = 0; // @say Base case: amount 0 needs zero coins
+  // @say Base case: amount 0 needs zero coins. Every real answer ends by reaching 0.
+  dp[0] = 0;
   // @why Each amount `a` depends on smaller amounts, so go upward from 1.
-  for (let a = 1; a <= amount; a++) { // @say Build answers bottom-up, smallest amount first
+  // @phase Build answers bottom-up, smallest amount first
+  // @yes Amount {a} is next. Every smaller amount already has its final answer, so any "last coin" choice can be priced right away.
+  // @no Every amount up to {amount} is solved.
+  for (let a = 1; a <= amount; a++) {
     // @why Try each coin as the last coin used for amount `a`.
+    // @say For amount {a}, try coin {c} as the last coin.
     for (const c of coins) {
       // @why A coin bigger than `a` can't be used.
-      if (c <= a) { // @say Coin {c} is only usable if it fits inside amount {a}
+      // @yes Coin {c} fits inside {a}, leaving {a - c} to make some other way.
+      // @no Coin {c} is bigger than {a}, so it can't be the last coin: it would overshoot.
+      if (c <= a) {
         // @why Using coin `c` last costs 1 plus the best for `a - c`; keep it if it beats the current best.
-        dp[a] = Math.min(dp[a], dp[a - c] + 1); // @ask dp[a] // @say Use coin {c} last: 1 + best for {a - c}; keep if it beats {dp[a]}
+        // @say Coin {c} last: 1 + best for {a - c} ({dp[a - c] > amount ? "impossible" : dp[a - c]}) = {dp[a - c] > amount ? "impossible" : dp[a - c] + 1}. Best for {a} so far: {dp[a] > amount ? "none yet" : dp[a]}. {dp[a - c] + 1 < dp[a] ? "Coin " + c + " wins." : "Keep the old best."}
+        // @then Best for {a} so far: {dp[a] > amount ? "impossible" : dp[a] + (dp[a] === 1 ? " coin" : " coins")}.
+        dp[a] = Math.min(dp[a], dp[a - c] + 1); // @ask dp[a]
       }
     }
   }
   // @why If it is still the impossible marker, no combination works, so return -1.
+  // @phase Answer
+  // @returns {dp[amount] > amount ? "-1: no mix of these coins reaches " + amount + ", since its slot never dropped below the impossible marker" : dp[amount] + ": the fewest coins for " + amount + ", after trying every coin as the last one at every amount, O(amount × coins) time"}.
   return dp[amount] > amount ? -1 : dp[amount];
 }
 

@@ -44,33 +44,49 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 // @why The plain House Robber on a straight row `start..end`, returning the best total.
+// @goal treating houses {start}..{end} as a straight row, what is the most you can rob?
 function robLine(nums: number[], start: number, end: number): number {
   // @why `rob1` means the best total up to two houses back.
+  // @phase Straight-row House Robber
+  // @say In a straight row, the best total up to a house depends only on the best totals one and two houses back, so two numbers are enough.
   let rob1 = 0;
   // @why `rob2` means the best total up to the previous house.
   let rob2 = 0;
   // @why Only look at houses in the chosen range.
+  // @yes House {i} ({nums[i]}) is inside the row. Best so far: {rob2} up to the previous house, {rob1} up to the one before.
+  // @no Past house {end}, the end of this row. {end === nums.length - 2 ? "House " + (nums.length - 1) + " was left out on purpose, so house 0 was safe to use." : "House 0 was left out on purpose, so the last house was safe to use."}
   for (let i = start; i <= end; i++) {
     // @why Rob this house (plus best from two back) or skip it (keep `rob2`); pick the bigger.
+    // @say Rob house {i}: {nums[i]} + {rob1} (best that avoids its neighbour) = {rob1 + nums[i]}. Skip it: keep {rob2}. {rob1 + nums[i] > rob2 ? "Robbing wins." : rob1 + nums[i] === rob2 ? "A tie." : "Skipping wins."}
     const best = Math.max(rob1 + nums[i], rob2); // @ask best
     // @why Slide forward so `rob1` lags `rob2` by one house.
     rob1 = rob2;
     // @why Save the new best as the previous-house value.
+    // @then Best up to house {i}: {rob2}. {i > start ? "Best up to house " + (i - 1) + ": " + rob1 + "." : "Nothing in this row comes before it."}
     rob2 = best;
   }
   // @why The best total for this straight row.
+  // @returns {rob2}: the best for houses {start}..{end}, where the first and last houses of the circle can't both appear.
   return rob2;
 }
 
 // @viz best:rob2
 // @rule rob2 is the most money from houses start..i; rob1, from start..i - 1
 // @why Returns the most you can rob when the houses form a circle, so first and last touch.
+// @phase Break the circle into two straight rows
+// @goal what is the most you can rob from {JSON.stringify(nums)} when the first and last houses are neighbours?
 export function rob(nums: number[]): number {
   // @why Count the houses once for the range checks below.
+  // @say The circle only adds one rule: houses 0 and {nums.length - 1} can't both be robbed. So any valid plan skips house 0 or skips house {nums.length - 1}. Solve both straight rows and take the better, instead of handling the wrap-around directly.
   const n = nums.length;
   // @why With one house there is no neighbour problem, and the two ranges below would be empty.
+  // @yes Only one house: it is its own first and last, and has no neighbour to conflict with.
+  // @returns {nums[0]}: the single house is robbed.
+  // @no {n} houses, so the first and last really are neighbours and must not both be robbed.
   if (n === 1) return nums[0];
   // @why First and last are neighbours, so never rob both: try skipping the last, or skipping the first, and take the better.
+  // @say Row 1 drops the last house (0..{n - 2}); row 2 drops the first (1..{n - 1}). Every valid circle plan fits in at least one of them.
+  // @returns the better of the two rows. Each row is a plain O(n) House Robber, so the total is still O(n) time and O(1) space.
   return Math.max(robLine(nums, 0, n - 2), robLine(nums, 1, n - 1));
 }
 

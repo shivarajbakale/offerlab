@@ -46,20 +46,34 @@ import assert from "node:assert/strict";
 // @viz range:lo..hi@mid
 // @rule the minimum is always inside lo..hi
 // @why Finds the smallest value in a sorted array that was rotated.
+// @goal what is the smallest value in the rotated sorted array {JSON.stringify(nums)}?
 export function findMin(nums: number[]): number {
   // @why `lo` and `hi` bound where the minimum could be.
+  // @phase Setup: the minimum is somewhere in the whole array
+  // @say Scanning all {nums.length} values finds the minimum in O(n). But a rotated sorted array is two sorted runs, and the minimum is where the second run starts. Comparing the middle with the right end tells you which run the middle is in, so you can halve the range.
   let lo = 0;
   let hi = nums.length - 1;
   // @why Stop when one spot is left; that spot is the minimum.
+  // @phase Halve the range toward the rotation point
+  // @yes Indices {lo}..{hi} still hold more than one candidate, so probe again.
+  // @no lo and hi met at index {lo}. Every other index was ruled out, so nums[{lo}] = {nums[lo]} is the minimum.
   while (lo < hi) {
     // @why Look at the middle.
+    // @say Probe index {(lo + hi) >> 1}, the middle of {lo}..{hi}.
     const mid = (lo + hi) >> 1;
     // @why If the middle is bigger than the right end, the rotation break is to the right, so the min is right of `mid`.
+    // @say Compare the middle {nums[mid]} with the right end {nums[hi]}.
+    // @yes {nums[mid]} > {nums[hi]}: values drop somewhere between {mid} and {hi}, so the rotation point, and the minimum, is right of {mid}. {nums[mid]} itself can't be the minimum, since {nums[hi]} is smaller.
+    // @no {nums[mid]} ≤ {nums[hi]}: indices {mid}..{hi} rise in order with no drop, so nothing right of {mid} beats {nums[mid]}. The minimum is at {mid} or to its left, so keep {mid}.
+    // @then {nums[mid] > nums[hi] ? (lo === hi ? "Only index " + lo + " is left." : "The minimum is in indices " + lo + ".." + hi + ".") : ""}
     if (nums[mid] > nums[hi]) lo = mid + 1; // @ask lo
     // @why Otherwise the right part is sorted, so the min is at `mid` or to its left. Keep `mid` since it could be the min.
+    // @then {lo === hi ? "Only index " + lo + " is left." : "The minimum is in indices " + lo + ".." + hi + "."}
     else hi = mid; // @ask hi
   }
   // @why `lo` and `hi` meet at the minimum.
+  // @phase Answer
+  // @returns {nums[lo]}, at index {lo}: the start of the second sorted run, found in O(log n) probes.
   return nums[lo];
 }
 

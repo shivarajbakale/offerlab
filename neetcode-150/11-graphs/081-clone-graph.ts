@@ -60,27 +60,45 @@ export class GraphNode {
 
 // @rule clones maps every original node seen so far to its one and only copy
 // @why Returns a brand-new copy of the graph, sharing no nodes with the original.
+// @goal {node ? "how do you copy the graph reachable from node " + node.val + ", sharing no nodes with it?" : "what is the copy of an empty graph?"}
 export function cloneGraph(node: GraphNode | null): GraphNode | null {
   // @why Maps each original node to its copy, so a node is never copied twice.
+  // @phase Setup: a map from each original to its copy
+  // @say Copying each node and then its neighbours blindly loops forever on a cycle (1 → 2 → 1 → …) and duplicates shared nodes. Remember every copy made, keyed by the original, so each node is copied exactly once.
   const clones = new Map<GraphNode, GraphNode>();
 
   // @why Returns the copy of node `n`, building it if it does not exist yet.
+  // @phase Copy a node, then its neighbours
+  // @goal what is the copy of node {n.val}?
   const dfs = (n: GraphNode): GraphNode => {
     // @why Check if this node was already copied.
+    // @say Has node {n.val} been copied already? The map answers in one lookup.
     const existing = clones.get(n);
     // @why Already copied (we hit a cycle or a shared neighbour), so reuse that copy.
+    // @yes Node {n.val} already has a copy: this edge leads back to a node in progress or done. Making a second copy would split one node into two.
+    // @no First visit to node {n.val}, so build its copy.
+    // @returns the existing copy of node {n.val}, so every edge into {n.val} points at one shared copy.
     if (existing) return existing;
     // @why Make the new node with the same value but no neighbours yet.
+    // @say Make a copy of node {n.val} with no edges yet. Its neighbours' copies may not exist, so the edges are filled in next.
     const copy = new GraphNode(n.val); // @moment copy node {n.val}
     // @why Save the copy BEFORE visiting neighbours, so a cycle back to `n` finds it.
+    // @say Register the copy of node {n.val} now, before visiting any neighbour. A cycle that leads back to node {n.val} will find this copy instead of recursing forever.
+    // @then {clones.size} {clones.size === 1 ? "node has" : "nodes have"} a copy.
     clones.set(n, copy); // @ask clones.size
     // @why Copy every neighbour and link the copies together.
+    // @say Neighbour {nb.val} of node {n.val} (of {n.neighbors.map((x) => x.val).join(", ")}): get its copy, building it if needed, and link it to the copy of {n.val}.
+    // @then {copy.neighbors.length ? "The copy of node " + n.val + " now links to " + copy.neighbors.map((x) => x.val).join(", ") + (copy.neighbors.length === n.neighbors.length ? ", the same neighbours as the original." : ", " + copy.neighbors.length + " of its " + n.neighbors.length + " edges so far.") : "Node " + n.val + " has no neighbours, so its copy needs no edges."}
     for (const nb of n.neighbors) copy.neighbors.push(dfs(nb));
     // @why Hand back the finished copy to whoever linked to it.
+    // @returns the finished copy of node {n.val}, {copy.neighbors.length === 0 ? "with no edges, like the original" : copy.neighbors.length === 1 ? "with its one edge linked to a copy" : "with all " + copy.neighbors.length + " edges linked to copies"}.
     return copy;
   };
 
   // @why An empty graph (null) has nothing to clone; otherwise start from the given node.
+  // @phase Start from the given node
+  // @say {node ? "Start copying from node " + node.val + ". Every node is reachable from it, so the copy covers the whole graph." : "No node given: an empty graph copies to an empty graph."}
+  // @returns {node ? "the copy of node " + node.val + ". Every node and edge was copied once, O(V + E)." : "null, the copy of an empty graph."}
   return node ? dfs(node) : null;
 }
 

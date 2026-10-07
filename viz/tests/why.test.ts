@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isWhyLine, parseProblem } from "../src/parseProblem.ts";
+import { isNoteLine } from "../src/model/hints.ts";
 
 const root = join(import.meta.dirname, "../../neetcode-150");
 const files = readdirSync(root)
@@ -38,7 +39,8 @@ test("every problem explains its code line by line", () => {
     const name = path.split("/").pop();
     p.lines.forEach((line, i) => {
       if (!isWhyLine(line) || isWhyLine(p.lines[i + 1] ?? "")) return;
-      const target = i + 2;
+      let target = i + 2;
+      while (isNoteLine(p.lines[target - 1] ?? "")) target++;
       if (target < p.codeStart || target > p.codeEnd || !meaningful(p.lines[target - 1] ?? ""))
         issues.push(`${name}:${i + 1} @why does not sit above a code line in the solution`);
     });

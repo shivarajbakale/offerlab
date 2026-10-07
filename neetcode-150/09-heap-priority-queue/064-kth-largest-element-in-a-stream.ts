@@ -137,20 +137,33 @@ export class KthLargest {
   private heap = new Heap<number>((a, b) => a - b);
 
   // @why Start with an initial list of numbers.
+  // @goal how do you track the k-th largest number (k = {k}), starting from {JSON.stringify(nums)}?
   constructor(k: number, nums: number[]) {
     // @why Remember k.
+    // @phase Setup: keep only the top k
+    // @say Re-sorting everything on each add costs n log n per number. But the k-th largest depends only on the {k} largest values, so keep just those in a min-heap: its top, the smallest of them, is the answer.
     this.k = k;
     // @why Feed the starting numbers through `add` so the heap holds the top k.
+    // @say Push the starting numbers through `add`, the same path every later number takes, so the heap ends up holding the {k} largest of {JSON.stringify(nums)}.
     for (const n of nums) this.add(n);
   }
 
   // @why Add a number and return the current k-th largest.
+  // @goal {val} arrives: what is the k-th largest number (k = {this.k}) now?
   add(val: number): number {
     // @why Add the new number to the heap.
+    // @phase Add, then trim back to k
+    // @say Add {val} to the kept numbers{this.heap.data.length ? " " + JSON.stringify(this.heap.data) : ", which are none yet"}. It might belong in the top {this.k}; the heap will sort that out in O(log k).
+    // @then The heap now holds {this.heap.data.length} {this.heap.data.length === 1 ? "number" : "numbers"}, smallest on top: {this.heap.data[0]}.
     this.heap.push(val);
     // @why Too many kept: drop the smallest, since it can't be in the top k.
+    // @yes {this.heap.data.length} numbers kept but only {this.k} are needed. The smallest, {this.heap.data[0]}, has {this.k} larger numbers above it, so it can never be the k-th largest again: drop it.
+    // @no The heap holds {this.heap.data.length} of the {this.k} numbers it keeps, so nothing can be dropped yet.
+    // @say {this.heap.data.length > this.k ? this.heap.data.length + " numbers kept but only " + this.k + " are needed. The smallest, " + this.heap.data[0] + ", has " + this.k + " larger numbers above it, so it can never be the answer again: drop it." : "The heap holds " + this.heap.data.length + " of the " + this.k + " numbers it keeps, so nothing needs dropping yet."}
     if (this.heap.size() > this.k) this.heap.pop(); // @ask this.heap.data[0]
     // @why The smallest of the top k is the k-th largest.
+    // @say The heap's top, {this.heap.data[0]}, is the smallest of the numbers kept.
+    // @returns {this.heap.data[0]}: {this.heap.data.length < this.k ? "fewer than " + this.k + " numbers have arrived, so this is just the smallest so far" : "exactly " + (this.k - 1) + " kept numbers rank above it, so it is the k-th largest"}. Each add cost O(log k), not a re-sort.
     return this.heap.peek()!;
   }
 }

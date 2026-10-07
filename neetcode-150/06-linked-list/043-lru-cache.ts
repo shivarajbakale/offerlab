@@ -76,6 +76,8 @@ export class LRUCache {
   // @why Create the cache with a size limit.
   constructor(capacity: number) {
     // @why Remember the limit.
+    // @phase Setup: an empty usage line between two placeholders
+    // @say Keep the keys in a line ordered by last use, oldest next to head and newest next to tail. Eviction then takes from the head end and every use moves a node to the tail end, both O(1).
     this.capacity = capacity;
     // @why Link the two fake nodes so the empty list is valid.
     this.head.next = this.tail;
@@ -84,62 +86,96 @@ export class LRUCache {
   }
 
   // @why Unlink a node from the list without touching the map.
+  // @goal how do you pull key {node.key} out of the usage line in O(1)?
   private remove(node: DNode): void {
     // @why Make the previous node skip over this node.
+    // @phase Unlink a node in O(1)
+    // @say Key {node.key}'s neighbours link straight to each other. Both links are on the node itself, which is why the list is doubly linked: no walk to find the node before it.
     node.prev!.next = node.next;
     // @why Make the next node point back past this node.
+    // @say And the back link: the node after key {node.key} now points back past it. Key {node.key} is out of the line, and the map still holds it.
     node.next!.prev = node.prev;
   }
 
   /** Insert just before the tail sentinel (most recently used). */
   // @why Put a node at the most recently used end.
+  // @goal how do you mark key {node.key} as the most recently used?
   private insert(node: DNode): void {
     // @why Find the node currently last in line.
+    // @phase Link a node in at the newest end
+    // @say The newest end is just before the tail placeholder. Slot key {node.key} in there.
     const prev = this.tail.prev!;
     // @why Link that node forward to the new node.
+    // @say {prev === this.head ? "The line is empty, so the head placeholder" : "Key " + prev.key + ", the current newest,"} links forward to key {node.key}.
     prev.next = node;
     // @why Link the new node back to it.
+    // @say Key {node.key} links back to {prev === this.head ? "the head placeholder" : "key " + prev.key}.
     node.prev = prev;
     // @why Link the new node forward to the tail fake node.
+    // @say Key {node.key} links forward to the tail placeholder: nothing is newer.
     node.next = this.tail;
     // @why Link the tail back to the new node.
+    // @say The tail placeholder points back to key {node.key}: it is now the newest, last in line for eviction.
     this.tail.prev = node;
   }
 
   // @why Read a value, and count it as just used.
+  // @goal what is cached under key {key}, and how do you mark it as just used?
   get(key: number): number {
     // @why Find the node in O(1) using the map.
+    // @phase Look up, then move to the newest end
+    // @say An array ordered by use would need O(n) to find and move a key. Instead the map finds key {key}'s node in O(1), and the doubly linked list moves it to the newest end in O(1).
     const node = this.map.get(key); // @ask !!node
     // @why Missing key: return -1 as the problem asks.
+    // @yes Key {key} isn't cached (never added, or already evicted).
+    // @no Key {key} is cached with value {node.val}. Reading it counts as a use, so it moves to the newest end.
+    // @returns -1: key {key} is not in the cache.
     if (!node) return -1;
     // @why Take the node out of its old spot.
+    // @say Unlink key {key} from where it sits in the usage line.
     this.remove(node);
     // @why Put it at the most recently used end.
+    // @say Re-insert it at the newest end, so it will be the last to be evicted.
     this.insert(node);
     // @why Return the cached value.
+    // @returns {node.val}, the value for key {key}, now marked most recently used. O(1).
     return node.val;
   }
 
   // @why Write a value, evicting the oldest item if too many.
+  // @goal how do you store {key} = {value} and keep the cache within {this.capacity} items?
   put(key: number, value: number): void {
     // @why Check if the key is already cached.
+    // @phase Write the value at the newest end
+    // @say A write counts as a use, so key {key} ends up at the newest end whether it is new or not.
     const existing = this.map.get(key);
     // @why Remove the old node; we replace it with a fresh one.
+    // @yes Key {key} is already cached (old value {existing.val}), so unlink its old node first, or the list would hold it twice.
+    // @no Key {key} is new to the cache.
     if (existing) this.remove(existing);
     // @why Make a new node holding the latest value.
+    // @say Make a node for {key} = {value}.
     const node = new DNode(key, value);
     // @why Record it in the map for fast lookup.
+    // @say Point the map at the new node, replacing any old entry for {key}.
     this.map.set(key, node); // @ask this.map.size
     // @why Mark it as most recently used.
+    // @say Put it at the newest end.
     this.insert(node);
 
     // @why Over the limit means something must go.
+    // @phase Evict if over capacity
+    // @yes {this.map.size} items but room for only {this.capacity}, so one must go: the least recently used.
+    // @no {this.map.size} of {this.capacity} slots used, so nothing needs evicting.
     if (this.map.size > this.capacity) { // @broken
       // @why The node next to `head` is the least recently used.
+      // @say The node right after the head placeholder, key {this.head.next.key}, has gone longest without a get or put.
       const lru = this.head.next!; // @ask lru.key
       // @why Unlink it from the list.
+      // @say Unlink key {lru.key} from the list.
       this.remove(lru); // @moment evict key {lru.key}
       // @why Delete it from the map too, so they stay in sync.
+      // @say Delete key {lru.key} from the map too, or a later get would find a node that is no longer in the list.
       this.map.delete(lru.key);
     }
   }

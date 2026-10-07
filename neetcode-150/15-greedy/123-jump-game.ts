@@ -42,15 +42,25 @@ import assert from "node:assert/strict";
 // @viz best:goal
 // @rule goal is the leftmost index known to reach the last index
 // @why Returns true if we can reach the last index starting from index 0.
+// @goal can index 0 of {JSON.stringify(nums)} jump its way to the last index?
 export function canJump(nums: number[]): boolean {
   // @why Work backwards: `goal` is the leftmost spot we know can reach the end. It starts at the last index.
+  // @phase Setup: the last index trivially reaches itself
+  // @say Trying every jump path from the start branches out exponentially. Instead walk backwards: an index can reach the end exactly when it can reach any index already known to reach the end, and the leftmost such index, `goal`, is the easiest one to hit. It starts at the last index, {nums.length - 1}.
   let goal = nums.length - 1;
   // @why Check each earlier index, moving from right to left.
+  // @phase Walk backwards, pulling the goal toward the start
+  // @yes Next is index {i} (jump up to {nums[i]}). Every index to its right has already been settled.
+  // @no Every index has been checked; the goal stopped at {goal}.
   for (let i = nums.length - 2; i >= 0; i--) {
     // @why If this index can jump to `goal` or beyond, it can reach the end, so it becomes the new `goal`.
+    // @yes From {i}, a jump of up to {nums[i]} reaches index {i + nums[i]}, at or past the goal {goal}. Reaching the goal means reaching the end, so {i} is the new goal.
+    // @no From {i}, the farthest it reaches is {i + nums[i]}, short of the goal {goal}. Every spot it can land on lies before the goal and is already known to be stuck, so {i} is stuck too.
     if (i + nums[i] >= goal) goal = i; // @ask goal
   }
   // @why If `goal` moved all the way back to index 0, the start can reach the end.
+  // @phase Answer
+  // @returns {goal === 0 ? "true: the goal was pulled all the way back to index 0, so the start reaches the end." : "false: the leftmost index that reaches the end is " + goal + ", and nothing before it can jump that far."}
   return goal === 0;
 }
 

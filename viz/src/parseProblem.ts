@@ -1,6 +1,6 @@
 // Parses one NeetCode solution file into display metadata. Pure, so tests can use it.
 
-import { parseHints, type Hints } from "./model/hints.ts";
+import { isNoteLine, parseHints, type Hints } from "./model/hints.ts";
 
 export type Track = "algorithms" | "systems";
 
@@ -101,7 +101,10 @@ function parseWhy(lines: string[]): Record<number, string> {
     const text: string[] = [];
     let j = i;
     for (; j < lines.length && WHY.test(lines[j]); j++) text.push(lines[j].match(WHY)![1].trim());
-    if (j < lines.length) why[j + 1] = text.join(" ");
+    // Decision notes (@yes, @then, ...) may sit between the @why and its code line.
+    let at = j;
+    while (at < lines.length && isNoteLine(lines[at])) at++;
+    if (at < lines.length) why[at + 1] = text.join(" ");
     i = j - 1;
   }
   return why;

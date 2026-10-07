@@ -61,25 +61,44 @@ export class TreeNode {
 
 // @rule maxSoFar is the largest value on the path from the root down to node
 // @why A node is good if no node on the path from the root to it is bigger.
+// @goal how many nodes have nothing bigger on the path from the root down to them?
 export function goodNodes(root: TreeNode | null): number {
   // @why `maxSoFar` is the biggest value on the path from the root to here.
+  // @phase Setup
+  // @say Re-walking the path from the root for every node is O(n·h). But "is anything above me bigger?" only needs the largest value above, so pass that one number down as you go.
+  // @goal how many good nodes are under {node ? node.val : "this empty spot"}, when the biggest value above it is {maxSoFar}?
   const dfs = (node: TreeNode | null, maxSoFar: number): number => {
     // @why An empty subtree has no good nodes.
+    // @phase Judge this node, then pass the path max down
+    // @yes Empty spot: nothing to count.
+    // @no Node {node.val}, with {maxSoFar === -Infinity ? "nothing above it" : "path max " + maxSoFar + " above it"}.
+    // @returns 0: an empty subtree has no good nodes.
     if (!node) return 0;
     // @why This node is good if it is at least as big as everything above it.
+    // @say {maxSoFar === -Infinity ? node.val + " is the root, with nothing above it, so it is good." : node.val >= maxSoFar ? node.val + " ≥ " + maxSoFar + ", the biggest value above it, so nothing on its path beats it: good." : node.val + " < " + maxSoFar + ", and " + maxSoFar + " sits above it on the path: not good."}
     const good = node.val >= maxSoFar ? 1 : 0; // @ask good
     // @why The new path maximum for the children: the bigger of the old one and this node.
+    // @say Children see everything above them, which now includes {node.val}: max({maxSoFar}, {node.val}) = {Math.max(maxSoFar, node.val)}.
     const max = Math.max(maxSoFar, node.val);
     // @why Count the good nodes in the left subtree.
+    // @say Count good nodes on {node.val}'s left, passing max {max} down.
+    // @then {left} good {left === 1 ? "node" : "nodes"} on the left of {node.val}.
     const left = dfs(node.left, max);
     // @why Count the good nodes in the right subtree.
+    // @say Same for {node.val}'s right side, with max {max}.
+    // @then {right} good {right === 1 ? "node" : "nodes"} on the right of {node.val}.
     const right = dfs(node.right, max);
     // @why Count this node plus the good nodes found in both subtrees.
+    // @say {good} for {node.val} itself + {left} left + {right} right = {good + left + right}.
     const count = good + left + right; // @ask count
     // @why Hand the count up to the parent.
+    // @returns {count} good {count === 1 ? "node" : "nodes"} in the subtree under {node.val}.
     return count;
   };
   // @why Start at the root with -Infinity so the root is always good.
+  // @phase Walk from the root
+  // @say Start with -Infinity as the "max above": nothing is above the root, so the root always counts as good.
+  // @returns the total good nodes. Each node was judged once, O(n).
   return dfs(root, -Infinity);
 }
 

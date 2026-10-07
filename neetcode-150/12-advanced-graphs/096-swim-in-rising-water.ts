@@ -117,43 +117,65 @@ class MinHeap<T extends number[]> {
 
 // @rule the heap pops cells by the lowest water level needed to reach them
 // @why Returns the least time at which you can swim from the top-left to the bottom-right.
+// @goal how high must the water rise before you can swim from the top-left to the bottom-right of this {grid.length}×{grid.length} grid?
 export function swimInWater(grid: number[][]): number {
   // @why The grid is `n` by `n`.
+  // @phase Setup: start at the top-left corner
+  // @say Trying each water level from 0 up and checking reachability each time costs a full search per level. Instead, a path's cost is its highest cell, so always extend the frontier cell with the lowest such cost, like Dijkstra with max instead of plus.
   const n = grid.length;
   // @why Cells already added to the search; start with cell 0.
   const visited = new Set<number>([0]);
   // @why A priority queue that gives the cell with the lowest needed time first.
   const heap = new MinHeap<[number, number, number]>(); // [time, r, c]
   // @why Start at the top-left; we must wait until its water level at least.
+  // @say You can't leave the start until the water reaches its height, {grid[0][0]}, so no path costs less than that.
   heap.push([grid[0][0], 0, 0]);
   // @why The four directions we can move.
   const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   // @why Keep going while there are cells to explore.
+  // @phase Expand the cell that needs the lowest water
+  // @yes {heap.data.length ? heap.data.length + (heap.data.length === 1 ? " cell is" : " cells are") + " waiting at the edge of the explored area. Take the one needing the lowest water." : "Nothing left to explore."}
+  // @no {heap.data.length ? heap.data.length + (heap.data.length === 1 ? " cell is" : " cells are") + " waiting at the edge of the explored area. Take the one needing the lowest water." : "Nothing left to explore."}
   while (heap.size) {
     // @why Take the cell that needs the smallest time.
+    // @say Cheapest frontier cell: ({heap.data[0][1]},{heap.data[0][2]}), reachable once the water is at {heap.data[0][0]}.
     const [t, r, c] = heap.pop()!;
     // @why We reached the goal; that time is the answer, since we always take the lowest first.
+    // @yes ({r},{c}) is the bottom-right corner. Cells come out in order of water needed, so no other path gets here with less than {t}.
+    // @no ({r},{c}) is not the corner yet, so spread to its neighbours.
+    // @returns {t}: the lowest water level at which some path from the start reaches the corner.
     if (r === n - 1 && c === n - 1) return t;
     // @why Look at each neighbor.
+    // @say Try the neighbour one step {dr === 1 ? "down" : dr === -1 ? "up" : dc === 1 ? "right" : "left"} from ({r},{c}).
     for (const [dr, dc] of dirs) {
       // @why The neighbor's row.
+      // @say Neighbour row: {r + dr}.
       const nr = r + dr;
       // @why The neighbor's column.
+      // @say Neighbour column: {c + dc}.
       const nc = c + dc;
       // @why One number that identifies the neighbor cell for the visited set.
+      // @say Number the cell {nr} × {n} + {nc} = {nr * n + nc}, so the seen set can store it as one integer.
       const key = nr * n + nc;
       // @why Skip neighbors that are off the grid or already seen.
+      // @yes {nr < 0 || nc < 0 || nr >= n || nc >= n ? "(" + nr + "," + nc + ") is off the grid." : "(" + nr + "," + nc + ") is already queued, with a cost no higher than going through here."} Skip it.
+      // @no ({nr},{nc}) is on the grid and not queued yet, so this is the cheapest way found to it.
       if (nr < 0 || nc < 0 || nr >= n || nc >= n || visited.has(key)) continue;
       // @why Mark it seen so it's queued only once.
+      // @say Mark ({nr},{nc}) seen now, when it is first queued. No later route can reach it cheaper, because cells are expanded in order of the water they need.
       visited.add(key); // @moment reach ({nr},{nc})
       // @why To get there we need the higher of the time so far and its own height.
+      // @say A path's cost is its highest cell. Getting here needed {t}, and ({nr},{nc}) is {grid[nr][nc]} high, so max({t}, {grid[nr][nc]}) = {Math.max(t, grid[nr][nc])}.
       const need = Math.max(t, grid[nr][nc]); // @ask need
       // @why Queue the neighbor keyed by that time, so the lowest-time cell pops first.
+      // @say Queue ({nr},{nc}) at water level {need}.
       heap.push([need, nr, nc]);
     }
   }
   // @why Safety return; the goal is always reachable, so it shouldn't happen.
+  // @phase Answer
+  // @returns -1, which never happens: every cell is reachable once the water is high enough.
   return -1;
 }
 

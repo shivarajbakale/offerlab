@@ -59,16 +59,30 @@ export class TreeNode {
 
 // @rule each finished call has mirrored its whole subtree before returning it
 // @why Returns the same root, now mirrored; `null` in means `null` out.
+// @goal how do you mirror the subtree under {root ? root.val : "this empty spot"}, so every left becomes a right?
 export function invertTree(root: TreeNode | null): TreeNode | null {
   // @why Base case: an empty tree has nothing to swap, so stop here.
-  if (!root) return null; // @say Empty subtree: nothing to invert
+  // @phase Stop at empty spots
+  // @yes Empty spot: there are no children to swap, so the mirror of nothing is nothing.
+  // @no Node {root.val} exists. A mirror image is just "every node's two children swapped", so swap here and let the children handle themselves.
+  // @returns null: the mirror of an empty subtree is still empty.
+  if (!root) return null;
   // @why Swap the two children; this one swap is what mirrors this node.
-  [root.left, root.right] = [root.right, root.left]; // @ask root.left?root.left.val:null // @moment mirror {root.val} // @say Mirror node {root.val}: swap its left and right children
+  // @phase Swap at this node, then mirror below it
+  // @say Building a new mirrored copy would cost O(n) extra nodes. Instead swap {root.val}'s two child links in place{root.left || root.right ? ": left gets " + (root.right ? root.right.val : "nothing") + ", right gets " + (root.left ? root.left.val : "nothing") : ". It is a leaf, so both links are empty and the swap changes nothing"}.
+  // @then {root.left || root.right ? root.val + " now has " + (root.left ? root.left.val : "nothing") + " on the left and " + (root.right ? root.right.val : "nothing") + " on the right. The subtrees below are not mirrored yet." : "Leaf " + root.val + " is already its own mirror."}
+  [root.left, root.right] = [root.right, root.left]; // @ask root.left?root.left.val:null // @moment mirror {root.val}
   // @why Mirror everything under the (new) left child the same way.
-  invertTree(root.left); // @say Now invert the (new) left subtree of {root.val}
+  // @say Swapping at {root.val} only flipped the top level. Each subtree must be mirrored inside too, so recurse into the new left side{root.left ? ", " + root.left.val : ""}.
+  // @then The left subtree of {root.val} is now fully mirrored.
+  invertTree(root.left);
   // @why Do the same for the right side; the order of the two calls does not matter.
-  invertTree(root.right); // @say Then invert the (new) right subtree of {root.val}
+  // @say Now the new right side{root.right ? ", " + root.right.val : ""}. The two sides share no nodes, so order does not matter.
+  // @then Both subtrees of {root.val} are mirrored, so the whole subtree under {root.val} is a mirror image.
+  invertTree(root.right);
   // @why Hand back the root so callers get the whole mirrored tree.
+  // @phase Hand the mirrored subtree back
+  // @returns node {root.val}, the same node as before, with everything below it mirrored. Each node is swapped exactly once: O(n).
   return root;
 }
 

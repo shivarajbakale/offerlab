@@ -43,12 +43,20 @@ import assert from "node:assert/strict";
 
 // @rule result holds the xor of every number seen so far; pairs cancel to 0
 // @why Returns the one number that appears once while all others appear twice.
+// @goal in {JSON.stringify(nums)}, every number appears twice except one: which one?
 export function singleNumber(nums: number[]): number {
   // @why Start at 0, because XOR with 0 leaves a number unchanged.
+  // @phase Setup
+  // @say A hash map of counts works but needs O(n) extra memory, and sorting costs n log n. XOR does it in one pass with one number: x ^ x = 0 and x ^ 0 = x, and the order doesn't matter, so every pair cancels wherever its two copies sit.
   let result = 0;
   // @why XOR flips bits: a number XOR itself is 0, so every pair cancels out and only the lonely number stays.
+  // @phase Fold every number in with XOR
+  // @say XOR {n} into {result}: {result} ^ {n} = {result ^ n}. If this is the second copy of {n}, its bits cancel the first copy's; if it's the first, they stay until the partner arrives.
+  // @then {result === 0 ? "Everything so far has cancelled: each number seen came in a pair." : "result = " + result + ": the XOR of the numbers still missing a partner."}
   for (const n of nums) result ^= n; // @ask result
   // @why What is left after all the pairs cancel is the answer.
+  // @phase Answer
+  // @returns {result}: every pair XORed to 0, and 0 ^ the lonely number is that number. O(n) time, O(1) space.
   return result;
 }
 

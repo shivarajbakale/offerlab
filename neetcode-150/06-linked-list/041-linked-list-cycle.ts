@@ -57,21 +57,34 @@ export class ListNode {
 
 // @rule fast has always taken twice as many steps as slow from the head
 // @why Return true if following `next` ever loops back.
+// @goal does following next from this head ever loop back?
 export function hasCycle(head: ListNode | null): boolean {
   // @why `slow` is the tortoise.
+  // @phase Setup: two runners at the head
+  // @say Remembering every visited node in a set works but costs O(n) space. Instead send two runners, one twice as fast: with no loop the fast one hits the end; with a loop it can't escape, and it gains one node per round on the slow one until it lands on it.
   let slow = head;
   // @why `fast` is the hare; both start at the head.
   let fast = head;
   // @why Fast moves two at a time, so it needs two nodes ahead; running out means the list ended.
-  while (fast && fast.next) { // @say If fast hits the end, there is no loop to trap it
+  // @phase Race: the hare gains one node per round
+  // @yes The hare, on {fast.val}, has two more nodes to step onto, so the race goes on.
+  // @no The hare {fast ? "is on the last node" : "ran off the end"}. A list with a loop has no end, so there is no loop to trap it.
+  while (fast && fast.next) {
     // @why The tortoise takes one step.
-    slow = slow!.next; // @ask slow?.val // @say Tortoise moves one step
+    // @say Tortoise steps from {slow.val} to {slow.next.val}.
+    slow = slow!.next; // @ask slow?.val
     // @why The hare takes two steps, so it gains one node per round.
-    fast = fast.next.next; // @ask fast?.val // @say Hare moves two steps, gaining one node per round
+    // @say Hare jumps from {fast.val} to {fast.next.next ? fast.next.next.val : "past the end"}, gaining one node on the tortoise.
+    fast = fast.next.next; // @ask fast?.val
     // @why If they ever stand on the same node, the list must loop.
-    if (slow === fast) return true; // @moment {slow === fast ? "caught at " + slow.val : "no meet yet"} // @say In a cycle the hare must eventually land on the tortoise
+    // @yes Both runners stand on the same node, {slow.val}. The hare could only come back to the tortoise by going around a loop.
+    // @no {fast ? "Hare on " + fast.val + ", tortoise on " + slow.val + ": not the same node yet." : "Hare fell off the end."} If there is a loop, the gap between them shrinks by one each round, so it can't jump over the tortoise.
+    // @returns true: the runners met, so the list loops. O(n) time and O(1) space.
+    if (slow === fast) return true; // @moment {slow === fast ? "caught at " + slow.val : "no meet yet"}
   }
   // @why The hare reached the end, so there is no cycle.
+  // @phase Answer
+  // @returns false: the list has an end, so following next never loops back.
   return false;
 }
 

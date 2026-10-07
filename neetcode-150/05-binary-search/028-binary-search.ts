@@ -40,21 +40,39 @@ import assert from "node:assert/strict";
 // @viz range:lo..hi@mid
 // @rule lo..hi always contains the target if it is in the array
 // @why Returns the index of `target` in the sorted array, or -1.
+// @goal where is {target} in the sorted array {JSON.stringify(nums)}?
 export function search(nums: number[], target: number): number {
   // @why `lo` and `hi` bound the part of the array where the target could still be.
+  // @phase Setup: the whole array is still in play
+  // @say Scanning left to right checks up to {nums.length} values. The array is sorted, so one comparison with the middle rules out a whole half, and each probe halves what is left: about log2(n) probes.
   let lo = 0;
+  // @say The search range starts as all of it: indices {lo} to {nums.length - 1}.
   let hi = nums.length - 1;
   // @why Keep going while at least one position is left to check.
+  // @phase Halve the range until the target is found or nothing is left
+  // @yes Indices {lo}..{hi} ({hi - lo + 1} {hi - lo + 1 === 1 ? "value" : "values"}) could still hold {target}, so probe again.
+  // @no The range is empty (lo {lo} passed hi {hi}). Every index was ruled out by some comparison, so {target} is not in the array.
   while (lo <= hi) {
     // @why Look at the middle so each step throws away half of the range.
-    const mid = lo + ((hi - lo) >> 1); // @say Probe the middle of the remaining range [{lo}, {hi}]
+    // @say Probe the middle of [{lo}, {hi}]. Whichever way the comparison goes, about half of the range is discarded.
+    const mid = lo + ((hi - lo) >> 1);
     // @why Found it, so return its index.
-    if (nums[mid] === target) return mid; // @moment probe {nums[mid]} // @say Is the middle value the target {target}?
+    // @say Compare the middle value {nums[mid]} with {target}.
+    // @yes nums[{mid}] is exactly {target}.
+    // @no {nums[mid]} is not {target}, but it still tells you which side {target} must be on.
+    // @returns index {mid}, found after discarding half the range at every probe.
+    if (nums[mid] === target) return mid; // @moment probe {nums[mid]}
     // @why Sorted array: a too-small middle means the target can only be to the right, otherwise to the left.
-    if (nums[mid] < target) lo = mid + 1; // @ask lo // @say Sorted: if {nums[mid]} < {target}, the target can only be to the right
-    else hi = mid - 1; // @ask hi // @say Middle is too big, so discard it and everything right of it
+    // @yes {nums[mid]} < {target}. The array is sorted, so everything at or left of index {mid} is at most {nums[mid]}, too small as well. Move lo past {mid}.
+    // @no {nums[mid]} > {target}. Everything at or right of index {mid} is at least {nums[mid]}, too big as well. Move hi below {mid}.
+    // @then {nums[mid] < target ? (lo <= hi ? target + " can only be at " + (lo === hi ? "index " + lo : "indices " + lo + ".." + hi) + "." : "Nothing is left where " + target + " could be.") : ""}
+    if (nums[mid] < target) lo = mid + 1; // @ask lo
+    // @then {lo <= hi ? target + " can only be at " + (lo === hi ? "index " + lo : "indices " + lo + ".." + hi) + "." : "Nothing is left where " + target + " could be."}
+    else hi = mid - 1; // @ask hi
   }
   // @why The range is empty, so the target is not there.
+  // @phase Answer
+  // @returns -1: every index was ruled out, so {target} is not in the array.
   return -1;
 }
 

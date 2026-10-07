@@ -21,8 +21,11 @@ export type Player = {
   slower: () => void;
 };
 
-/** `dwell(i)` scales how long step i stays on screen (1 = normal). */
-export function usePlayer(count: number, resetKey: string, dwell: (i: number) => number): Player {
+/**
+ * `dwell(i)` scales how long step i stays on screen (1 = normal). With `stops`, a sorted list of
+ * step indexes, stepping and playing jump from stop to stop and skip the steps between.
+ */
+export function usePlayer(count: number, resetKey: string, dwell: (i: number) => number, stops?: number[] | null): Player {
   const [index, setIndexRaw] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -41,19 +44,29 @@ export function usePlayer(count: number, resetKey: string, dwell: (i: number) =>
   const phone = usePhone();
   const isPlaying = playing && !phone && !atEnd && count > 0;
 
+  /** The index `delta` steps (or stops) away from `i`. */
+  const move = useCallback(
+    (i: number, delta: number) => {
+      if (!stops?.length || Math.abs(delta) !== 1) return clamp(i + delta);
+      if (delta > 0) return clamp(stops.find((s) => s > i) ?? count - 1);
+      return clamp(stops.findLast((s) => s < i) ?? 0);
+    },
+    [stops, clamp, count],
+  );
+
   useEffect(() => {
     if (!isPlaying) return;
-    const t = setTimeout(() => setIndexRaw((i) => Math.min(count - 1, i + 1)), (BASE_MS * dwell(index)) / speed);
+    const t = setTimeout(() => setIndexRaw((i) => move(i, 1)), (BASE_MS * dwell(index)) / speed);
     return () => clearTimeout(t);
-  }, [isPlaying, index, speed, count, dwell]);
+  }, [isPlaying, index, speed, dwell, move]);
 
   const setIndex = useCallback((i: number) => setIndexRaw(clamp(i)), [clamp]);
   const step = useCallback(
     (delta: number) => {
       setPlaying(false);
-      setIndexRaw((i) => clamp(i + delta));
+      setIndexRaw((i) => move(i, delta));
     },
-    [clamp],
+    [move],
   );
   const toggle = useCallback(() => {
     if (isPlaying) {

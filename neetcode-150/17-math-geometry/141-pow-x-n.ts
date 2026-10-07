@@ -44,24 +44,43 @@ import assert from "node:assert/strict";
 
 // @rule helper(base, exp) returns base^exp, built by squaring helper(base, floor(exp/2))
 // @why Returns `x` raised to the power `n`, using fast exponentiation.
+// @goal what is {x} to the power {n}?
 export function myPow(x: number, n: number): number {
   // @why Helper that works with a non-negative exponent, so we handle the sign once at the end.
+  // @phase Setup: a helper for non-negative powers
+  // @say Multiplying {x} by itself {Math.abs(n)} times is O(n), far too slow for exponents near two billion. But x^e = (x^(e/2))², so one answer for half the exponent gives the full one with a single multiply, and the exponent halves at every level: O(log n).
+  // @goal what is {base} to the power {exp}?
   const helper = (base: number, exp: number): number => {
     // @why Zero to any positive power is zero; this also avoids pointless work.
+    // @phase Halve the exponent, then square
+    // @yes The base is 0, and 0 times anything is 0, so there's nothing to compute.
+    // @no Base {base} is not 0.
+    // @returns 0: zero to a positive power is zero.
     if (base === 0) return 0;
     // @why Anything to the power 0 is 1. This is where the recursion stops.
+    // @yes The exponent reached 0: the smallest case, answered without any multiplying.
+    // @no Exponent {exp} is still positive, so solve half of it first.
+    // @returns 1: any number to the power 0 is 1, the empty product the squarings above will build on.
     if (exp === 0) return 1;
     // @why Solve for half the exponent first; it halves the work each time (O(log n)).
+    // @say Ask for {base}^{Math.floor(exp / 2)}, half of {exp} rounded down.
+    // @then {base}^{Math.floor(exp / 2)} = {half}.
     const half = helper(base, Math.floor(exp / 2));
     // @why Even exponent: two halves multiply. Odd exponent: one extra `base` is left over.
+    // @say {exp % 2 === 0 ? exp + " is even, so square the half: " + half + " × " + half + " = " + half * half + "." : exp + " is odd, so halving dropped one factor: " + half + " × " + half + " × " + base + " = " + half * half * base + "."}
     const p = exp % 2 === 0 ? half * half : half * half * base; // @ask p // @moment base^{exp} from half {half}
     // @why This call's power, handed back up to the caller.
+    // @returns {p} = {base}^{exp}, built with {exp % 2 === 0 ? "one multiply" : "two multiplies"} on top of the half.
     return p;
   };
 
   // @why Compute with the absolute value of `n`.
+  // @phase Run it, then fix the sign
+  // @say Compute {x}^{Math.abs(n)} first{n < 0 ? "; the negative sign is handled after" : ""}.
+  // @then {x}^{Math.abs(n)} = {res}.
   const res = helper(x, Math.abs(n)); // @ask res
   // @why A negative power is one divided by the positive power.
+  // @returns {n >= 0 ? res + ": the exponent was not negative, so the helper's answer stands. About log2(n) levels of recursion." : 1 / res + ": a negative power is 1 divided by the positive one, 1 / " + res + "."}
   return n >= 0 ? res : 1 / res;
 }
 

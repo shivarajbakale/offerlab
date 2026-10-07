@@ -41,21 +41,30 @@ import assert from "node:assert/strict";
 // @viz best:rob2
 // @rule rob2 is the most money from the houses so far; rob1, from all but the last one
 // @why Returns the most money you can take without robbing two neighbouring houses.
+// @goal what is the most money from {JSON.stringify(nums)} without robbing two neighbours?
 export function rob(nums: number[]): number {
   // @why `rob1` means the best total using houses up to two back (before the previous house).
+  // @phase Setup: the only two answers the next house can depend on
+  // @say Trying every robbed/skipped pattern is 2^n. But the best total up to any house depends only on the best totals one house back and two houses back, so keep just those two numbers.
   let rob1 = 0;
   // @why `rob2` means the best total using houses up to the previous house.
   let rob2 = 0;
   // @why Go through the houses left to right; each decides if it joins the best plan.
+  // @phase Each house: rob it or skip it, whichever totals more
+  // @say House with {n}. Best so far: {rob2} (up to the previous house), {rob1} (up to the one before).
   for (const n of nums) {
     // @why Either rob this house and add the best from two back, or skip it and keep `rob2`.
+    // @say Rob it: {n} plus the best that avoids the neighbour, {rob1}, = {rob1 + n}. Skip it: keep {rob2}. {rob1 + n > rob2 ? "Robbing wins." : rob1 + n === rob2 ? "A tie: either plan gives " + rob2 + "." : "Skipping wins."}
     const best = Math.max(rob1 + n, rob2); // @ask best
     // @why Slide forward: the old `rob2` is now the best from two houses back.
     rob1 = rob2;
     // @why The new best total (up to this house) becomes the previous-house value.
+    // @say Shift the window one house forward: the old "previous" becomes "two back", and {best} becomes the new "previous".
+    // @then Best up to here: {rob2}. Best up to one house back: {rob1}.
     rob2 = best;
   }
   // @why `rob2` is the best total over all houses.
+  // @returns {rob2}: the best total once every house has been decided, in O(n) time and O(1) space.
   return rob2;
 }
 

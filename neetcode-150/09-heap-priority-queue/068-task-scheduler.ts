@@ -129,18 +129,27 @@ class Heap<T> {
 
 // @rule heap holds counts of tasks ready now; queue holds tasks cooling until their time
 // @why Fewest time units to run all tasks, with `n` units of cooldown between equal tasks.
+// @goal how few time units can run {JSON.stringify(tasks)} if equal tasks need {n} {n === 1 ? "unit" : "units"} of gap?
 export function leastInterval(tasks: string[], n: number): number {
   // @why How many times each task appears.
+  // @phase Setup: only the counts matter
+  // @say Trying every order of {tasks.length} tasks is factorial work. Instead simulate greedily: each unit, run whichever ready task has the most copies left, since the biggest pile is the one most likely to force idle time later.
   const counts = new Map<string, number>();
   // @why Count each task.
+  // @say Count how many copies of each task there are.
+  // @then Counts: {JSON.stringify([...counts])}.
   for (const t of tasks) counts.set(t, (counts.get(t) ?? 0) + 1);
 
   // @why A max-heap of counts; always run the task with the most work left.
+  // @say A max-heap puts the task with the most copies left on top, so the greedy pick costs O(log 26).
   const heap = new Heap<number>((a, b) => b - a); // max-heap of counts
   // @why Only counts matter, not task names.
+  // @say Load only the counts. Two tasks with the same count behave the same, so names add nothing.
+  // @then Ready to run, by copies left: {JSON.stringify(heap.data)}.
   for (const c of counts.values()) heap.push(c);
 
   // @why Tasks cooling down, with the time they can run again.
+  // @say A task that just ran can't run for {n} more {n === 1 ? "unit" : "units"}, so park it here with the time it becomes ready. Tasks enter in time order, so the front is always the next one to wake up.
   const queue: [number, number][] = []; // [remaining count, ready time]
   // @why Front of the cooldown queue (an index, so no slow shifting).
   let head = 0;
@@ -148,27 +157,44 @@ export function leastInterval(tasks: string[], n: number): number {
   let time = 0;
 
   // @why Keep going while any task is ready or cooling down.
+  // @phase Each time unit: run the biggest ready task, or wait
+  // @yes {heap.data.length} {heap.data.length === 1 ? "task is" : "tasks are"} ready and {queue.length - head} cooling, so there is still work left.
+  // @no Nothing is ready and nothing is cooling: every copy has run.
+  // @say {heap.data.length > 0 || head < queue.length ? heap.data.length + " ready, " + (queue.length - head) + " cooling down, so there is still work left." : "Nothing is ready and nothing is cooling: every copy has run."}
   while (heap.size() > 0 || head < queue.length) {
     // @why One time unit passes.
+    // @say Time unit {time + 1} begins.
     time++;
     // @why If a task is ready, run the one with the most left.
+    // @yes A task is ready. Run the one with the most copies left, {heap.data[0]}.
+    // @no Every remaining task is cooling down, so this unit must be idle.
+    // @say {heap.data.length > 0 ? "A task is ready. Run the one with the most copies left (" + heap.data[0] + "): it is the hardest to fit in later." : "Every remaining task is cooling down, so this unit must be idle."}
     if (heap.size() > 0) {
       // @why Run it once, so one less remains.
+      // @say Run one copy of it at time {time}: {heap.data[0]} − 1 = {heap.data[0] - 1} left.
       const cnt = heap.pop()! - 1; // @ask cnt
       // @why If more remain, park it until the cooldown ends.
+      // @yes {cnt} {cnt === 1 ? "copy remains" : "copies remain"}, but it just ran, so park it until time {time} + {n} = {time + n}.
+      // @no That was its last copy, so it leaves for good.
       if (cnt > 0) queue.push([cnt, time + n]);
     // @why Nothing is ready, so we would sit idle.
     } else {
       // @why Skip straight to when the next task is ready instead of ticking.
+      // @say {queue[head][1] > time ? "Units " + time + " to " + queue[head][1] + " are idle: the first parked task only wakes at the end of " + queue[head][1] + ". Skip them in one jump instead of ticking." : "Unit " + time + " is idle. The first parked task wakes at the end of it, so it can run next unit."}
       time = queue[head][1]; // idle until the next task is ready // @ask time // @moment idle until {queue[head][1]}
     }
     // @why If the oldest cooling task is ready now, move it back to the heap.
+    // @yes The task parked longest wakes at time {queue[head][1]}, which is now: it can compete again next unit.
+    // @no {head < queue.length ? "The first parked task wakes at time " + queue[head][1] + ", not yet" : "Nothing is cooling down"}, so the ready set stays as is.
     if (head < queue.length && queue[head][1] === time) {
       // @why Put it back into the heap to be picked again.
+      // @say Move it, with {queue[head][0]} {queue[head][0] === 1 ? "copy" : "copies"} left, back into the ready heap.
       heap.push(queue[head++][0]); // @moment task back from cooldown at {time}
     }
   }
   // @why The total time units used.
+  // @phase Answer
+  // @returns {time}: the unit the last copy ran in, counting {time - tasks.length} idle {time - tasks.length === 1 ? "unit" : "units"} that the cooldown forced.
   return time;
 }
 

@@ -18,9 +18,16 @@ function parenContent(code: string, from: number): string | null {
   const open = code.indexOf("(", from);
   if (open < 0) return null;
   let depth = 0;
+  let quote = "";
   for (let i = open; i < code.length; i++) {
-    if (code[i] === "(") depth++;
-    else if (code[i] === ")" && --depth === 0) return code.slice(open + 1, i);
+    const ch = code[i];
+    // Brackets inside a string, as in `c === "("`, don't count.
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = "";
+    } else if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && --depth === 0) return code.slice(open + 1, i);
   }
   return null;
 }

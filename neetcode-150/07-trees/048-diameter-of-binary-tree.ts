@@ -59,29 +59,48 @@ export class TreeNode {
 // @viz best:best
 // @rule height returns its subtree's height; best is the longest bend l + r seen so far
 // @why The diameter is the longest path (counted in edges) between any two nodes.
+// @goal what is the longest path between any two nodes of this tree?
 export function diameterOfBinaryTree(root: TreeNode | null): number {
   // @why `best` remembers the longest path seen at any node so far.
+  // @phase Setup
+  // @say Any longest path bends at exactly one node: its highest point. So the answer is, over every node, (deepest path down-left) + (deepest path down-right). One walk that returns heights gives both sides at every node.
   let best = 0;
 
   // @why Returns a subtree's height, and updates `best` as a side effect.
+  // @goal how tall is the subtree under {node ? node.val : "this empty spot"}, and what is the longest bend inside it?
   const height = (node: TreeNode | null): number => {
     // @why An empty subtree has height 0.
+    // @phase Post-order: ask both children, then decide at this node
+    // @yes Empty spot: no nodes, so no edges going down.
+    // @no Node {node.val}. Its best bend needs both children's heights first, so ask them before doing anything here.
+    // @returns 0, so a leaf above sees "nothing below me on this side".
     if (!node) return 0;
     // @why Height of the left subtree, which is the longest path going down-left.
+    // @say Ask the left child: how far down can a path go on {node.val}'s left side?
+    // @then Left side of {node.val} goes {l} deep.
     const l = height(node.left);
     // @why Height of the right subtree, which is the longest path going down-right.
+    // @say Ask the right child the same question for {node.val}'s right side.
+    // @then Right side of {node.val} goes {r} deep.
     const r = height(node.right);
     // @why A path bending at this node uses both sides, so its length is `l + r`; keep the max.
+    // @say A path bending at {node.val} goes {l} down the left and {r} down the right: {l + r} edges. Best so far was {best}. {l + r > best ? "New longest path." : "Not longer, so best stays."}
     best = Math.max(best, l + r); // @ask best
     // @why Our height is one more than our taller side.
+    // @say The parent can only continue a path down ONE side of {node.val}, not bend twice, so pass up the taller side plus the edge to {node.val}: 1 + max({l}, {r}) = {1 + Math.max(l, r)}.
     const h = 1 + Math.max(l, r); // @ask h
     // @why Tell the parent our height.
+    // @returns {h}: a path entering {node.val} from above can reach {h} {h === 1 ? "edge" : "edges"} down.
     return h;
   };
 
   // @why Start the walk at the root; we only care about the `best` it fills in.
+  // @phase Walk the whole tree once
+  // @say Start at the root. Its return value is just the height; the answer is collected in `best` along the way.
   height(root);
   // @why After visiting every node, `best` is the longest path anywhere.
+  // @phase Answer
+  // @returns {best}: every node was considered as the bend point exactly once, so O(n).
   return best;
 }
 

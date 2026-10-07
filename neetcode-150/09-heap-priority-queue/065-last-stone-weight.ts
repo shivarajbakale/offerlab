@@ -125,21 +125,38 @@ class Heap<T> {
 
 // @rule the heap holds every stone still left, heaviest on top
 // @why Smash the two heaviest stones repeatedly; return the weight left, or 0.
+// @goal smashing the two heaviest of {JSON.stringify(stones)} again and again, what weight is left at the end?
 export function lastStoneWeight(stones: number[]): number {
   // @why A max-heap, so the heaviest stone is always on top.
+  // @phase Setup: heaviest stone always on top
+  // @say Re-sorting the stones after every smash costs n log n per round. A max-heap hands over the heaviest stone in O(log n) and takes the leftover back just as fast.
   const heap = new Heap<number>((a, b) => b - a); // max-heap
   // @why Load every stone into the heap.
+  // @say Load all {stones.length} stones; the heap keeps the heaviest at the top as they go in.
+  // @then {heap.data.length} of {stones.length} stones loaded, heaviest on top: {heap.data[0]}.
   for (const s of stones) heap.push(s);
   // @why Smash while at least two stones remain.
+  // @phase Smash the two heaviest
+  // @yes {heap.data.length} stones remain, so there is still a pair to smash.
+  // @no {heap.data.length === 1 ? "Only a stone of weight " + heap.data[0] + " is left, with nothing to hit" : "No stones are left: the last pair destroyed each other"}, so the game is over.
+  // @say {heap.data.length > 1 ? heap.data.length + " stones remain, so there is still a pair to smash." : heap.data.length === 1 ? "Only a stone of weight " + heap.data[0] + " is left, with nothing to hit, so the game is over." : "No stones are left: the last pair destroyed each other, so the game is over."}
   while (heap.size() > 1) {
     // @why The heaviest stone.
+    // @say Take the heaviest stone, {heap.data[0]}, off the top.
     const y = heap.pop()!; // @ask y
     // @why The second heaviest stone.
+    // @say The next top, {heap.data[0]}, is the second heaviest. The rules always smash these two, so no other pair needs checking.
     const x = heap.pop()!;
     // @why Equal stones destroy each other; otherwise a stone of the difference is left.
+    // @yes {y} beats {x}: a stone of {y} − {x} = {y - x} survives and goes back in the heap, where it may be heaviest again later.
+    // @no Both weigh {y}, so both are destroyed and nothing goes back.
+    // @say {y !== x ? y + " beats " + x + ": a stone of " + y + " − " + x + " = " + (y - x) + " survives and goes back in the heap, where it may be heaviest again later." : "Both weigh " + y + ", so both are destroyed and nothing goes back."}
+    // @then {heap.data.length} {heap.data.length === 1 ? "stone remains" : "stones remain"}.
     if (y !== x) heap.push(y - x); // @ask heap.data.length // @moment smash {y} vs {x}
   }
   // @why Return the last stone, or 0 if none are left.
+  // @phase Answer
+  // @returns {heap.data.length ? heap.data[0] + ": the one stone that never found a partner" : "0: every stone was destroyed"}. Each round cost O(log n), so O(n log n) overall.
   return heap.peek() ?? 0;
 }
 

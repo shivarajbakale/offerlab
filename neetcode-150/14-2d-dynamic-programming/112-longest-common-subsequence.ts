@@ -46,22 +46,33 @@ import assert from "node:assert/strict";
 
 // @rule dp[i][j] is the LCS length of the suffixes text1[i..] and text2[j..]
 // @why Returns the length of the longest sequence that appears in order in both strings.
+// @goal how long is the longest subsequence shared by "{text1}" and "{text2}"?
 export function longestCommonSubsequence(text1: string, text2: string): number {
   // @why Length of `text1`.
+  // @phase Setup: a table of suffix answers
+  // @say Trying every subsequence of "{text1}" is 2^{text1.length} options. But the LCS of two suffixes depends only on the LCS of slightly shorter suffixes, so there are just ({text1.length} + 1) x ({text2.length} + 1) subproblems to solve once each.
   const m = text1.length;
   // @why Length of `text2`.
   const n = text2.length;
   // @why `dp[i][j]` means the LCS of `text1[i..]` and `text2[j..]`; the extra row and column of 0s are empty suffixes.
   const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
   // @why Go from the end of `text1` so the rows after `i` are done.
-  for (let i = m - 1; i >= 0; i--) { // @say dp[i][j] = LCS of the suffixes text1[i..] and text2[j..]
+  // @phase Fill the table from the back: shorter suffixes first
+  // @yes Row {i}: suffix "{text1.slice(i)}". The row below it ({i + 1 === m ? "the empty suffix, all 0s" : "suffix \"" + text1.slice(i + 1) + "\""}) is complete, which every cell here may need.
+  // @no Every pair of suffixes is solved; the top-left cell covers both whole strings.
+  for (let i = m - 1; i >= 0; i--) {
     // @why Go from the end of `text2` so the cells after `j` are done.
-    for (let j = n - 1; j >= 0; j--) { // @say Fill from the end so dp[i+1] and dp[j+1] are ready
+    // @yes Compare "{text1.slice(i)}" with "{text2.slice(j)}". The cells to the right and below are already known.
+    // @no Row {i} is done: dp[{i}][0] = {dp[i][0]} is the LCS of "{text1.slice(i)}" with all of "{text2}".
+    for (let j = n - 1; j >= 0; j--) {
       // @why If the letters match, count them and move both forward; otherwise drop one letter from either string and take the better.
-      dp[i][j] = text1[i] === text2[j] ? 1 + dp[i + 1][j + 1] : Math.max(dp[i + 1][j], dp[i][j + 1]); // @ask dp[i][j] // @say {text1[i]} vs {text2[j]}: match extends diagonal, else best of skip one
+      // @say {text1[i] === text2[j] ? "Both start with " + text1[i] + ": pairing them never hurts, so take 1 + the LCS of what follows both, " + dp[i + 1][j + 1] + ", = " + (1 + dp[i + 1][j + 1]) + "." : text1[i] + " vs " + text2[j] + ": they can't pair with each other, so at least one is unused. Drop " + text1[i] + " (" + dp[i + 1][j] + ") or drop " + text2[j] + " (" + dp[i][j + 1] + "), keep the better: " + Math.max(dp[i + 1][j], dp[i][j + 1]) + "."}
+      dp[i][j] = text1[i] === text2[j] ? 1 + dp[i + 1][j + 1] : Math.max(dp[i + 1][j], dp[i][j + 1]); // @ask dp[i][j]
     }
   }
   // @why `dp[0][0]` covers both whole strings.
+  // @phase Answer
+  // @returns {dp[0][0]}: the LCS of the two whole strings, after filling {m * n} cells once each.
   return dp[0][0];
 }
 

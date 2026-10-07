@@ -37,17 +37,29 @@ import assert from "node:assert/strict";
 
 // @rule seen holds every number before n, and no two of them are equal
 // @why Return true as soon as any value shows up a second time.
+// @goal does any value in {JSON.stringify(nums)} appear twice?
 export function containsDuplicate(nums: number[]): boolean {
   // @why A set remembers every value we passed and checks membership instantly.
+  // @phase Setup: an empty memory of values passed
+  // @say Comparing every pair is n² work. A repeat only needs one earlier copy, so remember each value as we pass it and ask the memory instead.
   const seen = new Set<number>();
   // @why Look at each number once, left to right.
+  // @phase One pass: each value checks the memory, then joins it
+  // @say Next value: {n}. Everything before it is already in `seen`, so one lookup compares {n} against all of them at once.
   for (const n of nums) {
     // @why If we already stored this value, it is a repeat, so we can stop with the answer.
+    // @yes {n} is already in {JSON.stringify([...seen])}: an earlier copy exists, so this is a repeat. No later value can change that answer, so stop now.
+    // @no {n} is not in {JSON.stringify([...seen])}, so no earlier value equals it. It may still match a later value, so keep it.
+    // @returns true: one repeat is enough, the rest of the array does not matter.
     if (seen.has(n)) return true; // @ask seen.has(n)
     // @why First time seeing it, so store it for later numbers to be checked against.
+    // @then `seen` = {JSON.stringify([...seen])}: every value so far is distinct, and each later value will be checked against all of them.
     seen.add(n);
   }
   // @why We never hit a repeat, so every value was different.
+  // @phase Verdict: no value repeated
+  // @say Every value checked the memory and none was already there, so all {nums.length} values are distinct.
+  // @returns false: no value ever found an earlier copy.
   return false;
 }
 

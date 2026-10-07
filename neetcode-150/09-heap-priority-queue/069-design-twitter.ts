@@ -142,68 +142,106 @@ export class Twitter {
   private following = new Map<number, Set<number>>();
 
   // @why Save a tweet for a user.
+  // @goal user {userId} posts tweet {tweetId}: where does it go so feeds can find it fast?
   postTweet(userId: number, tweetId: number): void {
     // @why Make a tweet list the first time a user posts.
+    // @phase Post: append to the author's own list
+    // @yes User {userId} has never posted, so give them an empty list first.
+    // @no User {userId} already has a list of {this.tweets.get(userId).length}, so just add to it.
     if (!this.tweets.has(userId)) this.tweets.set(userId, []);
     // @why Add the tweet with the next time stamp.
+    // @say Stamp tweet {tweetId} with time {this.time}, newer than every tweet before it. Appending keeps each user's list sorted oldest to newest for free, so a feed never has to sort it.
     this.tweets.get(userId)!.push({ time: this.time++, id: tweetId });
   }
 
   // @why The 10 newest tweet ids from the user and everyone they follow.
+  // @goal what are the 10 newest tweets user {userId} should see?
   getNewsFeed(userId: number): number[] {
     // @why A max-heap on time, so the newest tweet is always on top.
+    // @phase Feed: one candidate per source
+    // @say Gathering every tweet from every followed user and sorting costs time for tweets nobody will see. Each user's list is already sorted, so this is a merge: keep only each source's newest unshown tweet in a max-heap, and the top is always the next tweet of the feed.
     const heap = new Heap<Entry>((a, b) => b.time - a.time); // max-heap
     // @why Copy the followed users into a new set so we don't change the original.
+    // @say User {userId} follows {JSON.stringify([...(this.following.get(userId) ?? [])])}. Copy that set, so adding the user below does not change who they follow.
     const sources = new Set(this.following.get(userId) ?? []);
     // @why Users see their own tweets too.
+    // @say Add user {userId} to the sources: your own tweets belong in your feed too.
     sources.add(userId);
 
     // @why Start with each person's newest tweet only.
+    // @say Source: user {u}.
     for (const u of sources) {
       // @why That person's tweets.
+      // @say User {u}'s tweets, oldest first: {JSON.stringify(this.tweets.get(u) ?? [])}.
       const list = this.tweets.get(u);
       // @why Skip people who have not posted.
+      // @yes User {u} has {list.length === 1 ? "one tweet, so it is their candidate" : list.length + " tweets. Only the newest can be the next one shown from them, so it alone is the candidate"}.
+      // @no User {u} has never posted, so they add no candidate.
       if (list && list.length > 0) {
         // @why Their newest tweet is the last one.
+        // @say The newest is the last in the list, at index {list.length - 1}.
         const idx = list.length - 1;
         // @why Add it with the author and position, so we can step back later.
+        // @say Add tweet {list[idx].id} (time {list[idx].time}) with its author and position, so once it is shown the heap knows where user {u}'s next older tweet is.
         heap.push({ ...list[idx], user: u, idx });
       }
     }
 
     // @why The feed we are building.
+    // @phase Feed: take the newest, then refill from its author
+    // @say {heap.data.length} {heap.data.length === 1 ? "candidate" : "candidates"} in the heap, one per source that has posted.
     const feed: number[] = [];
     // @why Take the newest tweet until we have 10 or run out.
+    // @yes The feed has {feed.length} of 10 and {heap.data.length} {heap.data.length === 1 ? "candidate is" : "candidates are"} waiting, so take the next one.
+    // @no {feed.length === 10 ? "The feed is full at 10" : "Every source has run out of tweets"}, so stop.
+    // @say {heap.data.length > 0 && feed.length < 10 ? "The feed has " + feed.length + " of 10 and " + heap.data.length + " waiting, so take the next one." : feed.length === 10 ? "The feed is full at 10, so stop." : "Every source has run out of tweets, so stop at " + feed.length + "."}
     while (heap.size() > 0 && feed.length < 10) {
       // @why The newest tweet among all candidates.
+      // @say The top, tweet {heap.data[0].id} from user {heap.data[0].user}, {heap.data.length > 1 ? "is newer than every other source's newest unshown tweet, and each source's older ones are older still, so nothing can beat it." : "is the only candidate left."}
       const top = heap.pop()!; // @ask top.id
       // @why Add it to the feed.
+      // @say Tweet {top.id} goes next in the feed.
       feed.push(top.id); // @moment feed gets tweet {top.id}
       // @why If that author has an older tweet, it is the next candidate from them.
+      // @yes User {top.user} has older tweets. The one just before, at index {top.idx - 1}, is now their newest unshown, so it replaces the one taken.
+      // @no That was user {top.user}'s oldest tweet, so they have no more candidates.
       if (top.idx > 0) {
         // @why Position of their next older tweet.
         const idx = top.idx - 1;
         // @why Add that older tweet to the heap.
+        // @say Add tweet {this.tweets.get(top.user)[idx].id} (time {this.tweets.get(top.user)[idx].time}). Each source still has at most one candidate, so the heap stays small.
         heap.push({ ...this.tweets.get(top.user)![idx], user: top.user, idx }); // @ask heap.data.length
       }
     }
     // @why Return the newest-first list.
+    // @returns {JSON.stringify(feed)}, newest first. Only the tweets shown (plus one per source) went through the heap, not every tweet.
     return feed;
   }
 
   // @why Start following someone.
+  // @goal user {followerId} follows user {followeeId}: what has to change?
   follow(followerId: number, followeeId: number): void {
     // @why Following yourself does nothing, since your own tweets show anyway.
+    // @phase Follow: one entry in a set
+    // @yes A user following themselves changes nothing: their own tweets are always in their feed.
+    // @no {followerId} and {followeeId} are different users, so record it.
+    // @returns nothing; there is nothing to record.
     if (followerId === followeeId) return;
     // @why Make a follow set the first time this user follows someone.
+    // @yes User {followerId} follows nobody yet, so give them an empty set.
+    // @no User {followerId} already follows {JSON.stringify([...this.following.get(followerId)])}.
     if (!this.following.has(followerId)) this.following.set(followerId, new Set());
     // @why Record the follow; a set ignores repeats.
+    // @say Add {followeeId}. A set makes a repeat follow harmless and unfollow O(1); past tweets need no copying, since feeds read authors' lists directly.
     this.following.get(followerId)!.add(followeeId);
   }
 
   // @why Stop following someone.
+  // @goal user {followerId} unfollows user {followeeId}: what has to change?
   unfollow(followerId: number, followeeId: number): void {
     // @why Remove them if the user follows anyone; otherwise do nothing.
+    // @phase Unfollow: remove one entry
+    // @say Remove {followeeId} from user {followerId}'s follow set. Their tweets stay where they are; the next feed simply stops reading them.
     this.following.get(followerId)?.delete(followeeId);
   }
 }

@@ -39,19 +39,29 @@ import assert from "node:assert/strict";
 // @viz hide:p best:best
 // @rule minPrice is the cheapest price on any day up to today
 // @why Return the best profit from one buy followed by one later sell.
+// @goal what is the most you can make buying once and selling later, with prices {JSON.stringify(prices)}?
 export function maxProfit(prices: number[]): number {
   // @why Cheapest price seen so far; the best day to have bought.
+  // @phase Setup: remember the cheapest buy so far
+  // @say Trying every buy day with every later sell day is n² work. But for any sell day, the best buy is simply the cheapest day before it, so one running minimum replaces the inner loop.
   let minPrice = Infinity;
   // @why Best profit so far; 0 means never trade.
   let best = 0;
   // @why Take each day in order, so a sell always comes after the buy.
+  // @phase Each day: could it be the buy day, or the sell day?
+  // @say Day with price {p}. Cheapest buy so far: {minPrice === Infinity ? "none yet" : minPrice}. Best profit so far: {best}.
   for (const p of prices) {
     // @why If today is cheaper than any earlier day, it becomes the buy day.
-    minPrice = Math.min(minPrice, p); // @ask minPrice // @say Today's price {p}: is it the cheapest day to buy so far?
+    // @say {minPrice === Infinity ? p + " is the first price, so it is the cheapest buy so far." : p < minPrice ? p + " is cheaper than the old low " + minPrice + ", so it becomes the buy day for every later sale." : p + " is not cheaper than " + minPrice + ", so the best buy day stays."}
+    minPrice = Math.min(minPrice, p); // @ask minPrice
     // @why If we sold today, we'd earn `p - minPrice`; keep it if it beats the best.
-    best = Math.max(best, p - minPrice); // @ask best // @say Selling today earns {p - minPrice} over the cheapest buy; keep the max
+    // @say Sell today: {p} − {minPrice} = {p - minPrice}. Best so far was {best}. {p - minPrice > best ? "New best." : "Not better, so best stays."}
+    // @then Best profit from any buy-then-sell up to today: {best}.
+    best = Math.max(best, p - minPrice); // @ask best
   }
   // @why The top profit, or 0 if prices only fall.
+  // @phase Answer
+  // @returns {best === 0 ? "0: prices never rose after a low, so the best move is not to trade." : best + ": every sell day was paired with the cheapest day before it, in one pass."}
   return best;
 }
 

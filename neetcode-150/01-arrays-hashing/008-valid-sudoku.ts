@@ -43,8 +43,11 @@ import assert from "node:assert/strict";
 
 // @rule rows[r], cols[c] and boxes[b] hold every digit already placed in them
 // @why Return true if no row, column or 3x3 box repeats a digit.
+// @goal does any row, column or 3x3 box of this board repeat a digit?
 export function isValidSudoku(board: string[][]): boolean {
   // @why One set of seen digits for each row.
+  // @phase Setup: a memory of digits for each row, column and box
+  // @say Rescanning a row, column and box for every cell is 27 reads per cell. Instead remember what each of the 27 units already holds, so checking a digit is 3 lookups.
   const rows = Array.from({ length: 9 }, () => new Set<string>());
   // @why One set of seen digits for each column.
   const cols = Array.from({ length: 9 }, () => new Set<string>());
@@ -52,26 +55,41 @@ export function isValidSudoku(board: string[][]): boolean {
   const boxes = Array.from({ length: 9 }, () => new Set<string>());
 
   // @why Go through every row.
+  // @phase Scan every cell once, checking it against its three units
+  // @yes Row {r}.
+  // @no All 81 cells checked.
   for (let r = 0; r < 9; r++) {
     // @why Go through every cell in the row.
+    // @yes Column {c} of row {r}.
+    // @no Row {r} is done.
     for (let c = 0; c < 9; c++) {
       // @why The digit (or a dot) in this cell.
+      // @say Cell ({r}, {c}) holds "{board[r][c]}".
       const v = board[r][c];
       // @why An empty cell can't break a rule, so skip it.
+      // @yes Empty cell: it can't repeat anything, so skip it.
+      // @no "{v}" is a digit, so it must be new to its row, column and box.
       if (v === ".") continue;
       // @why Turn the row and column into a box number from 0 to 8.
+      // @say Rows {Math.floor(r / 3) * 3}-{Math.floor(r / 3) * 3 + 2} and columns {Math.floor(c / 3) * 3}-{Math.floor(c / 3) * 3 + 2} make box {Math.floor(r / 3) * 3 + Math.floor(c / 3)}: (row ÷ 3) picks the band, (column ÷ 3) the box within it.
       const b = Math.floor(r / 3) * 3 + Math.floor(c / 3); // @ask b
       // @why If this digit is already in its row, column or box, the board is invalid.
+      // @yes "{v}" already appears in {rows[r].has(v) ? "row " + r : cols[c].has(v) ? "column " + c : "box " + b}. One repeat breaks the board, so stop.
+      // @no "{v}" is new to row {r}, column {c} and box {b}.
+      // @returns false: a digit repeats.
       if (rows[r].has(v) || cols[c].has(v) || boxes[b].has(v)) return false;
       // @why Remember the digit in this row.
       rows[r].add(v);
       // @why Remember the digit in this column.
       cols[c].add(v);
       // @why Remember the digit in this box.
+      // @then Box {b} now holds {JSON.stringify([...boxes[b]])}.
       boxes[b].add(v);
     }
   }
   // @why No repeats found anywhere, so the board is valid.
+  // @say Every digit was new to its row, column and box when it was placed.
+  // @returns true: no unit repeats a digit.
   return true;
 }
 

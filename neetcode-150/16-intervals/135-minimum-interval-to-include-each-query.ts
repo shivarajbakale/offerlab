@@ -124,10 +124,14 @@ class MinHeap<T extends number[]> {
 
 // @rule heap holds intervals that start by q, smallest size on top; ended ones get popped
 // @why For each query, returns the size of the smallest interval containing it, or -1.
+// @goal for each query in {JSON.stringify(queries)}, how big is the smallest interval from {JSON.stringify(intervals)} that contains it?
 export function minInterval(intervals: number[][], queries: number[]): number[] {
   // @why Sort intervals by start so we can add them as queries grow.
+  // @phase Setup: sort intervals so they can join in order
+  // @say Checking every interval against every query is (intervals × queries) work. Instead sweep the queries from small to large: an interval joins once its start is reached and is dropped once its end falls behind, so each one is handled only a few times.
   const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
   // @why Holds the intervals that have started, ordered by size; `right` is kept to spot expired ones.
+  // @say A min-heap ordered by size keeps the smallest started interval on top, so each query reads its answer straight off the top.
   const heap = new MinHeap<[number, number]>(); // [size, right]
   // @why Saves each query's result, since we answer in sorted order.
   const answer = new Map<number, number>();
@@ -135,22 +139,34 @@ export function minInterval(intervals: number[][], queries: number[]): number[] 
   let i = 0;
 
   // @why Handle queries from small to large, so intervals that expired once stay expired.
+  // @phase Sweep the queries from smallest to largest
+  // @say Smallest query first: {q}.
   for (const q of [...queries].sort((a, b) => a - b)) {
     // @why Add every interval that starts at or before `q`.
+    // @yes [{sorted[i][0]},{sorted[i][1]}] starts at {sorted[i][0]}, at or before {q}, so it may contain {q}. Add it.
+    // @no {i < sorted.length ? "The next interval starts at " + sorted[i][0] + ", after " + q + ", so it can't contain " + q + "; it waits for a larger query." : "Every interval has been added already."}
     while (i < sorted.length && sorted[i][0] <= q) {
       // @why Left and right ends of the interval being added.
       const [l, r] = sorted[i++];
       // @why Store its size first so the smallest comes out on top.
+      // @say Push size {r} − {l} + 1 = {r - l + 1}, together with its right end {r} so you can tell later when it has run out.
       heap.push([r - l + 1, r]); // @ask heap.data.length
     }
     // @why Throw away intervals that end before `q`; they cannot cover it, or any later query.
+    // @yes The smallest interval on top ends at {heap.data[0][1]}, before {q}. It can't contain {q}, and later queries are even larger, so drop it for good.
+    // @no {heap.data.length ? "The top interval ends at " + heap.data[0][1] + ", at or after " + q + ", and it started by " + q + ", so it contains " + q + ". Expired ones buried below can wait: only the top is read." : "The heap is empty: no started interval reaches " + q + "."}
+    // @say {heap.data.length && heap.data[0][1] < q ? "The smallest interval on top, size " + heap.data[0][0] + ", ends at " + heap.data[0][1] + ", before " + q + ". It can't contain " + q + ", and later queries are even larger, so drop it for good." : heap.data.length ? "The top interval ends at " + heap.data[0][1] + ", at or after " + q + ", and it started by " + q + ", so it contains " + q + ". Expired ones buried below can wait: only the top is read." : "The heap is empty: no started interval reaches " + q + "."}
     while (heap.size && heap.peek()![1] < q) heap.pop();
     // @why The top of the heap is the smallest interval covering `q`, or -1 if the heap is empty.
+    // @say {heap.data.length ? "The smallest interval containing " + q + " has size " + heap.data[0][0] + "." : "Nothing contains " + q + ", so its answer is -1."}
     const best = heap.size ? heap.peek()![0] : -1; // @ask best // @moment query {q}
     // @why Remember the answer for this query.
+    // @say Store {q} → {best}. The queries were answered in sorted order, so the map puts them back in the original order at the end.
     answer.set(q, best);
   }
   // @why Return the answers in the original query order.
+  // @phase Answer
+  // @returns {JSON.stringify(queries.map((x) => answer.get(x)))}: each answer in the original query order. Each interval entered and left the heap at most once, so the work is dominated by the sorts.
   return queries.map((q) => answer.get(q)!);
 }
 

@@ -45,15 +45,24 @@ import assert from "node:assert/strict";
 
 // @rule result is n xor every index and value seen so far; numbers present cancel in pairs
 // @why Returns the one number from 0..n missing from `nums`.
+// @goal which number from 0 to {nums.length} is missing from {JSON.stringify(nums)}?
 export function missingNumber(nums: number[]): number {
   // @why Start with `n` (the array length), because the loop only covers indexes 0 to n-1.
+  // @phase Setup: one list of every number that should be there
+  // @say Sorting costs n log n and a set needs O(n) memory. Instead, XOR together every number that should be there (0..{nums.length}) and every number that is there. Each present number appears twice and cancels (x ^ x = 0), so only the missing one survives. The indices 0..{nums.length - 1} plus this {nums.length} give the full "should be there" list.
   let result = nums.length;
   // @why Visit every index.
+  // @phase Pair up "should be there" with "is there"
+  // @yes Index {i} adds {i} to the "should be" side, and nums[{i}] = {nums[i]} to the "is there" side.
+  // @no Every index and value is folded in. Each number present met its twin from the 0..{nums.length} list.
   for (let i = 0; i < nums.length; i++) {
     // @why XOR in the index and the value at it. Numbers present show up twice and cancel, so the missing one is left.
+    // @say {result} ^ {i} ^ {nums[i]} = {result ^ i ^ nums[i]}. Order doesn't matter for XOR, so {i} and {nums[i]} each cancel whenever their twin shows up, earlier or later. Only a number with no twin is left at the end.
     result ^= i ^ nums[i]; // @ask result
   }
   // @why The only number without a partner is the missing one.
+  // @phase Answer
+  // @returns {result}: it appeared only in the 0..{nums.length} list, never in the array, so nothing cancelled it. O(n) time, O(1) space.
   return result;
 }
 

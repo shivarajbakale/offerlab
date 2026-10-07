@@ -64,19 +64,31 @@ export class TreeNode {
 
 // @rule cur is always an ancestor of both p and q
 // @why Find the lowest node that has both `p` and `q` under it, using BST ordering.
+// @goal which is the lowest node that has both {p.val} and {q.val} below it (or is one of them)?
 export function lowestCommonAncestor(root: TreeNode | null, p: TreeNode, q: TreeNode): TreeNode | null {
   // @why Walk down from the root with a pointer, no recursion needed.
+  // @phase Setup
+  // @say In a plain tree you would have to search both sides for {p.val} and {q.val}. A BST tells you where each one lives just by comparing with a node, so one walk down from the root is enough, O(h).
   let cur = root;
   // @why Keep going while there is a node to look at.
+  // @phase Walk down while both targets are on the same side
+  // @yes At {cur.val}, which is an ancestor of both {p.val} and {q.val}. Is there a lower one?
+  // @no Fell off the tree. That only happens if the tree was empty.
   while (cur) {
     // @why Both targets are smaller, so the answer must be in the left subtree.
+    // @yes {p.val} and {q.val} are both less than {cur.val}, so both live in its left subtree, and a lower common ancestor is there too. Go left.
+    // @no They are not both smaller than {cur.val}.
     if (p.val < cur.val && q.val < cur.val) cur = cur.left; // @ask cur.val
     // @why Both targets are bigger, so the answer must be in the right subtree.
+    // @yes {p.val} and {q.val} are both greater than {cur.val}, so both live in its right subtree. Go right.
+    // @no Not both bigger either. So they split at {cur.val}: one goes left and one right, or one of them is {cur.val} itself.
     else if (p.val > cur.val && q.val > cur.val) cur = cur.right; // @ask cur.val
     // @why They split here (or one equals this node), so this is the lowest common ancestor.
+    // @returns node {cur.val}: going lower down either side would lose one of {p.val} and {q.val}, so this is the lowest node holding both.
     else return cur; // @moment split at {cur.val}
   }
   // @why Only reached for an empty tree; there is no ancestor.
+  // @returns null: an empty tree has no ancestor at all.
   return null;
 }
 

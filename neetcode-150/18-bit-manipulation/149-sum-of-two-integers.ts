@@ -41,17 +41,26 @@ import assert from "node:assert/strict";
 
 // @rule a + b always equals the original sum; b holds the carries still to add
 // @why Adds two integers without using + or -, using only bit operations.
+// @goal what is {a} + {b}, using only bit operations?
 export function getSum(a: number, b: number): number {
   // @why Repeat until there is no carry left to add.
+  // @phase Column-by-column binary addition: XOR is the sum without carries, AND shifted left is the carries
+  // @yes Still {b} to add, so a + b is not finished. Adding 1 at a time could take billions of steps; adding whole columns at once pushes every carry at least one column left per round, so this loop runs at most 32 times.
+  // @no Nothing left to add: the carry is 0, so a = {a} is the whole sum.
   while (b !== 0) {
     // @why `a & b` finds the places where both bits are 1; those create a carry, which belongs one place left.
+    // @say Columns where both have a 1: {a} & {b} = {a & b}. Each such 1+1 makes a carry into the next column left, so shift: {(a & b) << 1}.
     const carry = (a & b) << 1; // @ask carry
     // @why XOR adds each pair of bits while ignoring the carry (1+1 gives 0 here).
+    // @say Add every column without carrying: {a} ^ {b} = {a ^ b}. 0+1 and 1+0 give 1; 1+1 gives 0 here because its carry was saved above.
     a = a ^ b; // @ask a
     // @why Now add the carry in the next round.
+    // @say The no-carry sum {a} plus the carries {carry} still equals the original total, so add those two next.
     b = carry; // @moment carry {carry} left to add
   }
   // @why With no carry left, `a` holds the full sum.
+  // @phase Answer
+  // @returns {a}: with no carries left, the no-carry sum is the real sum. Negative numbers work too, because two's complement uses the same bit rules.
   return a;
 }
 

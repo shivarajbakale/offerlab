@@ -46,31 +46,45 @@ import assert from "node:assert/strict";
 
 // @rule prevEnd is the end of the last kept interval, as small as any choice allows
 // @why Returns the fewest intervals to remove so none overlap.
+// @goal how few intervals must go from {JSON.stringify(intervals)} so the rest never overlap?
 export function eraseOverlapIntervals(intervals: number[][]): number {
   // @why Sort by start so we can compare each interval with the one kept before it.
+  // @phase Setup: sort, and keep the first interval
+  // @say Trying every subset to keep is 2^n. Instead, sort by start and walk once: whenever two clash, one must go, and the greedy choice is to keep whichever ends sooner.
   const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
   // @why The end of the last interval we kept.
+  // @say Keep [{sorted[0][0]},{sorted[0][1]}] for now. Only its end, {sorted[0][1]}, matters to whatever comes next.
   let prevEnd = sorted[0][1];
   // @why Counts the intervals we throw away.
   let removed = 0;
 
   // @why Look at every interval after the first.
+  // @phase One pass: keep it, or drop whichever of the clashing pair ends later
+  // @yes Next: {JSON.stringify(sorted[i])}, against the last kept end {prevEnd}.
+  // @no Every interval has been kept or dropped.
   for (let i = 1; i < sorted.length; i++) {
     // @why The current interval.
     const [start, end] = sorted[i];
     // @why It starts after the last kept one ends, so there is no overlap.
+    // @yes [{start},{end}] starts at {start}, at or after the last kept end {prevEnd}. They don't clash, so keep it for free.
+    // @no [{start},{end}] starts at {start}, before the last kept end {prevEnd}. They clash, so one of the two must be removed.
     if (start >= prevEnd) {
       // @why Keep it and move the frontier to its end.
+      // @say Keep it. The next interval now has to clear {end} instead of {prevEnd}.
       prevEnd = end; // @ask prevEnd
     // @why Overlap: one of the two must go.
     } else {
       // @why Count the one we remove.
+      // @say Remove one: {removed} → {removed + 1}. Which one doesn't change the count, only what is left for later.
       removed++; // @moment overlap: drop one (removed {removed+1})
       // @why Keep the one that ends sooner; it leaves the most room for later intervals.
+      // @say Keep the one ending sooner: min({prevEnd}, {end}) = {Math.min(prevEnd, end)}. An earlier end can only clash with fewer later intervals, never more.
       prevEnd = Math.min(prevEnd, end); // @ask prevEnd
     }
   }
   // @why The minimum number of removals.
+  // @phase Answer
+  // @returns {removed}: every clash cost exactly one removal, and keeping the earlier end each time never caused an extra clash.
   return removed;
 }
 

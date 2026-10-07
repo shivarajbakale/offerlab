@@ -56,55 +56,83 @@ export class ListNode {
 }
 
 // @why Merge two sorted lists into one; used as a building block.
+// @goal how do you merge the sorted lists starting at {a ? a.val : "nothing"} and {b ? b.val : "nothing"}?
 function mergeTwo(a: ListNode | null, b: ListNode | null): ListNode | null {
   // @why A fake first node so we never special-case the head.
+  // @phase Merge one pair: take the smaller front each time
+  // @say Both lists are sorted, so the smallest node left is always one of the two fronts.
   const dummy = new ListNode();
   // @why `tail` is where the next node gets attached.
   let tail = dummy;
   // @why Compare only while both lists still have nodes.
+  // @yes Fronts {a.val} and {b.val}: the next node must be one of them.
+  // @no {a || b ? "One list is used up" : "Both lists are used up"}, so there is nothing left to compare.
   while (a && b) {
     // @why Take the smaller front value to stay sorted.
+    // @yes {a.val} ≤ {b.val}, so {a.val} is the smallest node left. Take it.
+    // @no {b.val} < {a.val}, so {b.val} is the smallest node left. Take it.
     if (a.val <= b.val) {
       // @why Attach the smaller node.
+      // @say Link {a.val} on.
       tail.next = a;
       // @why Advance in that list.
       a = a.next;
     // @why Otherwise `b` is smaller.
     } else {
       // @why Attach `b`'s node.
+      // @say Link {b.val} on.
       tail.next = b;
       // @why Advance in `b`.
       b = b.next;
     }
     // @why Move `tail` to the node just attached.
+    // @say tail moves onto {tail.next.val}.
     tail = tail.next; // @ask tail.val
   }
   // @why One list ran out; attach the other's remainder whole.
+  // @say {a ?? b ? "The rest, from " + (a ?? b).val + " on, is already sorted, so link it on whole." : "Nothing is left to attach."}
   tail.next = a ?? b;
   // @why Return the real head, past the fake node.
+  // @returns {dummy.next ? "the merged pair, starting at " + dummy.next.val : "null: both lists were empty"}.
   return dummy.next;
 }
 
 // @rule every list in current is sorted; each round halves how many there are
 // @why Merge k sorted lists into one sorted list.
+// @goal how do you merge these {lists.length} sorted {lists.length === 1 ? "list" : "lists"} into one?
 export function mergeKLists(lists: Array<ListNode | null>): ListNode | null {
   // @why No lists means nothing to merge.
+  // @phase Setup
+  // @yes There are no lists at all.
+  // @no {lists.length} {lists.length === 1 ? "list" : "lists"} to merge.
+  // @returns null: no lists, so the merged list is empty.
   if (lists.length === 0) return null;
   // @why The lists still waiting to be merged.
+  // @say Merging the lists one after another into a growing result re-walks that result each time: O(n·k). Merging in pairs instead halves the number of lists every round, so each node is touched only log2(k) times: O(n log k).
   let current = lists;
   // @why Keep merging in pairs until a single list is left.
+  // @phase Rounds: merge neighbours in pairs, halving the count
+  // @yes {current.length} lists are left, so run another round of pair merges.
+  // @no Only one list is left: everything has been merged into it.
   while (current.length > 1) {
     // @why Holds the results of this round of pair merges.
+    // @say This round turns {current.length} lists into {Math.ceil(current.length / 2)}.
     const merged: Array<ListNode | null> = [];
     // @why Take lists two at a time; pairing keeps the work at O(n log k).
+    // @yes Lists {i}{i + 1 < current.length ? " and " + (i + 1) : " (alone, with no partner)"} are next.
+    // @no Every pair in this round is merged, giving {merged.length} {merged.length === 1 ? "list" : "lists"}.
     for (let i = 0; i < current.length; i += 2) {
       // @why Merge a pair; with an odd count the last one pairs with null.
+      // @say {i + 1 < current.length ? "Merge list " + i + " with list " + (i + 1) + "." : "List " + i + " has no partner this round, so it passes through, merged with nothing."}
       merged.push(mergeTwo(current[i], i + 1 < current.length ? current[i + 1] : null)); // @moment merge lists {i} and {i + 1}
     }
     // @why The merged lists become the next round's input.
+    // @then {current.length} {current.length === 1 ? "list is" : "lists are"} left after this round.
     current = merged; // @ask current.length
   }
   // @why Only one list remains: the answer.
+  // @phase Answer
+  // @returns {current[0] ? "the single merged list, starting at " + current[0].val : "null: every list was empty"}. O(n log k) time.
   return current[0];
 }
 

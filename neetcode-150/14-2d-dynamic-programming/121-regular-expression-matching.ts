@@ -54,33 +54,49 @@ import assert from "node:assert/strict";
 
 // @rule dp[i][j] is true when the pattern p[j..] matches all of s[i..]
 // @why Returns whether pattern `p` (with `.` and `*`) matches all of `s`.
+// @goal does the pattern "{p}" match all of "{s}"?
 export function isMatch(s: string, p: string): boolean {
   // @why Length of `s`.
+  // @phase Setup: a table of (string suffix, pattern suffix) pairs
+  // @say Trying every way to expand each x* backtracks and can blow up exponentially. But whether the rest matches depends only on where you are in s and where you are in p, so ({s.length} + 1) x ({p.length} + 1) answers are enough.
   const m = s.length;
   // @why Length of `p`.
   const n = p.length;
   // @why `dp[i][j]` means `s[i..]` is matched by `p[j..]`.
   const dp = Array.from({ length: m + 1 }, () => new Array<boolean>(n + 1).fill(false));
   // @why Empty string and empty pattern match.
+  // @say Base case: an empty pattern matches an empty string. An empty pattern can't match anything else, so the rest of the last column stays false.
   dp[m][n] = true;
 
   // @why Include `i = m` since a pattern like `a*` can match an empty string.
+  // @phase Fill from the back: plain letters must match, x* may skip or repeat
+  // @yes Row {i}: {i < m ? "string suffix \"" + s.slice(i) + "\"" : "the empty string, which x* pieces can still match"}.
+  // @no Every pair is solved.
   for (let i = m; i >= 0; i--) {
     // @why Fill from the end of the pattern so later cells are ready.
+    // @yes Does pattern "{p.slice(j)}" match {i < m ? "\"" + s.slice(i) + "\"" : "the empty string"}?
+    // @no Row {i} is done.
     for (let j = n - 1; j >= 0; j--) {
       // @why Does the current pattern character match the current letter? Needs a letter left, and `.` matches any.
+      // @say {p[j] === "*" ? "A '*' on its own matches no letter." : i >= m ? "No letters left in s, so the pattern's " + p[j] + " can't consume one." : p[j] === "." ? "The pattern has '.', which matches " + s[i] + "." : p[j] === s[i] ? "Pattern " + p[j] + " matches letter " + s[i] + "." : "Pattern " + p[j] + " does not match letter " + s[i] + "."}
       const first = i < m && (p[j] === s[i] || p[j] === ".");
       // @why A `*` after this pattern letter means it can repeat zero or more times.
+      // @yes "{p[j]}*" can stand for zero or more {p[j] === "." ? "letters" : p[j] + "'s"}, so there are two ways forward.
+      // @no {p[j] === "*" ? "This is the * itself. It only means something with the letter before it, which handles it, so this cell is never read." : "No star after " + p[j] + ", so it must match exactly one letter."}
       if (j + 1 < n && p[j + 1] === "*") {
         // @why Either use zero copies (skip `x*`), or match one letter now and stay on the same `x*`.
+        // @say Zero copies: skip "{p[j]}*", leaving {j + 2 < n ? "\"" + p.slice(j + 2) + "\"" : "an empty pattern"} to match: {dp[i][j + 2]}. {first ? "Or use one copy on " + s[i] + " and stay on " + p[j] + "* for more: " + dp[i + 1][j] + "." : "Using a copy isn't possible here."}
         dp[i][j] = dp[i][j + 2] || (first && dp[i + 1][j]); // @ask dp[i][j]
       } else {
         // @why No star: this letter must match, and the rest must match too.
+        // @say {p[j] === "*" ? "Mark it false; nothing reads it." : first ? "Consume " + s[i] + " with " + p[j] + "; the answer is whether " + (j + 1 < n ? "\"" + p.slice(j + 1) + "\"" : "the empty pattern") + " matches " + (i + 1 < m ? "\"" + s.slice(i + 1) + "\"" : "the empty rest") + ": " + dp[i + 1][j + 1] + "." : "This letter can't be matched and there's no star to skip it, so false."}
         dp[i][j] = first && dp[i + 1][j + 1]; // @ask dp[i][j]
       }
     }
   }
   // @why `dp[0][0]` is the whole string against the whole pattern.
+  // @phase Answer
+  // @returns {dp[0][0]}: {dp[0][0] ? "\"" + p + "\" covers all of \"" + s + "\"." : "no expansion of \"" + p + "\" covers exactly \"" + s + "\"."}
   return dp[0][0];
 }
 

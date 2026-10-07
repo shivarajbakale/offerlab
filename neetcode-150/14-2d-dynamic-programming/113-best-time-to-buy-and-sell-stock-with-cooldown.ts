@@ -45,27 +45,39 @@ import assert from "node:assert/strict";
 
 // @rule buy1 / sell1 are the best profit from day i+1 on when free to buy / holding a stock
 // @why Returns the max profit with unlimited trades, but a one-day cooldown after each sell.
+// @goal what is the most profit from prices {JSON.stringify(prices)} with a one-day cooldown after each sale?
 export function maxProfit(prices: number[]): number {
   // @why `buy1` means the best future profit from day `i + 1` on when you are free to buy.
+  // @phase Setup: past the last day, nothing more can be earned
+  // @say Trying every buy/sell/wait pattern is 3^n. But what you can still earn from a day on depends only on the day and whether you hold a share, so two numbers per day are enough, and each day only looks one or two days ahead.
   let buy1 = 0; // dp[i + 1][buy]
   // @why `sell1` means the best future profit from day `i + 1` on when you hold a stock and may sell.
   let sell1 = 0; // dp[i + 1][sell]
   // @why `buy2` means the best profit from day `i + 2` on when free to buy; selling jumps here for the cooldown.
   let buy2 = 0; // dp[i + 2][buy]
   // @why Go backwards so the future days are solved first.
+  // @phase Walk back from the last day: decide each day in both modes
+  // @yes Day {i}, price {prices[i]}. Every later day is already solved, so today's best choice can be read off them.
+  // @no Every day is decided, back to day 0.
   for (let i = prices.length - 1; i >= 0; i--) {
     // @why When free to buy: wait (`buy1`) or buy today, paying the price and moving to the holding state.
+    // @say Free to buy on day {i}: wait and keep {buy1}, or buy at {prices[i]} and then earn {sell1} while holding, {sell1} - {prices[i]} = {sell1 - prices[i]}. {sell1 - prices[i] > buy1 ? "Buying wins." : "Waiting is at least as good."}
     const buy = Math.max(buy1, sell1 - prices[i]); // @ask buy
     // @why When holding: wait (`sell1`) or sell today for the price, then skip a day (cooldown) to `buy2`.
+    // @say Holding on day {i}: keep holding for {sell1}, or sell for {prices[i]} and, after the forced rest day, {i + 2 >= prices.length ? "earn nothing more (day " + (i + 2) + " is past the end)" : "earn " + buy2 + " from day " + (i + 2)}: {prices[i]} + {buy2} = {prices[i] + buy2}. {prices[i] + buy2 > sell1 ? "Selling wins." : "Holding is at least as good."}
     const sell = Math.max(sell1, buy2 + prices[i]); // @ask sell
     // @why Slide the window: today's `i + 1` becomes the next round's `i + 2`.
+    // @say Step one day back: the day after tomorrow becomes what was tomorrow, so the old {buy1} is now the post-cooldown value.
     buy2 = buy1;
     // @why Save today's free-to-buy value.
     buy1 = buy;
     // @why Save today's holding value.
+    // @then From day {i} on: {buy1} if free to buy, {sell1} if holding.
     sell1 = sell;
   }
   // @why You start with no stock and free to buy, on day 0.
+  // @phase Answer
+  // @returns {buy1}: the best profit from day 0 starting with no share, in one backward pass.
   return buy1;
 }
 

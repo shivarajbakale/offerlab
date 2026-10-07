@@ -13,6 +13,15 @@
 //
 //   // @viz range:lo..hi@mid   (binary search over values: draw lo..hi shrinking on a number line, mid as the probe)
 //
+//   Decision notes, written on their own comment lines above the code line they explain (like @why):
+//   // @goal how tall is the subtree under {node.val}?      (above a function: the question each call answers)
+//   // @phase Scan once, pairing each number with an earlier one   (a heading for the code from here on)
+//   // @say {nums[i]} needs a partner of {target - nums[i]}         (what this step means, with live values)
+//   // @yes The partner was seen at index {j}, so ...             (an if/while/for line: why, when it is true)
+//   // @no  No earlier number fits, so ...                        (the same, when it is false)
+//   // @then The map now covers indices 0..{i}                    (what is known after the line runs)
+//   // @returns the subtree under {node.val} is {h} tall          (above a return: what the value means)
+//
 // @viz and @rule lines apply to the whole file; @say, @ask, @moment and @broken apply to the line they are on.
 // Put @ask and @moment before @say on a line, since @say runs to the end of it.
 
@@ -53,14 +62,65 @@ export type Hints = {
   moment: Record<number, string>;
   /** `range:lo..hi@mid`: the bounds of a binary search, and its probe, drawn on a number line. */
   range?: { lo: string; hi: string; mid?: string };
+  /** Decision notes keyed by the 1-based code line they sit above; see the header. */
+  notes: Notes;
+  /** `@goal` templates keyed by the name of the function they sit above. */
+  goal: Record<string, string>;
   /** Mistakes in the hints, such as a duplicate @mark; the lesson and hints tests require none. */
   errors: string[];
 };
 
+export type Notes = { yes: Record<number, string>; no: Record<number, string>; then: Record<number, string>; returns: Record<number, string>; phase: Record<number, string> };
+
+const NOTE = /^\s*\/\/\s*@(goal|phase|say|yes|no|then|returns)\s+(.*)$/;
+/** A comment line holding one decision note (or a `@why`), which the code panel hides. */
+export const isNoteLine = (line: string) => NOTE.test(line) || /^\s*\/\/\s*@why\s/.test(line);
+
+/** Name of the function declared on a line: `function f(`, `const f = (`, `f = (` or a method `f(...) {`. */
+export function declaredFunction(line: string): string | undefined {
+  const m =
+    line.match(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/) ??
+    line.match(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\(|[A-Za-z_$][\w$]*\s*=>)/) ??
+    line.match(/^\s*(?:(?:public|private|protected|static|async)\s+)*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::[^{]+)?\{/);
+  return m && !/^(if|for|while|switch|catch|return)$/.test(m[1]) ? m[1] : undefined;
+}
+
+/** Block notes (`// @yes ...` above a line) attach to the next line that is not itself a note or `@why`. */
+function parseNotes(lines: string[], hints: Hints) {
+  let pending: [string, string][] = [];
+  lines.forEach((line, i) => {
+    const m = line.match(NOTE);
+    if (m) {
+      const last = pending.at(-1);
+      // Consecutive lines of the same kind join into one note.
+      if (last && last[0] === m[1] && NOTE.test(lines[i - 1] ?? "") && lines[i - 1].match(NOTE)![1] === m[1]) last[1] += " " + m[2].trim();
+      else pending.push([m[1], m[2].trim()]);
+      return;
+    }
+    if (isNoteLine(line) || !pending.length) return;
+    const n = i + 1;
+    for (const [kind, text] of pending) {
+      if (kind === "goal") {
+        const fn = declaredFunction(line);
+        if (fn) hints.goal[fn] = text;
+        else hints.errors.push(`line ${n}: @goal must sit above a function`);
+      } else if (kind === "say") hints.say[n] = text;
+      else hints.notes[kind as keyof Notes][n] = text;
+    }
+    pending = [];
+  });
+}
+
 export function parseHints(source: string): Hints {
-  const hints: Hints = { pointers: [], hide: [], values: [], say: {}, marks: {}, systems: [], errors: [], arcs: [], ask: {}, broken: [], moment: {} };
+  const hints: Hints = {
+    pointers: [], hide: [], values: [], say: {}, marks: {}, systems: [], errors: [], arcs: [], ask: {}, broken: [], moment: {},
+    notes: { yes: {}, no: {}, then: {}, returns: {}, phase: {} },
+    goal: {},
+  };
+  parseNotes(source.split("\n"), hints);
   source.split("\n").forEach((line, i) => {
     const n = i + 1;
+    if (NOTE.test(line)) return;
     const say = line.match(/\/\/\s*@say\s+(.+)$/);
     // A @say runs to the end of the line, so a @mark after it would be read as part of the text.
     if (say && /\/\/\s*@mark\b/.test(say[1])) hints.errors.push(`line ${n}: @say and @mark on one line; put the @mark on its own line`);

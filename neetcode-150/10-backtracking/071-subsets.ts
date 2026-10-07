@@ -40,34 +40,50 @@ import assert from "node:assert/strict";
 
 // @rule path holds the include/skip choices for nums[0..i-1]; each push is undone by a pop
 // @why Returns every possible subset of `nums`.
+// @goal what are all the subsets of {JSON.stringify(nums)}?
 export function subsets(nums: number[]): number[][] {
   // @why Collects all finished subsets.
+  // @phase Setup
+  // @say Each number is either in a subset or not: {nums.length} yes/no choices, so 2^{nums.length} = {2 ** nums.length} subsets. Make the choices one number at a time, and undo each choice to try the other.
   const res: number[][] = [];
   // @why The subset being built right now; we add and remove numbers as we explore.
   const path: number[] = [];
 
   // @why `dfs(i)` decides, for number `i`, whether it goes in the subset or not.
+  // @goal with {JSON.stringify(path)} already chosen, which subsets can the numbers from index {i} on still make?
   const dfs = (i: number): void => {
     // @why If every number has been decided, the current path is one full subset.
-    if (i === nums.length) { // @say Decided on every number: the path is one complete subset
+    // @phase Choose include or skip for one number
+    // @yes Every number has been decided, so {JSON.stringify(path)} is one complete subset.
+    // @no Number {nums[i]} (index {i}) is still undecided.
+    if (i === nums.length) {
       // @why Save a copy, because `path` keeps changing later.
-      res.push([...path]); // @moment found {JSON.stringify(path)} // @say Record a copy of {path}, since path keeps changing
+      // @say Record a copy of {JSON.stringify(path)}. `path` itself keeps changing as choices are undone, so storing it directly would change this answer too.
+      res.push([...path]); // @moment found {JSON.stringify(path)}
       // @why This branch is finished, so stop going deeper.
+      // @returns nothing; this branch is complete and gave {JSON.stringify(path)}.
       return;
     }
     // @why First choice: put this number in the subset.
-    path.push(nums[i]); // @ask path.length // @say Choice 1: include {nums[i]} in the subset
+    // @say Choice 1: include {nums[i]}.
+    path.push(nums[i]); // @ask path.length
     // @why Explore all the ways to decide the remaining numbers with it included.
+    // @say With {nums[i]} in, build every subset of the remaining numbers.
     dfs(i + 1);
     // @why Backtrack: remove the number so the other choice starts from a clean path.
-    path.pop(); // @ask path.length // @say Undo: drop {nums[i]} so we can explore subsets without it
+    // @say Every subset containing {nums[i]} (on top of what's chosen) is recorded. Undo: drop {nums[i]} so the other choice starts from the same path.
+    path.pop(); // @ask path.length
     // @why Second choice: leave this number out and decide the rest.
-    dfs(i + 1); // @say Choice 2: skip {nums[i]} and decide on the next number
+    // @say Choice 2: skip {nums[i]} and build every subset of the rest without it.
+    dfs(i + 1);
+    // @returns nothing; both choices for {nums[i]} are done, so this caller's path is back to {JSON.stringify(path)}.
   };
 
   // @why Start deciding from the first number.
+  // @phase Run the choices
   dfs(0);
   // @why After all choices are explored, `res` holds every subset.
+  // @returns all {res.length} subsets: every leaf of the include/skip tree.
   return res;
 }
 

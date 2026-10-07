@@ -42,21 +42,33 @@ import assert from "node:assert/strict";
 
 // @rule next1 is the cheapest cost to finish from stair i + 1; next2, from stair i + 2
 // @why Returns the cheapest total cost to get past the last stair, starting at stair 0 or 1.
+// @goal what is the cheapest way past the top of {JSON.stringify(cost)}, starting on stair 0 or 1?
 export function minCostClimbingStairs(cost: number[]): number {
   // @why `next1` means the cheapest cost to finish when standing on stair `i + 1`; past the end costs 0.
+  // @phase Setup: past the top, finishing is free
+  // @say Trying every path of 1- and 2-jumps is exponential. But the cheapest finish from a stair depends only on the cheapest finishes from the next two stairs, so solve stairs from the top down keeping just those two numbers. Above the last stair you are done, so both start at 0.
   let next1 = 0; // dp[i + 1]
   // @why `next2` means the cheapest cost to finish from stair `i + 2`; also 0 beyond the top.
   let next2 = 0; // dp[i + 2]
   // @why Walk from the top down so the answers for later stairs are ready when we need them.
+  // @phase Solve each stair from the top down
+  // @yes Stair {i} (cost {cost[i]}) is next. The two stairs above it are already solved, which is all it needs.
+  // @no Every stair is solved. `next1` is the cheapest finish from stair 0 and `next2` from stair 1.
   for (let i = cost.length - 1; i >= 0; i--) {
     // @why Standing on `i` you pay `cost[i]`, then jump 1 or 2 stairs: take the cheaper way on.
+    // @say On stair {i} you must pay {cost[i]}. Then jump 1 (finish costs {next1}) or 2 (finish costs {next2}); the cheaper is {Math.min(next1, next2)}. Total: {cost[i]} + {Math.min(next1, next2)} = {cost[i] + Math.min(next1, next2)}.
     const cur = cost[i] + Math.min(next1, next2); // @ask cur
     // @why Slide the window down: the old `i + 1` becomes the new `i + 2`.
+    // @say Move down a stair: the finish cost from {i + 1 >= cost.length ? "the top" : "stair " + (i + 1)}, {next1}, is now the "two up" value.
     next2 = next1;
     // @why The stair just solved becomes the new `i + 1` for the next round.
+    // @say Stair {i} is solved, so its {cur} becomes the "one up" value{i > 0 ? " for stair " + (i - 1) : ""}.
+    // @then Cheapest finish from stair {i}: {next1}. From {i + 1 >= cost.length ? "the top" : "stair " + (i + 1)}: {next2}.
     next1 = cur;
   }
   // @why You may start on stair 0 or stair 1, so the answer is the cheaper of the two.
+  // @phase Answer: pick the cheaper starting stair
+  // @returns {Math.min(next1, next2)}: starting on stair 0 costs {next1} and on stair 1 costs {next2}, and you may choose either for free.
   return Math.min(next1, next2);
 }
 

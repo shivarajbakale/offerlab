@@ -54,38 +54,56 @@ export class ListNode {
 
 // @rule dummy..tail is sorted and holds the smallest nodes taken from a and b
 // @why Take two sorted lists and return one sorted list made from their nodes.
+// @goal how do you splice two sorted lists into one sorted list without making new nodes?
 export function mergeTwoLists(
   list1: ListNode | null,
   list2: ListNode | null,
 ): ListNode | null {
   // @why A fake first node so we never have to special-case the real head.
+  // @phase Setup: a placeholder head and a tail to build on
+  // @say Copying both lists into an array and sorting costs O((m+n) log(m+n)) time and extra space. Both lists are already sorted, so the smallest remaining node is always at the front of one of them: compare two fronts, take the smaller, and relink in place.
   const dummy = new ListNode();
   // @why `tail` is the end of the merged list so far; we always attach here.
+  // @say tail marks where the next node goes. It starts on the placeholder, so the first real node needs no special case.
   let tail = dummy;
   // @why Walk pointers over both lists without changing the inputs' heads.
+  // @say a and b mark the smallest node not yet taken from each list: {list1 ? list1.val : "nothing (list 1 is empty)"} and {list2 ? list2.val : "nothing (list 2 is empty)"}.
   let a = list1;
   let b = list2;
   // @why Compare only while both lists still have nodes.
+  // @phase Take the smaller front node, one at a time
+  // @yes Both lists still have nodes ({a.val} and {b.val} at the fronts), so the next node must be one of these two.
+  // @no {a ? "List 2 is used up" : b ? "List 1 is used up" : "Both lists are used up"}, so there is nothing left to compare.
   while (a && b) {
     // @why Pick the smaller front value so the result stays sorted (`<=` keeps it stable).
+    // @yes {a.val} ≤ {b.val}: every node behind either front is at least as big, so {a.val} is the smallest node left. Take it from list 1.
+    // @no {b.val} < {a.val}: {b.val} is the smallest node left in either list. Take it from list 2.
     if (a.val <= b.val) {
       // @why Attach the smaller node to the result.
+      // @say Link {a.val} onto the end of the merged list{tail === dummy ? " (it becomes the head)" : ", after " + tail.val}.
       tail.next = a;
       // @why Advance in the list we just took from.
+      // @say List 1's front moves on to {a.next ? a.next.val : "nothing: list 1 is used up"}.
       a = a.next; // @ask a?.val
     // @why Otherwise `b` has the smaller value.
     } else {
       // @why Attach `b` to the result.
+      // @say Link {b.val} onto the end of the merged list{tail === dummy ? " (it becomes the head)" : ", after " + tail.val}.
       tail.next = b;
       // @why Advance in list `b`.
+      // @say List 2's front moves on to {b.next ? b.next.val : "nothing: list 2 is used up"}.
       b = b.next;
     }
     // @why Move `tail` to the node we just attached.
+    // @say Move tail onto {tail.next.val}, the node just attached, so the next pick links after it.
     tail = tail.next; // @ask tail.val
   }
   // @why One list is empty; the rest of the other is already sorted, so attach it whole.
+  // @phase Attach the leftover in one link
+  // @say {a ?? b ? "The rest, from " + (a ?? b).val + " on, is already sorted and every node in it is ≥ " + tail.val + ", so link it on whole instead of one node at a time." : "Both lists ran out together, so nothing is left to attach."}
   tail.next = a ?? b; // @moment attach the rest from {(a ?? b)?.val}
   // @why Skip the fake node and return the real head.
+  // @returns {dummy.next ? "the node after the placeholder, " + dummy.next.val + ": the merged list's real head. Each node was linked once, O(m + n) time and O(1) extra space." : "null: both lists were empty, so the merged list is empty too."}
   return dummy.next;
 }
 

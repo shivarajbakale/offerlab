@@ -61,29 +61,46 @@ export class TreeNode {
 
 // @rule level holds exactly the nodes of one depth, left to right
 // @why Returns the values grouped by depth, top level first.
+// @goal what are the values of this tree, one row per depth, top to bottom?
 export function levelOrder(root: TreeNode | null): number[][] {
   // @why Collects one array of values per level.
+  // @phase Setup
+  // @say A depth-first walk visits nodes in the wrong order and would need a depth tag on every node to regroup them. Instead process the tree one whole level at a time: the current level's children are exactly the next level.
   const result: number[][] = [];
   // @why `level` holds all nodes of the current depth; start with just the root (or nothing).
+  // @say {root ? "The first level is just the root, " + root.val + "." : "Empty tree: no first level, so the loop below never runs."}
   let level: TreeNode[] = root ? [root] : [];
 
   // @why Keep going while the current level has any nodes.
+  // @phase One level per pass: record it, then gather its children
+  // @yes Level {result.length} has {level.length} {level.length === 1 ? "node" : "nodes"}: {JSON.stringify(level.map((n) => n.val))}.
+  // @no No nodes left: the deepest level has been recorded.
   while (level.length) {
     // @why Record this whole level's values as one row.
+    // @say Every node at this depth is in `level`, already in left-to-right order, so its values are one complete row.
+    // @then Rows so far: {JSON.stringify(result)}.
     result.push(level.map((node) => node.val)); // @moment depth {result.length}
     // @why `next` will collect the children, which are the next level down.
     const next: TreeNode[] = [];
     // @why Visit every node on this level.
+    // @say Take {node.val}. Its children belong to the next depth.
     for (const node of level) {
       // @why Queue the left child for the next level, if it exists.
+      // @yes {node.val} has a left child {node.left.val}. Add it first so the next row stays left to right.
+      // @no {node.val} has no left child.
       if (node.left) next.push(node.left);
       // @why Queue the right child too, so left-to-right order is kept.
+      // @yes Add {node.val}'s right child {node.right.val} after any left child, so it lands to the right in the next row.
+      // @no {node.val} has no right child.
       if (node.right) next.push(node.right);
     }
     // @why Move down one level and repeat.
+    // @say Move down one depth: the children just gathered, {JSON.stringify(next.map((n) => n.val))}, are the whole next level.
     level = next; // @ask level.length
   }
   // @why Return all the rows.
+  // @phase Answer
+  // @returns {result.length} {result.length === 1 ? "row" : "rows"}. Each node entered one level and was read once, so O(n).
   return result;
 }
 

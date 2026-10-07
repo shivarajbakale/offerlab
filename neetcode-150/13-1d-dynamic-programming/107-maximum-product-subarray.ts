@@ -43,27 +43,41 @@ import assert from "node:assert/strict";
 // @viz best:res
 // @rule curMax and curMin are the biggest and smallest products of a run ending at n
 // @why Returns the biggest product of any contiguous run of numbers.
+// @goal which contiguous run of {JSON.stringify(nums)} has the biggest product?
 export function maxProduct(nums: number[]): number {
   // @why `res` is the best product seen so far; start with the first number so all-negative input works.
+  // @phase Setup: track the extremes of runs ending here
+  // @say Multiplying out every run is n² work. Keeping only the biggest product ending here (like max-sum) fails too: a negative number turns the smallest product into the biggest. So keep both the biggest and the smallest product ending at each number.
   let res = nums[0];
   // @why `curMax` means the biggest product of a run ending at the current number.
+  // @say Before any number, 1 is the neutral start: multiplying by it changes nothing.
   let curMax = 1;
   // @why `curMin` means the smallest (most negative) product ending here; a later negative can flip it into the biggest.
   let curMin = 1;
   // @why Each number either extends the previous run or starts a new run.
+  // @phase Each number: extend the best run, extend the worst run, or start fresh
+  // @say Number {n}. {curMax === 1 && curMin === 1 ? "Nothing to extend yet: both extremes are the neutral 1." : "Runs ending just before it: biggest " + curMax + ", smallest " + curMin + "."}
   for (const n of nums) {
     // @why Extending the biggest run ending before this number.
+    // @say Extend the biggest run: {n} × {curMax} = {n * curMax}.
     const a = n * curMax;
     // @why Extending the smallest run; if `n` is negative this may become the biggest.
+    // @say Extend the smallest run: {n} × {curMin} = {n * curMin}.{n < 0 ? " Because " + n + " is negative, extending the smallest run gives the bigger result here." : ""}
     const b = n * curMin;
     // @why Best run ending here: start fresh with `n`, or extend with the biggest or smallest product.
+    // @say Biggest product ending at {n}: the max of starting fresh ({n}), {a} and {b}, which is {Math.max(n, a, b)}.{n === 0 ? " A 0 wipes out any run through it, so both extremes reset around 0." : ""}
     curMax = Math.max(n, a, b); // @ask curMax
     // @why Worst run ending here, kept in case the next number is negative.
+    // @say Smallest product ending at {n}: the min of {n}, {a} and {b}, which is {Math.min(n, a, b)}. Keep it in case a negative number comes next.
     curMin = Math.min(n, a, b);
     // @why Update the overall best with the best run ending at this number.
+    // @say The best run must end somewhere. Ending here gives {curMax}; best so far {res}. {curMax > res ? "New best." : "Best stays."}
+    // @then Best product so far: {res}.
     res = Math.max(res, curMax);
   }
   // @why The best product over all runs.
+  // @phase Answer
+  // @returns {res}: every run ends at some number, and each number's best run was checked. O(n) time, O(1) space.
   return res;
 }
 

@@ -42,8 +42,11 @@ import assert from "node:assert/strict";
 
 // @rule matrix[0][c]===0 marks column c, matrix[r][0]===0 marks row r, rowZero marks row 0
 // @why Zeroes whole rows and columns in place, wherever a 0 appears.
+// @goal how do you zero every row and column of {JSON.stringify(matrix)} that holds a 0, using no extra grid?
 export function setZeroes(matrix: number[][]): void {
   // @why Number of rows.
+  // @phase Setup
+  // @say Zeroing rows as you find each 0 would plant new zeros that look original. Remembering marked rows and columns in two sets costs extra memory. Instead, store the marks in the grid's own first row and first column, which get cleared last anyway.
   const rows = matrix.length;
   // @why Number of columns.
   const cols = matrix[0].length;
@@ -51,14 +54,24 @@ export function setZeroes(matrix: number[][]): void {
   let rowZero = false;
 
   // @why First pass: find the zeros.
+  // @phase Pass 1: mark each zero's row and column on the edges
+  // @yes Scan row {r}.
+  // @no Every cell scanned; the marks are in place.
   for (let r = 0; r < rows; r++) {
     // @why Look at every cell.
+    // @yes Cell ({r},{c}).
+    // @no Row {r} scanned.
     for (let c = 0; c < cols; c++) {
       // @why Only zeros need to leave a mark.
+      // @yes {matrix[r][c]} isn't 0, so it forces nothing.
+      // @no A 0 at ({r},{c}): row {r} and column {c} must both be cleared.
       if (matrix[r][c] !== 0) continue;
       // @why Mark this cell's column by zeroing its top cell (a note saying clear this column).
+      // @say Mark column {c} by zeroing its top cell. That cell gets cleared anyway, since its column is doomed.
       matrix[0][c] = 0; // @moment zero found at ({r},{c})
       // @why Mark this cell's row by zeroing its first cell (a note saying clear this row).
+      // @yes Mark row {r} by zeroing its first cell; that cell will be cleared anyway.
+      // @no This zero is in row 0, whose first cell is also column 0's mark. Use the separate rowZero flag so the two don't get mixed up.
       if (r > 0) matrix[r][0] = 0;
       // @why For row 0, the first cell is shared with column 0's mark, so use `rowZero` instead.
       else rowZero = true; // @ask rowZero
@@ -66,24 +79,41 @@ export function setZeroes(matrix: number[][]): void {
   }
 
   // @why Second pass: use the marks to zero cells, skipping the mark row and column for now.
+  // @phase Pass 2: clear inner cells by their marks
+  // @yes Row {r} of the inner cells.
+  // @no Inner cells done. The edges go last, because they still hold the marks.
   for (let r = 1; r < rows; r++) {
     // @why Visit every inner cell.
+    // @yes Cell ({r},{c}).
+    // @no Row {r} done.
     for (let c = 1; c < cols; c++) {
       // @why Is this cell's column marked (top cell 0) or its row marked (first cell 0)?
+      // @say Column {c} mark: {matrix[0][c]}. Row {r} mark: {matrix[r][0]}. A 0 in either means this cell shares a line with an original zero.
       const marked = matrix[0][c] === 0 || matrix[r][0] === 0; // @ask marked
       // @why Zero it if its row or its column was marked.
+      // @yes Its {matrix[0][c] === 0 ? "column" : "row"} is marked, so ({r},{c}) becomes 0.
+      // @no Neither its row nor its column held a zero, so {matrix[r][c]} stays.
       if (marked) matrix[r][c] = 0;
     }
   }
 
   // @why Now handle the first column; its mark is `matrix[0][0]`.
+  // @phase Pass 3: clear the marker edges last
+  // @yes The corner is 0, which means column 0 had a zero, so clear the whole column. Doing it now is safe: no other mark is read from it any more.
+  // @no Column 0 had no zero, so it stays.
   if (matrix[0][0] === 0) {
     // @why Zero the whole first column.
+    // @yes Clear ({r},0).
+    // @no Column 0 cleared.
     for (let r = 0; r < rows; r++) matrix[r][0] = 0;
   }
   // @why Finally handle the first row using the saved flag.
+  // @yes rowZero is set: row 0 itself had a zero, so clear it.
+  // @no Row 0 had no zero of its own; its zeros so far are only the column marks, which are correct.
   if (rowZero) {
     // @why Zero the whole first row.
+    // @yes Clear (0,{c}).
+    // @no Row 0 cleared.
     for (let c = 0; c < cols; c++) matrix[0][c] = 0;
   }
 }

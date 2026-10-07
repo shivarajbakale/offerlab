@@ -5,6 +5,7 @@ import { Controls } from "./components/Controls.tsx";
 import { IntuitionPanel } from "./components/IntuitionPanel.tsx";
 import { LessonView } from "./components/LessonView.tsx";
 import { NarrationBar } from "./components/NarrationBar.tsx";
+import { ExplainCard } from "./components/ExplainCard.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Visual, type StepLens, type StoryView } from "./components/Visual.tsx";
 import { SimProblemView } from "./sim/SimProblemView.tsx";
@@ -16,6 +17,7 @@ import { overviewTab } from "./sidebarTabs.ts";
 import { findRun, markLocate, parseLesson, scenarioOptionLabel, type PlayLink } from "./sim/lesson.ts";
 import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
+import { explain as explainStep, type Explanation } from "./model/explain.ts";
 import { buildScene } from "./model/scene.ts";
 import { lineDeps } from "./model/deps.ts";
 import { buildStory, leftWindow } from "./model/story.ts";
@@ -27,6 +29,7 @@ import type { Run, Step } from "./tracer/types.ts";
 const EMPTY_STEPS: Step[] = [];
 /** Narrations are computed lazily per step and cached per run. */
 const narrationCache = new WeakMap<Step[], Map<number, Narration>>();
+const explainCache = new WeakMap<Step[], Map<number, Explanation>>();
 
 /** The landing page: the front door a first visit opens on. */
 const WELCOME = "welcome";
@@ -145,6 +148,15 @@ function initialQuiz(): boolean {
   }
 }
 
+const KEY_ONLY_KEY = "viz:key-steps";
+function initialKeyOnly(): boolean {
+  try {
+    return localStorage.getItem(KEY_ONLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 const EXPLAIN_KEY = "viz:explain";
 function initialExplain(): boolean {
   try {
@@ -224,21 +236,53 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
     },
     [steps, problem],
   );
+  // The explain card's "what the line did" row never repeats the @say, which the card shows as the reason.
+  const plainHints = useMemo(() => ({ ...problem.hints, say: {} }), [problem.hints]);
+  const explainAt = useCallback(
+    (k: number) => {
+      let cache = explainCache.get(steps);
+      if (!cache) explainCache.set(steps, (cache = new Map()));
+      let e = cache.get(k);
+      if (!e && steps[k]) {
+        e = explainStep(steps, k, problem.lines, problem.hints, problem.why, narrate(steps, k, problem.lines, plainHints));
+        cache.set(k, e);
+      }
+      return e ?? null;
+    },
+    [steps, problem, plainHints],
+  );
+  // "Key steps only": stepping and playing skip to the steps that carry a written reason.
+  const [keyOnly, setKeyOnlyState] = useState(initialKeyOnly);
+  const setKeyOnly = useCallback((on: boolean) => {
+    setKeyOnlyState(on);
+    try {
+      localStorage.setItem(KEY_ONLY_KEY, on ? "1" : "0");
+    } catch {
+      // Remembering the toggle is a convenience only.
+    }
+  }, []);
+  const keyStops = useMemo(() => {
+    if (systems) return [];
+    const out: number[] = [];
+    for (let i = 0; i < steps.length; i++) if (explainAt(i)?.key) out.push(i);
+    return out;
+  }, [steps, explainAt, systems]);
   const story = useMemo(() => (systems ? null : buildStory(steps, problem.hints, problem.lines)), [steps, problem, systems]);
   const keySteps = useMemo(() => new Set(story?.marks.map((m) => m.index)), [story]);
   const dwell = useCallback(
     (k: number) => {
       if (keySteps.has(k)) return 1.8;
+      if (explainAt(k)?.key) return 2.2;
       const n = narrationAt(k);
       if (!n) return 1;
       if (n.kind === "say") return 1.6;
       if (n.kind === "code") return 0.6;
       return 1;
     },
-    [narrationAt, keySteps],
+    [narrationAt, keySteps, explainAt],
   );
 
-  const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell);
+  const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell, keyOnly && keyStops.length > 1 ? keyStops : null);
   const k = player.index;
 
   // "Ask me first": arriving at a step that moves a pointer pauses on the step before it,
@@ -266,6 +310,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   const after = steps[shownK + 1] ?? step;
   const scene = useMemo(() => (after ? buildScene(after, step, problem.hints) : null), [after, step, problem.hints]);
   const narration = step ? narrationAt(shownK) : null;
+  const explanation = step && !systems ? explainAt(shownK) : null;
 
   const storyView: StoryView | undefined = useMemo(() => {
     if (!story) return undefined;
@@ -393,6 +438,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       else if (e.key === "End") player.step(player.count);
       else if (e.key === "]") player.faster();
       else if (e.key === "[") player.slower();
+      else if (e.key === "k" && keyStops.length > 1) setKeyOnly(!keyOnly);
       else if (e.key === "i" && !systems) setTab(tab === "code" ? "intuition" : "code");
       else if (e.key === "e" && hasNotes) {
         setTab("code");
@@ -401,7 +447,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [player, tab, setTab, explain, setExplain, hasNotes, systems]);
+  }, [player, tab, setTab, explain, setExplain, hasNotes, systems, keyStops, keyOnly, setKeyOnly]);
 
   return (
     <main className="main">
@@ -501,14 +547,19 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
                 {run.truncated && <div>Showing the first {steps.length} steps of a long run.</div>}
               </div>
             )}
+            {explanation && <ExplainCard ex={explanation} />}
             <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} />
           </div>
         )}
       </section>
 
       <div className="dock">
-        <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />
-        <Controls player={player} marks={story?.marks} />
+        {systems && <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />}
+        <Controls
+          player={player}
+          marks={story?.marks}
+          keyOnly={keyStops.length > 1 ? { on: keyOnly, toggle: () => setKeyOnly(!keyOnly), count: keyStops.length } : undefined}
+        />
       </div>
     </main>
   );

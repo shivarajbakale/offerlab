@@ -109,41 +109,60 @@ class MinHeap<T extends number[]> {
 
 // @rule visited is a tree joined by the cheapest edges found; total is its cost
 // @why Returns the smallest total wire length that connects every point (a minimum spanning tree).
+// @goal what is the cheapest set of wires that joins all {points.length} {points.length === 1 ? "point" : "points"} of {JSON.stringify(points)}?
 export function minCostConnectPoints(points: number[][]): number {
   // @why Number of points.
+  // @phase Setup: a tree of one point and a heap of offers
+  // @say Trying every set of n − 1 wires and checking it connects everything is exponential. Instead grow one tree: always add the cheapest wire from the tree to a point outside it. Any cheaper option would have been taken first, so the greedy choice is never wrong.
   const n = points.length;
   // @why Points already connected to the tree.
   const visited = new Set<number>();
   // @why A priority queue of ways to reach new points, cheapest first.
   const heap = new MinHeap<[number, number]>(); // [cost, point]
   // @why Start from point 0 at no cost.
+  // @say Seed the heap with point 0 at cost 0. Every point has to join the tree anyway, so it doesn't matter which one starts it.
   heap.push([0, 0]);
   // @why Running total cost of the connections so far.
   let total = 0;
 
   // @why Keep going until every point is connected.
+  // @phase Grow the tree: take the cheapest offer, then make new offers
+  // @yes {visited.size} of {n} points {visited.size === 1 ? "is" : "are"} joined. Take the cheapest offer left.
+  // @no All {n} points are joined, so the tree is complete.
   while (visited.size < n) {
     // @why Take the cheapest way to reach any point.
+  // @say Pop the cheapest offer: wire to point {heap.data[0][1]} for {heap.data[0][0]}.
     const [cost, i] = heap.pop()!;
     // @why This point may already be connected by a cheaper way; skip the old entry.
+  // @yes Point {i} is already in the tree, through a wire at least as cheap as {cost}. This offer is stale, so skip it.
+  // @no {visited.size === 0 ? "Point " + i + " is the seed: it starts the tree for free." : "Point " + i + " is not in the tree yet, and " + cost + " is the cheapest wire from the tree to any outside point, so it is safe to use."}
     if (visited.has(i)) continue;
     // @why Connect the point to the tree.
+  // @say Join point {i} {JSON.stringify(points[i])} to the tree.
     visited.add(i); // @moment connect point {i} for {cost}
     // @why Pay the cost of this connection.
+  // @say Pay {cost}: total {total} + {cost} = {total + cost}.
     total += cost; // @ask total
     // @why Get this point's position.
     const [x1, y1] = points[i];
     // @why Offer a connection to every other point.
+  // @yes {j === i ? "Point " + j + " is the one just joined." : "Point " + j + ": does point " + i + " need to offer it a wire?"}
+  // @no Point {i} has made its offers to every outside point.
     for (let j = 0; j < n; j++) {
       // @why Skip points that are already connected.
+    // @yes {j === i ? "That is point " + i + " itself" : "Point " + j + " is already in the tree"}, so a wire to it would join nothing new.
+    // @no Point {j} is still outside, so point {i} offers it a wire.
       if (visited.has(j)) continue;
       // @why Get the other point's position.
       const [x2, y2] = points[j];
       // @why The cost is the Manhattan distance between the two points.
+    // @say Wire {i} → {j} costs |{x1} − {x2}| + |{y1} − {y2}| = {Math.abs(x1 - x2) + Math.abs(y1 - y2)}. Push it even if {j} already has a cheaper offer; the heap hands out the cheapest first anyway.
       heap.push([Math.abs(x1 - x2) + Math.abs(y1 - y2), j]);
     }
   }
   // @why Return the total cost.
+  // @phase Answer
+  // @returns {total}: the cost of the {n - 1} {n - 1 === 1 ? "wire" : "wires"} that join all {n} points, each the cheapest way out of the tree at the time.
   return total;
 }
 

@@ -134,23 +134,41 @@ export class MedianFinder {
   private large = new Heap<number>((a, b) => a - b); // min-heap, upper half
 
   // @why Add a number while keeping the halves balanced.
+  // @goal {num} arrives: how do both halves stay split at the middle?
   addNum(num: number): void {
     // @why Put the number in the lower half first.
+    // @phase Add: route through the lower half, then rebalance
+    // @say Keeping a sorted list costs O(n) per insert, and the median only ever needs the one or two middle numbers. So split the numbers into a lower half (max-heap) and an upper half (min-heap): both middle numbers sit on the two tops. Start by dropping {num} into the lower half.
     this.small.push(num);
     // @why Move the lower half's biggest to the upper half, so every lower number is at most every upper number.
+    // @say {num} might be too big for the lower half. {Math.max(...this.small.data) === num ? "It is now the lower half's biggest, so it moves up" : "Pass the lower half's biggest, " + Math.max(...this.small.data) + ", up instead"}: whatever moves is at least every number left behind, so every lower number stays at most every upper number.
+    // @then Lower half {JSON.stringify(this.small.data)}, upper half {JSON.stringify(this.large.data)}.
     this.large.push(this.small.pop()!); // @ask this.large.data[0]
     // @why Keep the lower half the same size or one bigger.
+    // @yes The upper half now has {this.large.data.length} against {this.small.data.length}. The lower half must hold the same or one more, so the odd middle is always its top.
+    // @no The lower half has {this.small.data.length} and the upper {this.large.data.length}: sizes are already balanced.
+    // @say {this.large.data.length > this.small.data.length ? "The upper half now has " + this.large.data.length + " against " + this.small.data.length + ". The lower half must hold the same or one more, so the odd middle is always its top." : "The lower half has " + this.small.data.length + " and the upper " + this.large.data.length + ": sizes are already balanced."}
     if (this.large.size() > this.small.size()) {
       // @why Move the smallest upper number back down to rebalance.
+      // @say Move the upper half's smallest, {this.large.data[0]}, back down. It is the closest upper number to the split, so the halves stay ordered.
+      // @then Lower half {JSON.stringify(this.small.data)}, upper half {JSON.stringify(this.large.data)}.
       this.small.push(this.large.pop()!); // @ask this.small.data.length
     }
   }
 
   // @why The median sits at the middle of the two halves.
+  // @goal what is the median of the numbers so far?
   findMedian(): number {
     // @why Odd count: the extra item in the lower half is the middle.
+    // @phase Median: read the two tops
+    // @yes Odd count, {this.small.data.length + this.large.data.length}: the lower half holds the extra number, so its top is the middle.
+    // @no Even count, {this.small.data.length + this.large.data.length}: the two middle numbers are the two tops.
+    // @say {this.small.data.length > this.large.data.length ? "Odd count, " + (this.small.data.length + this.large.data.length) + ": the lower half holds the extra number, so its top is the middle." : "Even count, " + (this.small.data.length + this.large.data.length) + ": the two middle numbers are the two tops."}
+    // @returns {this.small.data[0]}, read straight off the lower half's top in O(1).
     if (this.small.size() > this.large.size()) return this.small.peek()!;
     // @why Even count: average the two middle numbers.
+    // @say Average the lower top and the upper top: ({this.small.data[0]} + {this.large.data[0]}) / 2.
+    // @returns {(this.small.data[0] + this.large.data[0]) / 2}, from the two tops in O(1), no sorting.
     return (this.small.peek()! + this.large.peek()!) / 2;
   }
 }

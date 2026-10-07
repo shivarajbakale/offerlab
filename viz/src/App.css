@@ -2620,3 +2620,146 @@
     animation: none;
   }
 }
+
+/* ---------- explain card: why this step happens ---------- */
+.explain {
+  margin: 14px 20px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 92px;
+  /* The column is a flex box that scrolls; the card keeps its full height instead of shrinking. */
+  flex-shrink: 0;
+}
+.explain.key {
+  border-left-color: var(--accent);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--panel);
+}
+.explain-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.explain-phase {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  color: var(--accent);
+}
+.explain-goal b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.explain-decision {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 13.5px;
+}
+.explain-decision .cond {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+.explain-decision .operands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--ink-2);
+}
+.explain-decision .operand code {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.explain-decision .operand b {
+  font-family: var(--mono);
+}
+.explain-decision .outcome {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+}
+.explain-decision.yes .outcome {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.explain-decision.no .outcome {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+.explain-why {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.explain-why.plain {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.explain-row,
+.explain-did {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.explain .tag {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.explain-row.then .tag {
+  color: var(--ok);
+  border-color: currentColor;
+}
+.explain-row.returns .tag {
+  color: var(--p2);
+  border-color: currentColor;
+}
+.explain-did code {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.explain code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.key-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.key-toggle.on {
+  color: var(--accent);
+}

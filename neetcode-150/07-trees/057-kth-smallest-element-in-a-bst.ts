@@ -57,27 +57,42 @@ export class TreeNode {
 
 // @rule the stack holds ancestors still waiting to be visited, smallest on top
 // @why Inorder walk of a BST gives values in sorted order, so the kth one visited is the answer.
+// @goal what is the {k === 1 ? "1st" : k === 2 ? "2nd" : k === 3 ? "3rd" : k + "th"} smallest value in this BST?
 export function kthSmallest(root: TreeNode | null, k: number): number {
   // @why Our own stack replaces recursion, remembering nodes we still need to come back to.
+  // @phase Setup
+  // @say Collecting every value and sorting costs O(n log n) and visits the whole tree. A BST read left-root-right is already sorted, so walk it in that order and stop after {k} {k === 1 ? "value" : "values"}.
   const stack: TreeNode[] = [];
   // @why `cur` is the node we are about to explore.
   let cur = root;
 
   // @why Continue while there is a node to go into or a saved node to return to.
+  // @phase In-order walk: dive left, visit, then turn right
+  // @yes {cur ? "There is a subtree at " + cur.val + " still to explore." : "Nothing new to explore, but " + stack[stack.length - 1].val + " is waiting on the stack."}
+  // @no Nothing left to explore and nothing waiting: fewer than k nodes.
   while (cur || stack.length) {
     // Go as far left as possible.
     // @why The smallest values are down the left side, so dive left first.
+    // @yes {cur.val} exists. Anything smaller than it is on its left, so it must wait.
+    // @no No more left children: the top of the stack has nothing smaller left unvisited.
     while (cur) {
       // @why Save this node; we will come back to it after its left side is done.
+      // @say Park {cur.val} on the stack. Its left side holds smaller values, which come first.
       stack.push(cur);
       // @why Step to the left child.
+      // @say Step left{cur.left ? " to " + cur.left.val : ", to an empty spot"}.
       cur = cur.left;
     }
     // @why Nothing more on the left, so the top of the stack is the next smallest value.
+    // @say Pop {stack[stack.length - 1].val}. Everything smaller than it has already been visited, so it is the next value in sorted order.
     const node = stack.pop()!; // @ask node.val // @moment visit {stack[stack.length - 1].val}
     // @why Count down `k`; when it hits 0 this node is the kth smallest.
+    // @yes Counting {node.val} brings k to 0: it is the value you were asked for.
+    // @no Count {node.val}. It is not the one yet: {k - 1} more to go.
+    // @returns {node.val}: exactly k-1 smaller values were visited before it, and the walk stopped without touching the rest.
     if (--k === 0) return node.val;
     // @why Now explore the right subtree, which holds the next larger values.
+    // @say The next bigger values are in {node.val}'s right subtree{node.right ? ", starting under " + node.right.val : ", which is empty, so the stack supplies the next one"}.
     cur = node.right;
   }
   // @why Only reached when `k` is bigger than the tree size, which is invalid input.

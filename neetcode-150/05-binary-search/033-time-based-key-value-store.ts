@@ -53,10 +53,15 @@ export class TimeMap {
   }
 
   // @why Save a value for a key at a timestamp.
+  // @goal how do you record "{key}" = "{value}" at time {timestamp} so later lookups stay fast?
   set(key: string, value: string, timestamp: number): void {
     // @why Find this key's list, if it has one.
+    // @phase Append to this key's history
+    // @say Each key keeps its own history of [time, value] pairs. Rewriting one map entry per timestamp would lose the old values that past-time lookups still need.
     let list = this.store.get(key);
     // @why First time we see this key.
+    // @yes "{key}" has no history yet, so give it an empty one.
+    // @no "{key}" already has {list.length} {list.length === 1 ? "entry" : "entries"}, so just add to the end.
     if (!list) {
       // @why Make a new empty list for it.
       list = [];
@@ -64,37 +69,56 @@ export class TimeMap {
       this.store.set(key, list);
     }
     // @why Timestamps only go up, so adding at the end keeps the list sorted for binary search.
+    // @say Timestamps arrive in increasing order, so appending {timestamp} keeps the history sorted for free: no insertion search, and get can binary search it. "{key}" will hold {list.length + 1} {list.length === 0 ? "entry" : "entries"}, oldest first.
     list.push([timestamp, value]);
   }
 
   // @why Find the value with the biggest timestamp that is not above `timestamp`.
+  // @goal what was "{key}" set to at time {timestamp}?
   get(key: string, timestamp: number): string {
     // @why Get this key's list.
+    // @phase Find this key's sorted history
+    // @say Scanning the history backwards is O(n) per lookup. The history is sorted by time, so binary search for the last entry at or before {timestamp}.
     const list = this.store.get(key);
     // @why Unknown key has no value, so return an empty string.
+    // @yes "{key}" was never set, so it had no value at any time.
+    // @no "{key}" has {list.length} {list.length === 1 ? "entry" : "entries"} to search.
+    // @returns "" because "{key}" was never set.
     if (!list) return "";
     // @why `lo` and `hi` bound the search over the sorted list.
+    // @phase Binary search for the newest entry not after {timestamp}
     let lo = 0;
     let hi = list.length - 1;
     // @why Answer if nothing qualifies; stays empty when every timestamp is too new.
+    // @say Start with no answer: if every entry is newer than {timestamp}, the key had no value yet.
     let res = "";
     // @why Binary search over the timestamps.
+    // @yes {lo === hi ? "Only entry " + lo + " is left undecided, so check it." : "Entries " + lo + ".." + hi + " are still undecided, so probe the middle."}
+    // @no Every entry is sorted into "at or before {timestamp}" or "after it". res holds the newest of the first group{res ? ": " + JSON.stringify(res) : ", and there is none"}.
     while (lo <= hi) {
       // @why Look at the middle entry.
+      // @say Probe entry {(lo + hi) >> 1}: time {list[(lo + hi) >> 1][0]}.
       const mid = (lo + hi) >> 1;
       // @why This entry is not too new, so it could be the answer.
+      // @yes Time {list[mid][0]} ≤ {timestamp}: the value "{list[mid][1]}" was in effect by then, so it is a candidate. A later entry might still fit too.
+      // @no Time {list[mid][0]} > {timestamp}: this value was set after the moment asked about, and every later entry is even newer.
       if (list[mid][0] <= timestamp) {
         // @why Remember it, then look right for a later timestamp that still fits.
+        // @say "{list[mid][1]}" (time {list[mid][0]}) is the newest fitting entry found so far.
         res = list[mid][1]; // @moment fits: {list[mid][0]}
         // @why Move right to find a newer valid entry.
+        // @say Look right of entry {mid} for a newer one that still fits.
         lo = mid + 1; // @ask lo
       // @why This entry is too new.
       } else {
         // @why Move left to older entries.
+        // @say Discard entry {mid} and everything after it; look at older entries.
         hi = mid - 1; // @ask hi
       }
     }
     // @why Return the latest valid value found.
+    // @phase Answer
+    // @returns {res ? JSON.stringify(res) + ": the newest value set at or before time " + timestamp : "\"\": every entry for " + key + " is newer than " + timestamp}.
     return res;
   }
 }

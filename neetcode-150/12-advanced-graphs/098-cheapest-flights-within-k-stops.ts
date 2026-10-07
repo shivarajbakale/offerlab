@@ -52,6 +52,7 @@ import assert from "node:assert/strict";
 
 // @rule after round i, next[x] is the cheapest cost to x using at most i + 1 flights
 // @why Returns the cheapest price from `src` to `dst` with at most `k` stops, or -1.
+// @goal what is the cheapest way from city {src} to city {dst} with at most {k} {k === 1 ? "stop" : "stops"}?
 export function findCheapestPrice(
   n: number,
   flights: number[][],
@@ -60,25 +61,39 @@ export function findCheapestPrice(
   k: number,
 ): number {
   // @why `prices[x]` is the cheapest known cost to reach city `x`; unknown is Infinity.
+  // @phase Setup: only the start city is reachable, for free
+  // @say Dijkstra picks the cheapest path but ignores how many flights it uses, so it can choose a cheap path with too many stops. Bellman-Ford instead adds one flight per round, so after {k + 1} {k + 1 === 1 ? "round" : "rounds"} the prices respect the stop limit exactly.
   let prices = new Array<number>(n).fill(Infinity);
   // @why Getting to the start costs nothing.
   prices[src] = 0;
 
   // @why `k` stops means at most `k + 1` flights, so run one round per flight.
+  // @phase One round per allowed flight
+  // @yes Round {i + 1} of {k + 1}: allow paths of up to {i + 1} {i === 0 ? "flight" : "flights"}.
+  // @no All {k + 1} {k === 0 ? "round" : "rounds"} done: {k} {k === 1 ? "stop" : "stops"} means at most {k + 1} {k === 0 ? "flight" : "flights"}, so no more are allowed.
   for (let i = 0; i <= k; i++) {
     // @why Update a copy, so each round adds only one more flight.
+    // @say Write this round's prices into a copy. Reading from the old prices means a price set this round can't be extended again in the same round, which would sneak in an extra flight.
     const next = [...prices];
     // @why Look at every flight.
+    // @say Flight {from} → {to} for {price}.
     for (const [from, to, price] of flights) {
       // @why Skip it if we can't reach its starting city yet.
+      // @yes City {from} can't be reached yet with the flights allowed so far, so this flight can't be used.
+      // @no City {from} costs {prices[from]} to reach, so try flying on to {to}.
       if (prices[from] === Infinity) continue;
       // @why Keep the cheaper of the old price and the price using this flight.
+      // @yes {prices[from]} + {price} = {prices[from] + price}, cheaper than {next[to] === Infinity ? "no way at all" : next[to]} for city {to}. Take it.
+      // @no {prices[from]} + {price} = {prices[from] + price}, not cheaper than {next[to]} for city {to}. Keep the old price.
       if (prices[from] + price < next[to]) next[to] = prices[from] + price; // @ask next[to]
     }
     // @why The new round's prices become the current ones.
+    // @say Prices after {i + 1} {i === 0 ? "flight" : "flights"}: {next.map((p) => p === Infinity ? "∞" : p).join(", ")}.
     prices = next; // @moment round {i + 1}: {next.join(",")}
   }
   // @why If the destination was never reached, return -1.
+  // @phase Answer
+  // @returns {prices[dst] === Infinity ? "-1: city " + dst + " can't be reached in " + (k + 1) + " flights or fewer." : prices[dst] + ": the cheapest way to city " + dst + " using at most " + (k + 1) + (k === 0 ? " flight." : " flights.")}
   return prices[dst] === Infinity ? -1 : prices[dst];
 }
 

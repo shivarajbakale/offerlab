@@ -56,16 +56,28 @@ export class TreeNode {
 
 // @rule each call returns the depth of the subtree below its node
 // @why Depth of a tree = 1 for this node + the deeper of its two subtrees.
+// @goal how many nodes are on the longest root-to-leaf path under {root ? root.val : "this empty spot"}?
 export function maxDepth(root: TreeNode | null): number {
   // @why Base case: no node means depth 0, which also ends the recursion.
+  // @phase Stop at empty spots
+  // @yes Empty spot: no nodes here, so the path down from it has length 0.
+  // @no Node {root.val}. You cannot know its depth without knowing how deep each side goes, so ask both children first.
+  // @returns 0, so a leaf above counts only itself.
   if (!root) return 0;
   // @why Ask the left side for its depth.
+  // @phase Ask both children, then add this node
+  // @say Tracing every root-to-leaf path separately repeats their shared top parts. Instead each node asks its two children once and builds on their answers. Left side of {root.val} first.
+  // @then The left side of {root.val} is {left} {left === 1 ? "level" : "levels"} deep.
   const left = maxDepth(root.left);
   // @why Ask the right side for its depth.
+  // @say Now the right side of {root.val}.
+  // @then The right side of {root.val} is {right} {right === 1 ? "level" : "levels"} deep.
   const right = maxDepth(root.right);
   // @why Keep the deeper side and add 1 for this node itself.
+  // @say The longest path down from {root.val} goes through the deeper side, plus {root.val} itself: 1 + max({left}, {right}) = {1 + Math.max(left, right)}.
   const depth = 1 + Math.max(left, right); // @ask depth
   // @why Hand this subtree's depth up to the parent.
+  // @returns {depth}: the deepest path starting at {root.val} has {depth} {depth === 1 ? "node" : "nodes"}.
   return depth;
 }
 

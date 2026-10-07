@@ -125,17 +125,30 @@ class Heap<T> {
 
 // @rule the heap holds the k largest numbers seen so far; its top is the kth largest
 // @why Return the k-th largest number in the array.
+// @goal what is the k-th largest number (k = {k}) in {JSON.stringify(nums)}?
 export function findKthLargest(nums: number[], k: number): number {
   // @why A min-heap that keeps only the k largest numbers seen.
+  // @phase Setup: a min-heap that holds at most k numbers
+  // @say Sorting all {nums.length} numbers costs n log n, and orders far more than needed. Only the {k} largest matter, so keep just those in a min-heap: its top, the smallest of them, is the answer, and each number costs O(log k).
   const heap = new Heap<number>((a, b) => a - b); // min-heap
   // @why Look at each number once.
+  // @phase Each number: add it, then drop the smallest if over k
+  // @say Next number: {n}.
   for (const n of nums) {
     // @why Add the number to the heap.
+    // @say Add {n} to the kept numbers. It may beat one of them; the heap sorts that out in O(log k).
+    // @then Kept: {JSON.stringify(heap.data)}, smallest on top: {heap.data[0]}.
     heap.push(n);
     // @why Over k items: drop the smallest, so only the top k stay.
+    // @yes {heap.data.length} kept but only {k} wanted. The smallest, {heap.data[0]}, already has {k} numbers at least as large, so it can never be the k-th largest: drop it.
+    // @no {heap.data.length === k ? "Exactly " + k + " kept, so nothing to drop" : "Only " + heap.data.length + " of " + k + " spots filled so far, so keep everything for now"}.
+    // @say {heap.data.length > k ? heap.data.length + " kept but only " + k + " wanted. The smallest, " + heap.data[0] + ", already has " + k + " numbers at least as large, so it can never be the k-th largest: drop it." : heap.data.length === k ? "Exactly " + k + " kept, so nothing to drop yet." : "Only " + heap.data.length + " of " + k + " spots filled so far, so keep everything for now."}
     if (heap.size() > k) heap.pop(); // @ask heap.data[0]
   }
   // @why The smallest of the top k is the k-th largest.
+  // @phase Answer
+  // @say The heap holds the {k} largest numbers, {JSON.stringify(heap.data)}. Its top is the smallest of them.
+  // @returns {heap.data[0]}: exactly {k - 1} kept {k - 1 === 1 ? "number ranks" : "numbers rank"} above it, so it is the k-th largest. O(n log k), no full sort.
   return heap.peek()!;
 }
 

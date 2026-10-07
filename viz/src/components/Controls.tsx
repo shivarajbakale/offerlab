@@ -20,7 +20,18 @@ export type ScrubMark = { index: number; label: string; kind?: "broken" | "shrin
  * `counter` replaces the "step i / n" text; `marks` are labelled ticks over the scrubber: chaos events
  * (no kind), or key moments of a window story (a colored tick that jumps there when clicked).
  */
-export function Controls({ player, counter, marks }: { player: Player; counter?: string; marks?: ScrubMark[] }) {
+export function Controls({
+  player,
+  counter,
+  marks,
+  keyOnly,
+}: {
+  player: Player;
+  counter?: string;
+  marks?: ScrubMark[];
+  /** "Key steps only": step between the steps that carry a written reason. */
+  keyOnly?: { on: boolean; toggle: () => void; count: number };
+}) {
   const { index, count, playing } = player;
   return (
     <div className="controls">
@@ -81,6 +92,12 @@ export function Controls({ player, counter, marks }: { player: Player; counter?:
           </>
         )}
       </span>
+      {keyOnly && (
+        <label className={`key-toggle ${keyOnly.on ? "on" : ""}`} title={`Step only through the ${keyOnly.count} steps that explain a decision (press k)`}>
+          <input type="checkbox" checked={keyOnly.on} onChange={keyOnly.toggle} />
+          Key steps<kbd>k</kbd>
+        </label>
+      )}
       {/* Narrow screens show one button that cycles through the speeds instead of the full row. */}
       <button
         className="speed-cycle"

@@ -29,8 +29,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export function groupAnagrams(strs: string[]): string[][] {
-  // TODO: implement
-  throw new Error("Not implemented");
+  const store = new Map<string, string[]>()
+  for (let w of strs) {
+    const a = 'a'.charCodeAt(0); //97
+    const arr = new Array(26).fill(0);
+    for (let i = 0; i < w.length; i++) arr[w.charCodeAt(i) - a]++;
+    const groupKey = arr.join('');
+    const group = store.get(groupKey);
+
+    if (group) {
+      group.push(w);
+    }
+    else {
+      store.set(groupKey, [w])
+    }
+  }
+  return [...store.values()]
 }
 
 // Sort inner groups and the outer list so order doesn't matter.

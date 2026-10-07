@@ -61,18 +61,32 @@ export class TreeNode {
 
 // @rule each call returns whether the two subtrees at this spot match exactly
 // @why Two trees are the same if they have the same shape and the same values.
+// @goal do the subtrees at {p ? p.val : "an empty spot"} and {q ? q.val : "an empty spot"} have the same shape and values?
 export function isSameTree(p: TreeNode | null, q: TreeNode | null): boolean {
   // @why Both empty at the same spot means they match here.
+  // @phase Compare this spot in both trees
+  // @yes Both trees are empty here, so they agree at this spot.
+  // @no At least one tree has a node here, so compare them.
+  // @returns true: two empty spots are identical.
   if (!p && !q) return true;
   // @why Only one is empty, or the values differ, so the trees cannot be the same.
+  // @yes {!p || !q ? "Only one tree has a node here, so the shapes differ." : "Values differ: " + p.val + " vs " + q.val + "."} One mismatch anywhere means the trees are different.
+  // @no Both have {p.val} here. That only settles this spot; the subtrees below must match too.
+  // @returns false: a mismatch here makes the whole answer false.
   if (!p || !q || p.val !== q.val) return false;
   // @why This node matches; now check whether the two left subtrees match.
+  // @phase Recurse into matching children
+  // @say Comparing traversals as lists can be fooled by different shapes giving the same order. Walking both trees in lockstep compares shape and values together. Left children of {p.val} first.
+  // @then Left subtrees under {p.val}: {leftSame ? "identical" : "different"}.
   const leftSame = isSameTree(p.left, q.left);
   // @why Only check the right sides if the left sides already match.
+  // @say {leftSame ? "Left sides match, so the right sides decide." : "Left sides already differ, so skip the right sides: the answer is no either way."}
   const rightSame = leftSame && isSameTree(p.right, q.right);
   // @why The two subtrees here match only if both sides do.
+  // @say Same here only if both sides are: {leftSame} and {rightSame}.
   const same = leftSame && rightSame; // @ask same
   // @why Hand the verdict for this spot up to the caller.
+  // @returns {same}: the subtrees at {p.val} {same ? "match exactly" : "differ somewhere"}.
   return same;
 }
 

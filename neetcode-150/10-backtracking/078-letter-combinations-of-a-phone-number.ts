@@ -59,28 +59,44 @@ const KEYPAD: Record<string, string> = {
 
 // @rule cur holds one letter for each of digits[0..i-1]
 // @why Returns every letter string the digits could spell.
+// @goal which letter strings can the digits "{digits}" spell on a phone keypad?
 export function letterCombinations(digits: string): string[] {
   // @why No digits means no combinations (not even an empty string).
+  // @phase Setup
+  // @yes No digits were pressed, so there is nothing to spell.
+  // @no {digits.length} {digits.length === 1 ? "digit" : "digits"}, each with 3 or 4 letters: every string picks one letter per digit, so build them one digit at a time, branching on each letter. Nested loops can't do this, since their depth would have to match the number of digits.
+  // @returns []: the problem defines no digits as no combinations, not one empty string.
   if (digits.length === 0) return [];
   // @why Collects all finished strings.
   const res: string[] = [];
 
   // @why `i` is which digit we are on; `cur` is the string built so far.
+  // @goal with "{cur}" spelled so far, {i < digits.length ? "which strings can the remaining digits \"" + digits.slice(i) + "\" finish?" : "is anything left to add?"}
   const dfs = (i: number, cur: string): void => {
     // @why All digits used, so `cur` is a full combination.
+    // @phase Pick a letter for the next digit
+    // @yes Every digit has a letter, so "{cur}" is one complete string.
+    // @no Digit "{digits[i]}" (position {i + 1} of {digits.length}) still needs a letter.
     if (i === digits.length) {
       // @why Save it. A string can't be changed later, so no copy is needed.
+      // @say Record "{cur}". Each branch built its own new string with `cur + ch`, so nothing needs undoing or copying.
       res.push(cur); // @ask res.length // @moment found {cur}
       // @why Done with this branch.
+      // @returns nothing; this branch is complete and gave "{cur}".
       return;
     }
     // @why Try each letter of this digit, and build the rest on top of it.
+    // @say {ch ? "Letter \"" + ch + "\" for digit " + digits[i] + ": continue with \"" + cur + ch + "\"." : "Try each letter of digit " + digits[i] + " in turn."}
     for (const ch of KEYPAD[digits[i]]) dfs(i + 1, cur + ch);
+    // @returns nothing; every letter of digit {digits[i]} has been tried after "{cur}".
   };
 
   // @why Start at the first digit with an empty string.
+  // @phase Run the choices
+  // @say Start at digit "{digits[0]}" with nothing spelled yet.
   dfs(0, "");
   // @why Return all combinations.
+  // @returns all {res.length} strings: one per way to pick a letter for each digit.
   return res;
 }
 

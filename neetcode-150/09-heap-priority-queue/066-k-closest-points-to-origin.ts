@@ -130,19 +130,32 @@ class Heap<T> {
 
 // @rule the heap holds the k closest points seen so far, farthest on top
 // @why Return the k points nearest the origin, in any order.
+// @goal which {k === 1 ? "point" : k + " points"} of {JSON.stringify(points)} {k === 1 ? "is" : "are"} closest to (0, 0)?
 export function kClosest(points: number[][], k: number): number[][] {
   // @why Squared distance is enough to compare, so no slow square root.
+  // @phase Setup: a max-heap that holds at most k points
+  // @say Sorting all {points.length} points by distance costs n log n. You only need the {k} closest, so keep just {k} in a heap with the farthest on top: each new point costs O(log k). Compare x² + y², since the square root does not change the order.
   const dist = (p: number[]) => p[0] * p[0] + p[1] * p[1];
   // @why A max-heap of the k best so far; the farthest of them is on top.
+  // @say Put the farthest kept point on top, because that is the one a closer newcomer must push out.
   const heap = new Heap<number[]>((a, b) => dist(b) - dist(a)); // max-heap
   // @why Look at each point once.
+  // @phase Each point: add it, then drop the farthest if over k
+  // @say Point ({p[0]}, {p[1]}), squared distance {p[0]} × {p[0]} + {p[1]} × {p[1]} = {p[0] * p[0] + p[1] * p[1]}.
   for (const p of points) {
     // @why Add the point to the heap.
+    // @say Add ({p[0]}, {p[1]}) to the kept points. It may be closer than one of them; the heap decides in O(log k).
+    // @then Kept: {JSON.stringify(heap.data)}, farthest on top: ({heap.data[0][0]}, {heap.data[0][1]}).
     heap.push(p);
     // @why Over k points: drop the farthest, since it can't be one of the closest.
+    // @yes {heap.data.length} points kept but only {k} wanted. The top, ({heap.data[0][0]}, {heap.data[0][1]}), is the farthest of them, and the closer rest already fill the {k} {k === 1 ? "spot" : "spots"}: it can never make the cut. Drop it.
+    // @no {heap.data.length === k ? "Exactly " + k + " kept, so nothing to drop" : "Only " + heap.data.length + " of " + k + " spots filled so far, so keep everything for now"}.
+    // @say {heap.data.length > k ? heap.data.length + " points kept but only " + k + " wanted. The top, (" + heap.data[0][0] + ", " + heap.data[0][1] + "), is the farthest of them, and the closer rest already fill the " + k + (k === 1 ? " spot" : " spots") + ": it can never make the cut. Drop it." : heap.data.length === k ? "Exactly " + k + " kept, so nothing to drop yet." : "Only " + heap.data.length + " of " + k + " spots filled so far, so keep everything for now."}
     if (heap.size() > k) heap.pop(); // @ask heap.data[0].join()
   }
   // @why What is left in the heap is the k closest.
+  // @phase Answer
+  // @returns {JSON.stringify(heap.data)}: every other point was pushed out by {k === 1 ? "a closer one" : k + " closer ones"}. O(n log k) overall.
   return heap.toArray();
 }
 

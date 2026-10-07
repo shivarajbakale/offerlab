@@ -113,10 +113,14 @@ class MinHeap<T extends number[]> {
 
 // @rule nodes leave the heap in order of arrival time, so a first pop is the fastest
 // @why Returns the time for a signal from `k` to reach all `n` nodes, or -1 if it can't.
+// @goal a signal leaves node {k}: how long until all {n} nodes have heard it, if they ever do?
 export function networkDelayTime(times: number[][], n: number, k: number): number {
   // @why A list of outgoing edges for each node; nodes are numbered from 1.
+  // @phase Setup: who can signal whom, and how fast
+  // @say Trying every path to every node is exponential, and plain BFS ignores edge times. Dijkstra settles nodes in order of arrival time instead: the earliest unsettled arrival can't be beaten, because any other route is already later before it even arrives.
   const adj: [number, number][][] = Array.from({ length: n + 1 }, () => []);
   // @why Store each edge as (neighbor, travel time).
+  // @say Edge {u} → {v} takes {w}.
   for (const [u, v, w] of times) adj[u].push([v, w]);
 
   // @why Nodes whose shortest time is already final.
@@ -124,27 +128,41 @@ export function networkDelayTime(times: number[][], n: number, k: number): numbe
   // @why A priority queue that gives the closest unfinished node first.
   const heap = new MinHeap<[number, number]>(); // [time, node]
   // @why The signal starts at node `k` at time 0.
+  // @say Node {k} has the signal at time 0.
   heap.push([0, k]);
   // @why The time at which the last node was reached.
   let elapsed = 0;
 
   // @why Keep going while some node is still waiting.
+  // @phase Settle nodes in order of arrival time
+  // @yes {heap.data.length ? heap.data.length + (heap.data.length === 1 ? " arrival is" : " arrivals are") + " waiting. Settle the earliest one." : "No arrivals left to process: every node the signal can reach has been settled."}
+  // @no {heap.data.length ? heap.data.length + (heap.data.length === 1 ? " arrival is" : " arrivals are") + " waiting. Settle the earliest one." : "No arrivals left to process: every node the signal can reach has been settled."}
   while (heap.size) {
     // @why Take the node with the smallest arrival time.
+    // @say Earliest pending arrival: node {heap.data[0][1]} at time {heap.data[0][0]}.
     const [t, node] = heap.pop()!;
     // @why Skip it if we already found a faster way to it.
+    // @yes Node {node} was already settled at an earlier time, so arriving at {t} changes nothing. Skip this stale entry.
+    // @no Node {node} is not settled yet, and nothing still waiting arrives before {t}, so {t} is its fastest time.
     if (visited.has(node)) continue;
     // @why This is the fastest way to this node, so its time is final.
+    // @say Settle node {node} at time {t}.
     visited.add(node); // @moment signal reaches {node} at {t}
     // @why Times only go up as we pop, so this is the latest arrival so far.
+    // @say Nodes settle in time order, so {t} is the latest arrival yet. The last node settled sets the answer.
     elapsed = t; // @ask elapsed
     // @why Look at every edge leaving this node.
+    // @say Edge {node} → {nb} takes {w}.
     for (const [nb, w] of adj[node]) {
       // @why Queue the neighbor with its arrival time through this node.
+      // @yes Node {nb} isn't settled, so offer it an arrival at {t} + {w} = {t + w}. If a faster offer exists, the heap gives that one first.
+      // @no Node {nb} is already settled at an earlier time, so going through {node} can't help it.
       if (!visited.has(nb)) heap.push([t + w, nb]);
     }
   }
   // @why If every node was reached, the answer is the last arrival time; otherwise -1.
+  // @phase Answer
+  // @returns {visited.size === n ? elapsed + ": all " + n + " nodes heard the signal, and the last one heard it at time " + elapsed + "." : "-1: only " + visited.size + " of " + n + " nodes can be reached from " + k + ", so the rest never hear it."}
   return visited.size === n ? elapsed : -1;
 }
 

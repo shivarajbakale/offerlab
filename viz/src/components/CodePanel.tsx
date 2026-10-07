@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { isWhyLine, type Problem } from "../parseProblem.ts";
+import type { Problem } from "../parseProblem.ts";
+import { isNoteLine } from "../model/hints.ts";
 import { useTokens } from "./highlight.ts";
 import { WhyText } from "./WhyText.tsx";
 import { scrollWithin } from "./scrollWithin.ts";
@@ -48,7 +49,7 @@ export function CodePanel({
   let shown = 0;
   for (let n = codeStart; n <= codeEnd; n++) {
     // Hint comments are shown elsewhere (narration bar, notes), not as code.
-    if (/^\s*\/\/\s*@(viz|rule)\b/.test(lines[n - 1]) || isWhyLine(lines[n - 1])) continue;
+    if (/^\s*\/\/\s*@(viz|rule)\b/.test(lines[n - 1]) || isNoteLine(lines[n - 1])) continue;
     const plain = lines[n - 1].replace(/\s*\/\/\s*@(say|mark|ask|broken|rule|moment)\b.*$/, "");
     let lineTokens = tokens?.[n - 1];
     if (lineTokens && plain.length < lines[n - 1].length) {

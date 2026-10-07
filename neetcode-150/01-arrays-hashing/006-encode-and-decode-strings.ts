@@ -41,31 +41,45 @@ import assert from "node:assert/strict";
 
 // @rule i always points at the start of the next item's length number
 // @why Pack many strings into one string that can be unpacked exactly.
+// @goal how can {JSON.stringify(strs)} travel as one string and come back unchanged?
 export function encode(strs: string[]): string {
   // @why Put the length and a `#` before each string so we know where it ends, whatever it contains.
+  // @phase Encode: write each string's length before it
+  // @say A plain separator fails: any character you pick might appear inside a string. So write each string's length and a `#` first. The reader then knows exactly how many characters to take, whatever they are.
+  // @returns one string where every item carries its own length, so nothing inside an item can be mistaken for a boundary.
   return strs.map((s) => `${s.length}#${s}`).join("");
 }
 
 // @why Rebuild the original list of strings from the packed string.
+// @goal which strings were packed into {JSON.stringify(str)}?
 export function decode(str: string): string[] {
   // @why The strings we recover, in order.
+  // @phase Decode: read a length, then take exactly that many characters
   const result: string[] = [];
   // @why `i` marks the start of the next length number.
   let i = 0;
   // @why Keep going until the whole packed string is read.
+  // @yes Position {i} of {str.length}: by the rule, a length number starts here.
+  // @no {i} reached the end, so every item has been read.
   while (i < str.length) {
     // @why `j` will scan forward to find the `#` after the length.
     let j = i;
     // @why The first `#` after the digits ends the length; the text can't confuse this.
+    // @yes "{str[j]}" is still part of the length number, so step past it.
+    // @no Found the `#` at {j}. It must end the length: the item text only starts after it, so a `#` inside the text can never be reached here.
     while (str[j] !== "#") j++;
     // @why Read the number in front of the `#`; it tells how many characters to take.
+    // @say The digits "{str.slice(i, j)}" say the next item is {Number(str.slice(i, j))} characters long.
     const len = Number(str.slice(i, j)); // @ask len
     // @why Take exactly `len` characters after the `#`, even if they contain `#`.
+    // @say Take exactly {len} characters after the `#`: "{str.slice(j + 1, j + 1 + len)}". Counting, not searching, is what makes a `#` or digit inside the text harmless.
     result.push(str.slice(j + 1, j + 1 + len)); // @moment decoded "{str.slice(j + 1, j + 1 + len)}"
     // @why Jump past the length, the `#`, and the string to the next item.
+    // @then Recovered {JSON.stringify(result)}. The next length number starts at {i}.
     i = j + 1 + len; // @ask i
   }
   // @why All strings are recovered.
+  // @returns {JSON.stringify(result)}, exactly the strings that were encoded.
   return result;
 }
 

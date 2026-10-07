@@ -61,53 +61,85 @@ export class TreeNode {
 
 // @rule tokens are written and read in the same order: root, then left, then right
 // @why Turn a tree into a string that can be turned back into the same tree.
+// @goal how do you write this tree as a string that rebuilds the exact same shape?
 export function serialize(root: TreeNode | null): string {
   // @why Collect one token per node, in preorder.
+  // @phase Setup
+  // @say Writing only the values loses the shape: many trees share the same values in the same order. Writing a marker for every empty spot too pins the shape down exactly.
   const out: string[] = [];
   // @why Visits nodes root, left, right.
+  // @goal which root-left-right tokens, with "N" for empty spots, describe the subtree at this spot?
   const dfs = (node: TreeNode | null): void => {
     // @why An empty spot must be recorded too, or we could not rebuild the shape.
+    // @phase Write root, then left, then right
+    // @yes Empty spot. Record it, so the reader knows this branch ends here.
+    // @no Node {node.val}: write it first, so the reader sees each root before its children.
     if (!node) {
       // @why Write "N" to mark a missing child.
+      // @say Write "N" for the missing child.
       out.push("N");
       // @why Nothing below an empty spot, so stop.
+      // @returns nothing; an empty spot has no children to write.
       return;
     }
     // @why Write this node's value.
+    // @then Tokens so far: {out.join(",")}.
     out.push(String(node.val)); // @moment write {node.val}
     // @why Then write everything in the left subtree.
+    // @say Write all of {node.val}'s left subtree next, before anything on its right.
     dfs(node.left);
     // @why Then write everything in the right subtree.
+    // @say The left subtree of {node.val} is fully written. Now its right subtree.
+    // @then Everything under {node.val} is written.
     dfs(node.right);
+    // @returns nothing; the subtree at {node.val} is written out in full.
   };
   // @why Start at the root.
+  // @phase Write the whole tree
   dfs(root);
   // @why Join the tokens into one string with commas.
+  // @returns "{out.join(",")}": one token per node and per empty spot, O(n).
   return out.join(",");
 }
 
 // @why Turn the string back into a tree.
+// @goal which tree does "{data}" describe?
+// @phase Read the string back
 export function deserialize(data: string): TreeNode | null {
   // @why Split the string back into the list of tokens.
+  // @phase Setup
+  // @say The tokens were written root, left, right, with "N" for every empty spot. Reading them back in that same order puts each one in exactly the place it came from, with no lookahead.
   const tokens = data.split(",");
   // @why `i` is the next token to read; each call uses one.
   let i = 0;
   // @why Reads tokens in the same root, left, right order they were written.
   const dfs = (): TreeNode | null => {
     // @why Take the next token and move forward.
+    // @phase Read root, then left, then right
+    // @say Read token {i}: "{tokens[i]}".
     const token = tokens[i++]; // @ask token
     // @why "N" means no node here, so return an empty subtree.
+    // @yes "N": the writer found an empty spot here, so this branch ends.
+    // @no {token} is a real node. The tokens right after it describe its left subtree, then its right.
+    // @returns null: an empty spot, exactly as written.
     if (token === "N") return null;
     // @why Make a node from the number token.
     const node = new TreeNode(Number(token)); // @moment rebuild {token}
     // @why The next tokens describe the left subtree, so build it first.
+    // @say The writer wrote {token}'s whole left subtree next, so read it next.
+    // @then {token}'s left child: {node.left ? node.left.val : "none"}.
     node.left = dfs();
     // @why After the left side is finished, the following tokens are the right subtree.
+    // @say The left subtree used up its tokens, so the next ones are {token}'s right subtree.
+    // @then {token}'s right child: {node.right ? node.right.val : "none"}.
     node.right = dfs();
     // @why Return this node with both children attached.
+    // @returns node {token}, rebuilt with both subtrees.
     return node;
   };
   // @why Kick off the rebuild from the first token.
+  // @phase Rebuild the whole tree
+  // @returns the rebuilt root. Each token was read once, O(n).
   return dfs();
 }
 

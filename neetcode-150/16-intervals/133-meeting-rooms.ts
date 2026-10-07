@@ -53,17 +53,29 @@ export class Interval {
 
 // @rule no two meetings in sorted[0..i] overlap
 // @why Returns true if one person can attend every meeting, meaning none overlap.
+// @goal can one person sit through {intervals.length === 1 ? "this one meeting" : "these " + intervals.length + " meetings"} without two overlapping?
 export function canAttendMeetings(intervals: Interval[]): boolean {
   // @why Sort by start so any clash must be between neighbours.
+  // @phase Setup: sort so a clash can only be between neighbours
+  // @say Checking every pair of meetings is n² work. After sorting by start, if any two meetings clash, then some meeting clashes with the one right before it, so only neighbours need checking.
   const sorted = [...intervals].sort((a, b) => a.start - b.start);
   // @why Compare each meeting with the one just before it.
+  // @phase Check each neighbouring pair
+  // @yes Compare [{sorted[i].start},{sorted[i].end}] with the meeting before it, [{sorted[i - 1].start},{sorted[i - 1].end}].
+  // @no Every neighbouring pair has been checked and none clashed.
   for (let i = 1; i < sorted.length; i++) {
     // @why Does this one start before the previous one ends? Then they overlap.
+    // @say Does {sorted[i].start} come before the previous meeting's end, {sorted[i - 1].end}? Starting exactly when it ends is fine.
     const clash = sorted[i].start < sorted[i - 1].end; // @ask clash
     // @why An overlap means one person cannot attend both.
+    // @yes The meeting at {sorted[i].start} begins while [{sorted[i - 1].start},{sorted[i - 1].end}] is still running. One person can't be in both, so the answer is settled.
+    // @no The meeting at {sorted[i].start} starts once [{sorted[i - 1].start},{sorted[i - 1].end}] is over. Every earlier meeting ended even sooner, so it is clear of all of them.
+    // @returns false: two meetings overlap, so no need to check the rest.
     if (clash) return false; // @broken
   }
   // @why No neighbours overlapped, so no meetings clash.
+  // @phase Answer
+  // @returns true: no neighbouring pair clashed, and after sorting that means no pair at all clashes.
   return true;
 }
 

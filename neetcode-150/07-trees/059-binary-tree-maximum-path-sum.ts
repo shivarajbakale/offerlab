@@ -63,29 +63,48 @@ export class TreeNode {
 // @viz best:best
 // @rule gain returns the best downward sum from its node; best is the best bend seen so far
 // @why Find the largest sum along any path; it may start and end anywhere.
+// @goal what is the largest sum along any path in this tree?
 export function maxPathSum(root: TreeNode | null): number {
   // @why `best` is the highest path sum seen so far; start very low since values can be negative.
+  // @phase Setup
+  // @say Trying every pair of endpoints is O(n²) paths. But every path has one highest node where it bends, so at each node combine the best way down its left and its right. -Infinity, not 0, because an all-negative tree still has an answer.
   let best = -Infinity;
 
   // @why Returns the best sum of a path that starts here and goes down one side only.
+  // @goal what is the best sum going straight down from {node ? node.val : "this empty spot"}, and does a path bending here beat the best?
   const gain = (node: TreeNode | null): number => {
     // @why An empty subtree adds nothing.
+    // @phase Post-order: children report their best downward sums
+    // @yes Empty spot: nothing to add.
+    // @no Node {node.val}. The best path bending here needs the best downward sums from both children first.
+    // @returns 0: an empty side contributes nothing.
     if (!node) return 0;
     // @why Take the left gain, but ignore it if negative, since skipping it is better.
+    // @say Ask how much the left side of {node.val} can add. If it would subtract, take 0 instead: you can always stop the path at {node.val}.
+    // @then Left of {node.val} adds {left}.
     const left = Math.max(gain(node.left), 0);
     // @why Same for the right side.
+    // @say Same for the right side of {node.val}.
+    // @then Right of {node.val} adds {right}.
     const right = Math.max(gain(node.right), 0);
     // @why A path bending at this node uses both sides, so check if it beats `best`.
+    // @say A path bending at {node.val}: {left} + {node.val} + {right} = {node.val + left + right}. Best so far {best}. {node.val + left + right > best ? "New best." : "Not better, so best stays."}
     best = Math.max(best, node.val + left + right); // @ask best
     // @why The parent can only extend one side, so take this node plus the better side.
+    // @say A path going up through the parent can't use both sides of {node.val}, or it would fork. Offer {node.val} + max({left}, {right}) = {node.val + Math.max(left, right)}.
     const down = node.val + Math.max(left, right); // @ask down
     // @why Pass that one-sided gain up to the parent.
+    // @returns {down}: the best sum of a path from {node.val} straight down.
     return down;
   };
 
   // @why Start at the root; `best` gets filled in along the way.
+  // @phase Walk every node once
+  // @say Start at the root. Its return value is only the one-sided gain; the answer collects in `best`.
   gain(root);
   // @why After visiting every node, `best` is the answer.
+  // @phase Answer
+  // @returns {best}: every node was tried as the bend point once, so O(n).
   return best;
 }
 

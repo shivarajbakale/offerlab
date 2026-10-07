@@ -49,8 +49,11 @@ import assert from "node:assert/strict";
 
 // @rule stack holds fleet arrival times, each strictly later than the fleet ahead of it
 // @why Count the groups (fleets) of cars that arrive at the target together.
+// @goal how many fleets reach {target}, with cars at {JSON.stringify(position)} driving at {JSON.stringify(speed)}?
 export function carFleet(target: number, position: number[], speed: number[]): number {
   // @why Pair each car's position with its speed so they can be sorted together.
+  // @phase Setup: line the cars up from the front
+  // @say Simulating the cars hour by hour, tracking who catches whom, is slow and fiddly. But cars can't pass, so a car only ever merges with the fleet right ahead of it. Sort front to back and compare each car's solo arrival time with that fleet's.
   const cars = position
     .map((p, i) => [p, speed[i]] as const)
     // @why Sort from closest to the target to farthest; a car can only be blocked by one ahead of it.
@@ -59,13 +62,21 @@ export function carFleet(target: number, position: number[], speed: number[]): n
   // @why Arrival times of fleets, in order from front to back.
   const stack: number[] = []; // arrival times of fleets
   // @why Go through cars from front to back.
+  // @phase Front to back: join the fleet ahead, or lead a new one
+  // @say Car at {p} driving {s}.
   for (const [p, s] of cars) {
     // @why How long this car needs to reach the target if nothing blocks it.
+    // @say Alone it would arrive after ({target} − {p}) ÷ {s} = {(target - p) / s} {(target - p) / s === 1 ? "hour" : "hours"}.
     const time = (target - p) / s; // @ask time
     // @why Slower than the fleet ahead means it catches up and joins it. Taking longer starts a new fleet.
+    // @yes {stack.length === 0 ? "No car is ahead, so this car leads the first fleet." : "It needs " + time + (time === 1 ? " hour" : " hours") + ", longer than the fleet ahead (" + stack[stack.length - 1] + "). It never catches up, so it leads a new fleet."}
+    // @no It needs only {time} {time === 1 ? "hour" : "hours"}, no more than the fleet ahead ({stack[stack.length - 1]}), so it catches up before the target. It can't pass, so it slows down and joins that fleet.
+    // @then {stack.length} {stack.length === 1 ? "fleet" : "fleets"} so far; the last one arrives at {stack[stack.length - 1]} {stack[stack.length - 1] === 1 ? "hour" : "hours"}.
     if (stack.length === 0 || time > stack[stack.length - 1]) stack.push(time); // @ask stack.length // @moment car at {p} needs {time} hours
   }
   // @why Each entry left is one fleet.
+  // @phase Answer
+  // @returns {stack.length}: one fleet per car that couldn't catch the fleet ahead of it.
   return stack.length;
 }
 
