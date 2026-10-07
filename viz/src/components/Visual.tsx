@@ -39,7 +39,9 @@ const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "s
 
 function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
   const kind =
-    panel.kind === "array" && panel.chars
+    panel.kind === "array" && panel.letters
+      ? "letter counts"
+      : panel.kind === "array" && panel.chars
       ? "string"
       : panel.kind === "array" && panel.heap
         ? "heap"
@@ -53,7 +55,7 @@ function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
     <div className={`panel ${wide ? "wide" : ""}`}>
       <div className="panel-title">
         <b>{panel.name}</b>
-        <span>{kind}</span>
+        <span className={`kind-tag kind-${panel.kind}`}>{kind}</span>
         {size && <span>{size}</span>}
       </div>
       {children}

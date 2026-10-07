@@ -20,6 +20,8 @@ export type Hints = {
   gridLabels?: [string, string | undefined];
   graph?: string;
   heap?: string;
+  /** The code turns letters into slots with `charCodeAt`, so 26-slot count arrays are labelled a to z. */
+  letterIndex?: boolean;
   say: Record<number, string>;
   /** `// @mark name` at the end of a line names it for lesson play links (`@at=name`). */
   marks: Record<string, number>;
@@ -77,5 +79,6 @@ export function parseHints(source: string): Hints {
       }
     }
   });
+  hints.letterIndex = /charCodeAt\(/.test(source);
   return hints;
 }

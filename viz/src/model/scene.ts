@@ -20,6 +20,8 @@ export type ArrayPanel = {
   pointers: Pointer[];
   window?: [number, number];
   chars?: boolean;
+  /** 26 counters, one per letter: indexes show as a to z. */
+  letters?: boolean;
   heap?: boolean;
 };
 export type GridPanel = {
@@ -467,6 +469,7 @@ export function buildScene(step: Step, prev: Step | undefined, hints: Hints, bui
             len: o.len,
             pointers: [],
             heap: heapLike,
+            letters: hints.letterIndex && o.len === 26 && o.items.every((v) => v.t === "p" && typeof v.v === "number"),
           });
         }
         break;

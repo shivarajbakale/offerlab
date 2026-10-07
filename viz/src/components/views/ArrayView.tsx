@@ -31,7 +31,7 @@ export function ArrayView({ panel }: { panel: ArrayPanel }) {
                 className={[
                   "arr-cell",
                   c.changed ? "changed" : "",
-                  c.muted ? "muted" : "",
+                  c.muted || (panel.letters && c.text === "0") ? "muted" : "",
                   i >= wl && i <= wr ? "in-window" : "",
                 ].join(" ")}
                 title={c.text}
@@ -49,9 +49,9 @@ export function ArrayView({ panel }: { panel: ArrayPanel }) {
               />
             )}
           </div>
-          <div className="arr-idx">
+          <div className={`arr-idx ${panel.letters ? "letters" : ""}`}>
             {panel.cells.map((_, i) => (
-              <span key={i}>{i}</span>
+              <span key={i}>{panel.letters ? String.fromCharCode(97 + i) : i}</span>
             ))}
           </div>
           {pointerRows > 0 && (

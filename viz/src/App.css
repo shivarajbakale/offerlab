@@ -242,6 +242,7 @@
 .arr,
 .grid,
 .kv,
+.map,
 .scalar {
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0, "calt" 0;
@@ -596,6 +597,91 @@
   height: 36px;
   display: grid;
   place-items: center;
+}
+
+/* panel kind tag: arrays stay plain, maps and sets get their own colour */
+.kind-tag {
+  border-radius: 999px;
+}
+.kind-map,
+.kind-set,
+.kind-object {
+  color: var(--key);
+  background: var(--key-soft);
+  padding: 0 7px;
+}
+.arr-idx.letters span {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+/* map: one row per entry, key tag pointing at its value */
+.map {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 5px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.map-head,
+.map-row {
+  display: contents;
+}
+.map-head span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.map-key {
+  justify-self: start;
+  padding: 2px 10px;
+  border: 1px solid var(--key-line);
+  background: var(--key-soft);
+  color: var(--key);
+  border-radius: 999px;
+  font-weight: 600;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-arrow {
+  color: var(--key);
+  opacity: 0.7;
+}
+.map-val {
+  justify-self: start;
+  padding: 2px 10px;
+  border-left: 2px solid var(--line-2);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* set: unordered bag of members inside braces */
+.chips.set {
+  align-items: center;
+}
+.chips.set::before,
+.chips.set::after {
+  color: var(--key);
+  font-size: 16px;
+  font-weight: 600;
+}
+.chips.set::before {
+  content: "{";
+}
+.chips.set::after {
+  content: "}";
+}
+.chips.set .chip {
+  border-color: var(--key-line);
+  background: var(--key-soft);
+  color: var(--key);
 }
 
 /* tables */
