@@ -8,6 +8,14 @@
 - **Not the right tool when:** Places are crowded in some areas and sparse in others and fit in one machine's memory; a [quadtree](#/sd-01-partitioning/004-quadtree) makes cells small only where places crowd. If your database already has a spatial index, or you need cells of more even area, use that index or a library such as Google's S2 or Uber's H3.
 - **Where you'll meet it:** Redis's GEOADD and GEOSEARCH, which store each point as a geohash-style 52-bit score in a sorted set; Elasticsearch's geohash grid aggregation; Gustavo Niemeyer's geohash.org (2008); and interview questions such as "Design Yelp" or "Design a proximity service".
 
+## In plain words
+
+Apps like Uber, Yelp or Tinder constantly ask "what is near me?". The places live in an ordinary database that keeps its keys sorted and is good at reading every key in a range, such as all keys starting with `gcpuz`. It knows nothing about maps. Geohash turns a position on the map into such a key, so that places close together on the map usually get keys that start the same way.
+
+It works like a postcode that gets more precise with every character. The first character says which big region of the world you are in, the next which part of that region, and so on, down to a few metres. To find what is near you, you read every place whose postcode starts like yours, and, because you might be standing near a border, the places in the 8 areas around yours too.
+
+In the picture on the right, the map is a real piece of south-east London around the Royal Observatory in Greenwich. The red cross is the location being looked up: "you" in a search, or the place being stored, by name. Grey dots are stored places (cafe, park, pier, …) with their geohash next to them. Outlined rectangles are cells, each named by its geohash; filled cells are the ones the search has read, and dots that turn orange are the places it found. The dashed box is the area being searched (while a location is being encoded, it is the half of the map kept so far). The dotted pink line is longitude 0, the Greenwich meridian, which is an edge between cells at every size. The scale bar gives real distances, and the box at the top says what just happened.
+
 ## Words we'll use
 
 - **Latitude** — how far north or south a place is, from -90 (South Pole) to 90 (North Pole) degrees. Drawn up and down here.
@@ -102,6 +110,15 @@ A candidate is only returned if it is inside the dashed box: the school is in a 
   A: Anything close by that sits across an edge of your cell. Here the cafe, 120 metres east, is missed. [▶ See it](play:broken: prefix only@at=result)
 - **Q:** How many range scans does the full search do, and why that many?
   A: Nine: your own cell and the 8 cells around it, so that every near place is covered whatever edge it lies across. [▶ See it](play:search@at=cells)
+
+## When to use which
+
+- **Geohash** — places live in a sorted key-value store or a database with no map index, and the question is "what is within a few kilometres?". Example: a proximity service over millions of restaurants in DynamoDB or Bigtable, or Redis's GEOSEARCH, which is built on the same idea. Always search the 8 neighbouring cells too.
+- **[Quadtree](#/sd-01-partitioning/004-quadtree)** — the points fit in one machine's memory, change often and are very uneven: thousands in a city centre, few in the suburbs. Example: the live drivers of one city in a ride-hailing matching service.
+- **Google S2 or Uber H3 cells** — the same idea with better-shaped cells (S2 uses squares on a cube around the globe, H3 uses hexagons), so cells are closer to the same size everywhere. Prefer them for global systems.
+- **The database's own spatial index** (PostGIS, MongoDB 2dsphere, Elasticsearch geo queries) — when you already use such a database and the load fits on it. No need to build anything.
+- **[Consistent](#/sd-01-partitioning/001-consistent-hashing) or [rendezvous](#/sd-01-partitioning/002-rendezvous-hashing) hashing** — when you just need to spread data evenly over servers and location does not matter. You can also use a geohash prefix as the key you shard by, so one region's data stays together.
+- **In an interview:** for "Design Yelp" or "nearby friends", store a geohash per place, pick the precision from the search radius, read the own cell plus 8 neighbours, then filter by real distance. Mention the edge problem and hot cells in dense cities.
 
 ## Deep dive
 

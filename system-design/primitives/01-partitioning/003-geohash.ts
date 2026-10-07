@@ -51,6 +51,7 @@ export type Place = { name: string; lat: number; lon: number; hash: string };
 /** The geohash of a location: `precision` characters, each narrowing the cell. */
 function encode(lat: number, lon: number, precision: number): string {
   // @why The whole world to start with; every bit halves it.
+  // @caption To find the geohash of {typeof name === "string" ? name : "your location"}, start with the whole world. Each step asks "which half is it in?", writes 0 or 1, and keeps only that half.
   const box: Cell = { x0: -180, y0: -90, x1: 180, y1: 90 };
   // For drawing only: the cell after each character.
   const trail: Cell[] = [];
@@ -64,18 +65,22 @@ function encode(lat: number, lon: number, precision: number): string {
       const mid = (box.x0 + box.x1) / 2;
       if (lon >= mid) {
         ch = ch * 2 + 1;
+        // @caption {typeof name === "string" ? name : "your location"} is east of longitude {mid}, so write a 1 and keep the east half.
         box.x0 = mid; // @mark east
       } else {
         ch = ch * 2;
+        // @caption {typeof name === "string" ? name : "your location"} is west of longitude {mid}, so write a 0 and keep the west half.
         box.x1 = mid; // @mark west
       }
     } else {
       const mid = (box.y0 + box.y1) / 2;
       if (lat >= mid) {
         ch = ch * 2 + 1;
+        // @caption {typeof name === "string" ? name : "your location"} is north of latitude {mid}, so write a 1 and keep the north half.
         box.y0 = mid;
       } else {
         ch = ch * 2;
+        // @caption {typeof name === "string" ? name : "your location"} is south of latitude {mid}, so write a 0 and keep the south half.
         box.y1 = mid;
       }
     }
@@ -83,6 +88,7 @@ function encode(lat: number, lon: number, precision: number): string {
     bits++;
     if (bits === 5) {
       hash += BASE32[ch];
+      // @caption {(hash.length === 1 ? "Five halvings make one character: the geohash starts " : "Five more halvings add a character, and the cell is 32 times smaller: ") + hash + ". Cell " + hash + " is about " + ((wm, hm) => (wm >= 10000 ? Math.round(wm / 1000) + " km" : Math.round(wm) + " m") + " wide and " + (hm >= 10000 ? Math.round(hm / 1000) + " km" : Math.round(hm) + " m") + " tall")((box.x1 - box.x0) * 111320 * Math.cos(lat * Math.PI / 180), (box.y1 - box.y0) * 111320) + (hash.length === precision ? ". That is all " + precision + " characters." : ".")}
       trail.push({ ...box, label: hash }); // @mark char
       ch = 0;
       bits = 0;
@@ -136,7 +142,7 @@ class Cells {
 }
 
 export class GeoIndex {
-  // @viz spatial:trail|cells,points,box|query
+  // @viz spatial:trail|cells,points,box|query,dot=place,pin=you,scale=geo,map=city hide:query,checked,precision,lat,lon,ch,bits,lonBit,mid,i,w,h,center,c,lo,hi,prefixes,prefix,p,name,place,box
   // @why Kept sorted by geohash, as a key-value store would keep them, so one cell is one range of the list.
   points: Place[] = [];
   // For drawing only: the cells the last search checked.
@@ -149,9 +155,11 @@ export class GeoIndex {
   precision = 8;
 
   add(name: string, lat: number, lon: number): Place {
+    // @caption Storing {name}. The store only understands sorted text keys, so first turn its latitude and longitude into a geohash.
     const place = { name, lat, lon, hash: encode(lat, lon, this.precision) }; // @mark add
     let i = this.points.length;
     while (i > 0 && this.points[i - 1].hash > place.hash) i--;
+    // @caption {((o) => !o ? place.name + " is stored under the key " + place.hash + ". Each character of the key names a smaller cell inside the one before." : ((d, n) => n > 0 ? place.name + " is stored under the key " + place.hash + ". The nearest stored place, " + o.name + ", is " + d + " away and its key starts with the same " + n + " characters, " + place.hash.slice(0, n) + ", so the sorted list keeps the two close together. The more characters two keys share, the closer the places." : "bad: " + place.name + " is stored under " + place.hash + ", but " + o.name + ", only " + d + " away, is " + o.hash + ". They share no characters at all, because a cell edge (here longitude 0) runs between them, so the sorted list puts them far apart.")(((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(Math.hypot((o.lat - place.lat) * 111320, (o.lon - place.lon) * 111320 * Math.cos(place.lat * Math.PI / 180))), ((k) => k < 0 ? place.hash.length : k)([...place.hash].findIndex((c, i) => c !== o.hash[i]))))(points.filter((q) => q.name !== place.name).sort((a, b) => Math.hypot(a.lat - place.lat, (a.lon - place.lon) * Math.cos(place.lat * Math.PI / 180)) - Math.hypot(b.lat - place.lat, (b.lon - place.lon) * Math.cos(place.lat * Math.PI / 180)))[0])}
     this.points.splice(i, 0, place); // @mark inserted
     return place;
   }
@@ -161,12 +169,15 @@ export class GeoIndex {
     // @why One cell's size at this precision: longitude gets the extra bit when 5 × precision is odd.
     const w = 360 / 2 ** Math.ceil((5 * precision) / 2);
     const h = 180 / 2 ** Math.floor((5 * precision) / 2);
+    // @caption You are at the pin and ask "what is near me?": every stored place within about {((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(w * 111320 * Math.cos(lat * Math.PI / 180))} east or west and {((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(h * 111320)} north or south. That area is the dashed box: one cell of {precision} characters in every direction.
     this.query = { box: { x0: lon - w, y0: lat - h, x1: lon + w, y1: lat + h }, visited: [], found: [] };
     this.checked = 0;
     const center = encode(lat, lon, precision); // @mark center
     const prefixes = this.searchCells(center);
+    // @caption {prefixes.length === 1 ? "bad: Your own cell is " + center + ", and only that cell will be read: one range scan of the keys that start with " + center + ". Anything just across its edge will never be looked at." : "Your own cell is " + center + ". The search will read it and the " + (prefixes.length - 1) + " cells around it. Each cell is one range scan of the sorted store: every key that starts with its name."}
     this.cells = prefixes.map((p) => Cells.box(p)); // @mark cells
     for (let c = 0; c < prefixes.length; c++) {
+      // @caption Reading cell {prefixes[c]}{c === 0 ? ", your own cell" : ", the cell to the " + ["north-west", "north", "north-east", "west", "east", "south-west", "south", "south-east"][c - 1]}: every key that starts with {prefixes[c]}. {((n) => n === 0 ? "Nothing is stored there." : n === 1 ? "1 place is stored there." : n + " places are stored there.")(points.filter((q) => q.hash.startsWith(prefixes[c])).length)}
       this.query.visited.push(this.cells[c]); // @mark visit
       // Every point in this cell is one range of the sorted list: from the first hash starting with the prefix.
       let i = this.firstAtOrAfter(prefixes[c]);
@@ -174,12 +185,15 @@ export class GeoIndex {
         const p = this.points[i];
         this.checked++;
         // @why A cell's corner can be farther away than the search reaches, so each candidate is still checked.
+        // @caption {Math.abs(p.lat - lat) <= h && Math.abs(p.lon - lon) <= w ? p.name + " (" + p.hash + ") is in this cell, and inside the dashed box." : p.name + " (" + p.hash + ") is in this cell, but outside the dashed box: too far, so it is left out. The 9 cells cover more ground than the box, so every candidate is still checked."}
         if (Math.abs(p.lat - lat) <= h && Math.abs(p.lon - lon) <= w) {
+          // @caption good: Found {p.name}, {((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(Math.hypot((p.lat - lat) * 111320, (p.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180)))} from you. Found so far: {query.found.map((f) => f.name).join(", ")}.
           this.query.found.push(p); // @mark found
         }
         i++;
       }
     }
+    // @caption {((m) => m.length ? "bad: Done, and the search returned only " + query.found.map((f) => f.name).join(", ") + ". " + m.map((q) => q.name + " (" + ((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(((q) => Math.hypot((q.lat - lat) * 111320, (q.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180)))(q)) + " away)").join(" and ") + (m.length === 1 ? " is" : " are") + " inside the dashed box but never looked at, because " + (m.length === 1 ? "it sits in a neighbouring cell" : "they sit in neighbouring cells") + ", across an edge of your own cell. A \"near me\" search that misses the " + m[0].name + " " + ((dm) => dm >= 1000 ? (dm / 1000).toFixed(1) + " km" : Math.round(dm) + " m")(((q) => Math.hypot((q.lat - lat) * 111320, (q.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180)))(m[0])) + " away is wrong." : "good: Done. " + query.found.length + " places are near you: " + query.found.map((f) => f.name).join(", ") + ". It took " + cells.length + " range scans, and only " + checked + " of the " + points.length + " stored places were looked at.")(points.filter((q) => Math.abs(q.lat - lat) <= h && Math.abs(q.lon - lon) <= w && !query.found.some((f) => f.name === q.name)).sort((a, b) => ((q) => Math.hypot((q.lat - lat) * 111320, (q.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180)))(a) - ((q) => Math.hypot((q.lat - lat) * 111320, (q.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180)))(b)))}
     return this.query.found; // @mark result
   }
 

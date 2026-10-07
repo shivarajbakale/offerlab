@@ -53,9 +53,9 @@ class Hash {
 }
 
 export class RendezvousHash {
-  // @viz grid:scores labels:servers,keys hide:row,key,keys
+  // @viz grid:scores labels:servers,keys hide:row,key,keys,names,owners,was,i,j,s
   servers: string[] = [];
-  // For drawing only: the keys in the score table, one row each.
+  // For drawing only: the name of each row of the score table: the key, then its owner once known ("user:1 → B").
   keys: string[] = [];
   // For drawing only: scores[i][j] is server j's score for key i.
   scores: number[][] = [];
@@ -65,11 +65,13 @@ export class RendezvousHash {
   hashes = 0;
 
   addServer(server: string) {
+    // @caption Server {server} joins the list of servers. Nothing else has to be built or stored: the list of server names is all any client needs.
     this.servers.push(server);
   }
 
   removeServer(server: string) {
     // @why Nothing else to update: there is no ring or table to rebuild. The other servers' scores do not change.
+    // @caption bad: Server {server} leaves the list. That is the whole change: there is no ring or table to rebuild, and every other server keeps exactly the scores it had.
     this.servers = this.servers.filter((s) => s !== server); // @mark remove
   }
 
@@ -86,25 +88,35 @@ export class RendezvousHash {
     for (const server of this.servers) {
       const s = this.score(server, key); // @mark score
       // @why Ties are broken by name, so every client picks the same winner.
+      // @caption Who stores {key}? Every server gets a score for it. {server} scores {s}{best === "" ? ", the first score, so it leads for now" : s > bestScore ? ", higher than " + best + "'s " + bestScore : ", not higher than " + best + "'s " + bestScore + ", so " + best + " stays ahead"}.
       if (s > bestScore || (s === bestScore && server < best)) {
         best = server;
+        // @caption {best} now leads for {key} with a score of {bestScore}.
         bestScore = s; // @mark lead
       }
     }
+    // @caption {key} is stored on {best}: its score {bestScore} is the highest. Finding that out took {servers.length} hashes, one per server, because you can't know the highest score without computing them all.
     return best; // @mark winner
   }
 
   /** Fills the drawn table: every server's score for every key, and each row's winner. */
   scoreTable(names: string[]): string[] {
-    this.keys = names;
+    // For drawing only: the owners from the last table, to show which keys moved.
+    const was = this.owners;
+    // @caption The table has one row per key and one column per server. Each cell will hold that server's score for that key; in every row, the highest score decides who stores the key.
+    this.keys = [...names];
     this.scores = [];
     this.owners = [];
     for (let i = 0; i < names.length; i++) {
       const row: number[] = [];
       this.scores.push(row);
+      // @caption Scoring every server for {names[i]}: the hash of the server's name joined with the key, such as "{servers[0]}|{names[i]}".
       for (let j = 0; j < this.servers.length; j++) row.push(this.score(this.servers[j], names[i]));
-      this.owners.push(this.owner(names[i])); // @mark row
+      this.owners.push(this.owner(names[i]));
+      // @caption {i > 0 && row.join() === scores[0].join() ? "bad: " + names[i] + " gets exactly the same scores as " + names[0] + ", so it goes to " + owners[i] + " too. The key is not part of the score, so every key holds the same election and every key lands on " + owners[i] + "." : was.length === names.length && was[i] !== owners[i] ? "good: " + names[i] + " moves from " + was[i] + " to " + owners[i] + ". " + (servers.includes(was[i]) ? owners[i] + " is new and its score " + Math.max(...row) + " beats " + was[i] + "'s." : was[i] + " is gone, so its runner-up, " + owners[i] + ", takes over.") : names[i] + " is stored on " + owners[i] + ": " + Math.max(...row) + " is the highest score in its row" + (was.length === names.length ? ", same as before." : ".")}
+      this.keys[i] = names[i] + " → " + this.owners[i] + (was.length === names.length && was[i] !== this.owners[i] ? " (was " + was[i] + ")" : ""); // @mark row
     }
+    // @caption {new Set(owners).size === 1 ? "bad: Every key is stored on " + owners[0] + ", while " + servers.filter((sv) => sv !== owners[0]).join(" and ") + " hold nothing. With millions of keys, " + owners[0] + " would get all the data and all the traffic." : was.length === names.length ? "good: Done. " + owners.filter((o, i) => o !== was[i]).length + " of " + names.length + " keys moved, " + (was.every((w) => servers.includes(w)) ? "all of them to the new server, " + [...new Set(owners.filter((o, i) => o !== was[i]))].join(" and ") : "and every one of them had been on " + [...new Set(was.filter((w) => !servers.includes(w)))].join(" and ") + ", the server that left") + ". The other " + owners.filter((o, i) => o === was[i]).length + " kept their server, because nobody else's scores changed." : "Done. Each key went to its highest score: " + servers.map((sv) => sv + " stores " + owners.filter((o) => o === sv).length).join(", ") + "."}
     return this.owners; // @mark done
   }
 }
@@ -115,6 +127,7 @@ export class RendezvousHash {
 export class ScoreIgnoresKey extends RendezvousHash {
   score(server: string, key: string): number {
     this.hashes++;
+    // @caption bad: This score hashes only the server's name and ignores the key, so {server} gets the same score for every key.
     return Hash.of(server) % 10_000; // @mark nokey
   }
 }

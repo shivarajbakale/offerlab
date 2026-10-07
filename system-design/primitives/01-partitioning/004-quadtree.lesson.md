@@ -8,6 +8,14 @@
 - **Not the right tool when:** Points live in a database shared by many servers, or there are too many for one machine's memory; store a [geohash](#/sd-01-partitioning/003-geohash) or S2 cell id as a sorted key and use range reads instead. For shapes rather than points, databases use R-trees.
 - **Where you'll meet it:** Finkel and Bentley's 1974 paper; games and 3D graphics, where its three-dimensional cousin, the octree, speeds up collision checks; web map tiles, which quarter the world at each zoom level; and interview questions such as "Design Yelp" or "Design Uber", where a quadtree of places or drivers is a common answer.
 
+## In plain words
+
+A ride-hailing app has to answer "which drivers are near this rider?" many times a second, while thousands of drivers move around a city. Checking every driver each time is too slow. Cutting the city into a fixed grid helps, but the busy centre needs small squares and the quiet suburbs big ones, and one fixed grid can't do both.
+
+A quadtree cuts the map the way you would sort a growing pile of paper: when one tray gets too full, split it into four smaller trays. Busy areas end up cut into many small squares, and empty areas stay as one big square. To search, you only open the squares that overlap the area you care about, and ignore the rest of the city.
+
+In the picture on the right, the map is a city 10 km across, with streets drawn only for the feel of a map. Dots are drivers, labelled with short names (a, b, p1, …). Each outlined square is one cell of the tree; a cell that gets more than 4 drivers splits into four quarters, so you can watch the squares get smaller where drivers crowd. In a search, the red cross is the rider, the dashed box is the area around them, filled squares are the cells the search looked inside, and drivers that turn orange are the ones it found. The scale bar gives real distances, and the box at the top says what just happened.
+
 ## Words we'll use
 
 - **Point** — one place on a flat map, given by two numbers: x (left to right) and y (bottom to top). Here the map runs from 0 to 100 both ways.
@@ -95,6 +103,16 @@ In the end the search visits 6 of the 25 nodes and checks 8 of the 40 points to 
   A: Only around that area. The quarters far away never overflow, so they stay big. [▶ See it](play:dense area@at=stored#44)
 - **Q:** Without a capacity limit, how many points does a search check?
   A: All of them. Nothing ever splits, so there is one cell holding everything, and the search must check every point. [▶ See it](play:broken: no capacity@at=result)
+
+## When to use which
+
+- **Quadtree** — the points fit in one machine's memory, are spread very unevenly, and are searched by area or nearest-first. Example: a matching service that holds the live drivers of one city, a game world, or the objects on a map screen. For moving points, many systems simply rebuild the tree every few seconds.
+- **[Geohash](#/sd-01-partitioning/003-geohash) (or S2 / H3 cell ids)** — the points live in a database shared by many servers, or there are too many for one machine. Store the cell id as a sorted key and use range reads. Example: millions of restaurants for a "Design Yelp" proximity service.
+- **A fixed grid** — the points are spread fairly evenly and you want the simplest code: cut the map into equal squares and keep a list per square.
+- **R-tree (inside a spatial database)** — you store shapes such as roads, buildings or delivery zones, not just points, or you'd rather let PostGIS or a similar database do it.
+- **k-d tree** — static points in memory where you mostly ask for the nearest neighbours, such as a fixed list of stores.
+- **[Consistent hashing](#/sd-01-partitioning/001-consistent-hashing)** — when you need to split the data across servers. It ignores location, so it is often combined with the above: shard drivers by city or by geohash prefix, then keep a quadtree per shard.
+- **In an interview:** for "Design Uber", say each city's live driver locations sit in an in-memory quadtree (or a geohash index in Redis), updated every few seconds, and that a search reads only the cells around the rider. Point out that the tree splits only where drivers crowd.
 
 ## Deep dive
 

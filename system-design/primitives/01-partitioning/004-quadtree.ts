@@ -50,7 +50,7 @@ function makeNode(x0: number, y0: number, x1: number, y1: number, depth: number)
 }
 
 export class QuadTree {
-  // @viz spatial:root,root,lastQuery
+  // @viz spatial:root,root,lastQuery,dot=driver,pin=rider,scale=100,map=city hide:capacity,maxDepth,lastQuery,checked,mx,my,d,x0,y0,x1,y1,depth,p,q,moving,box,node,kids,bounds
   root: QuadNode;
   // @why How many points a cell holds before it splits. Small means more, smaller cells; large means more points checked per cell.
   capacity: number;
@@ -76,6 +76,7 @@ export class QuadTree {
       this.insertInto(this.childFor(node, p), p);
       return;
     }
+    // @caption {(typeof moving === "object" ? "Driver " + p.label + " is handed down into the quarter it is in" : "Driver " + p.label + " signs in at (" + p.x + ", " + p.y + ") and is stored in the cell around it") + ", a square " + ((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((node.x1 - node.x0) * 100) + " across. That cell now holds " + node.points.length + " of at most " + capacity + (node.points.length > capacity && node.depth < maxDepth ? ": one too many, so it must split." : node.points.length > capacity ? ". It is too full, but it is already at the depth limit (" + maxDepth + "), so it stays as it is." : ".")}
     node.points.push(p); // @mark stored
     if (node.points.length > this.capacity && node.depth < this.maxDepth) {
       this.split(node);
@@ -92,6 +93,7 @@ export class QuadTree {
       makeNode(node.x0, node.y0, mx, my, d),
       makeNode(mx, node.y0, node.x1, my, d),
     ];
+    // @caption The cell splits into four equal quarters, each {((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((mx - node.x0) * 100)} across. Its {node.points.length} drivers are handed down, each to the quarter it is in. The cell itself now holds no drivers, only its four quarters.
     const moving = node.points; // @mark split
     node.points = [];
     // @why Each point goes down to its quarter. If they all land in the same quarter, that quarter splits again.
@@ -109,21 +111,26 @@ export class QuadTree {
 
   /** Every stored point inside the box. */
   query(box: Rect): Point[] {
+    // @caption A rider at the pin asks for drivers nearby: every driver inside the dashed box, {((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((box.x1 - box.x0) * 100)} by {((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((box.y1 - box.y0) * 100)}. {(JSON.stringify(root).match(/"label"/g) || []).length} drivers are stored. The search starts at the top cell, the whole city.
     this.lastQuery = { box, visited: [], found: [] };
     this.checked = 0;
     this.search(this.root, box);
+    // @caption {((total) => checked === total ? "bad: Done: " + lastQuery.found.length + " drivers found, but only after checking all " + total + ". With no capacity limit the city is one big cell that never splits, so every search reads every driver, near or far. With millions of drivers, each search would be far too slow." : "good: Done: " + lastQuery.found.length + " drivers found (" + lastQuery.found.map((f) => f.label).join(", ") + "). The search looked inside " + lastQuery.visited.length + " of the " + (JSON.stringify(root).match(/"depth"/g) || []).length + " cells and checked only " + checked + " of the " + total + " drivers.")((JSON.stringify(root).match(/"label"/g) || []).length)}
     return this.lastQuery.found; // @mark result
   }
 
   search(node: QuadNode, box: Rect) {
     // @why The pruning step: a cell that does not touch the box cannot hold an answer, so neither can anything inside it.
+    // @caption {node.x1 < box.x0 || node.x0 > box.x1 || node.y1 < box.y0 || node.y0 > box.y1 ? "Skip this cell (" + ((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((node.x1 - node.x0) * 100) + " across): it doesn't touch the dashed box, so none of the " + (JSON.stringify(node).match(/"label"/g) || []).length + " drivers in it can be near the rider. One comparison throws them all away, without looking at any of them" + (node.children ? " or at the smaller cells inside." : ".") : "This cell (" + ((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((node.x1 - node.x0) * 100) + " across) touches the dashed box, so the search looks inside."}
     if (node.x1 < box.x0 || node.x0 > box.x1 || node.y1 < box.y0 || node.y0 > box.y1) {
       return; // @mark skip
     }
+    // @caption Look inside this cell ({((m) => m >= 1000 ? m / 1000 + " km" : Math.round(m) + " m")((node.x1 - node.x0) * 100)} across). {node.children ? "It has split, so the search goes down into its four quarters and skips the ones that miss the box." : node.points.length === 0 ? "It is empty." : "It holds " + node.points.length + (node.points.length === 1 ? " driver" : " drivers") + ", so each one is checked against the box."}
     this.lastQuery!.visited.push(node); // @mark visit
     for (const p of node.points) {
       this.checked++;
       if (p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1) {
+        // @caption good: Driver {lastQuery.found[lastQuery.found.length - 1].label} is inside the box: found. Found so far: {lastQuery.found.map((f) => f.label).join(", ")}.
         this.lastQuery!.found.push(p); // @mark found
       }
     }

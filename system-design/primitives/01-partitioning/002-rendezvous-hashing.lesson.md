@@ -8,6 +8,14 @@
 - **Not the right tool when:** There are thousands of servers on a hot lookup path, because each lookup hashes every server; [consistent hashing](#/sd-01-partitioning/001-consistent-hashing) finds the owner with a binary search instead. If the server list never changes, plain mod hashing is simpler.
 - **Where you'll meet it:** Thaler and Ravishankar's highest random weight paper from the 1990s; Microsoft's Cache Array Routing Protocol (CARP), which picks a proxy cache per URL; Apache Ignite's rendezvous affinity function for placing data partitions; and interview questions such as "Design a distributed cache".
 
+## In plain words
+
+When data is spread over several servers, every app server has to answer "which server stores `user:3`?" on its own, instantly, and they must all give the same answer. Rendezvous hashing answers it with a fair, repeatable contest: for each key, every server gets a score, and the highest score wins.
+
+Think of a raffle where each person's ticket number for each prize is fixed in advance by a formula of their name and the prize. Anyone can work out who wins any prize without asking. If one person leaves, only the prizes they would have won go to the next best ticket; nobody else's wins change. If a new person joins, they only win the prizes where their ticket beats the current winner.
+
+In the picture on the right, the table has one column per server (A, B, C, …) and one row per key. Each cell is that server's score for that key, and the highest number in a row decides where the key is stored. Once a row is decided, its name shows the winner: `user:1 → B` means `user:1` is stored on B, and `(was C)` marks a key that just moved. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Key** — the name a piece of data is stored under, such as `user:3`.
@@ -89,6 +97,15 @@ After the table is recomputed, `user:1` and `user:7` have gone to D and `user:3`
   A: Five, one per server. You can't know the highest score without computing all of them. [▶ See it](play:cost@at=winner)
 - **Q:** What goes wrong if the score hashes only the server's name?
   A: Every key sees the same scores, so every key elects the same server, and it ends up with all the data. [▶ See it](play:broken: score ignores the key@at=done)
+
+## When to use which
+
+- **Rendezvous hashing** — a small or medium list of servers (up to a few dozen) that changes while running, where every client must agree on a key's server with no shared table. Example: an app picking which of 8 cache servers holds a user's session. Picking the top 2 or 3 scores also gives you replica servers for free.
+- **[Consistent hashing](#/sd-01-partitioning/001-consistent-hashing)** — hundreds or thousands of servers, or a very hot lookup path, where scoring every server per lookup costs too much. A ring lookup is a binary search instead of n hashes. Example: Cassandra or DynamoDB-style storage clusters.
+- **Hash mod N** — the server list never changes, or moving almost every key at once is fine (a nightly rebuild). Simplest and even, but adding one server moves most keys.
+- **A lookup table (directory)** — you need to place particular keys on purpose, such as giving one huge customer its own server. Costs a small, reliable service to hold the table.
+- **[Geohash](#/sd-01-partitioning/003-geohash) or a [quadtree](#/sd-01-partitioning/004-quadtree)** — when "which keys belong together" depends on location on a map, not on an even random spread.
+- **In an interview:** say "rendezvous (highest random weight) hashing" for a small cache tier or for choosing replicas, and "consistent hashing with virtual nodes" for a large storage cluster. Mention that both move only about 1/n of the keys when one server joins or leaves.
 
 ## Deep dive
 

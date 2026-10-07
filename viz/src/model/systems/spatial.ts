@@ -9,6 +9,14 @@
 // An argument may list alternatives, `trail|cells`: the first one that is in scope and not null
 // is drawn. A `lat`/`lon` pair of locals in the innermost frame is drawn as a marker, and a local `node`
 // that is one of the drawn rects is outlined as the one being looked at.
+//
+// Options (`key=value` after the three names; `_` stands for a space) make the plane read as a map:
+// - dot=driver      what one point is, for the key and the counts ("3 drivers");
+// - pin=you         what the marker is. A string local `name` in any frame (a place being
+//                   added) wins over it. With a pin and no lat/lon, the query box's centre is
+//                   drawn as the pin: the person asking.
+// - scale=geo|<m>   coordinates are degrees (geo) or this many metres per unit, for a scale bar;
+// - map=city        streets in the background while the view is no wider than a city.
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 import type { Builder } from "./types.ts";
@@ -23,8 +31,21 @@ export type SpatialPanel = {
   rects: (Rect & { label?: string; hot?: boolean; focus?: boolean; id?: HeapId; leaf?: boolean })[];
   points: { x: number; y: number; label?: string; hot?: boolean; id?: HeapId }[];
   query?: Rect;
-  /** The location being encoded or searched from. */
-  marker?: { x: number; y: number };
+  /** The query is a search's area (`{ box, ... }`), not just a rect such as the cell kept so far. */
+  search?: boolean;
+  /** The location being encoded or searched from, or the person asking. */
+  marker?: { x: number; y: number; label?: string };
+  /** Real-world names and distances, from the hint's options. */
+  world?: {
+    /** What one point is ("driver"); "point" when not given. */
+    dot: string;
+    /** Metres per unit along x and y, for the scale bar. */
+    metres?: { x: number; y: number };
+    /** Coordinates are degrees: the equator and the Greenwich meridian can be drawn. */
+    geo?: boolean;
+    /** Draw streets: the view is a city map. */
+    city?: boolean;
+  };
 };
 
 type Obj = Record<string, unknown>;
@@ -92,8 +113,13 @@ function square(r: Rect, pad: number): Rect {
   return { x0: cx - half, y0: cy - half, x1: cx + half, y1: cy + half };
 }
 
+const spaced = (s: string | undefined) => s?.replace(/_/g, " ");
+/** Metres in one degree of latitude (and of longitude at the equator). */
+const DEGREE_M = 111_320;
+
 export const buildSpatial: Builder<SpatialPanel> = (ctx) => {
-  const [rectArg, pointArg, queryArg] = ctx.args;
+  const opts = Object.fromEntries(ctx.args.filter((a) => a.includes("=")).map((a) => a.split("=", 2) as [string, string]));
+  const [rectArg, pointArg, queryArg] = ctx.args.filter((a) => !a.includes("="));
   const pick = (arg: string | undefined): [string, Value | undefined] => {
     for (const name of arg?.split("|") ?? []) {
       const v = ctx.find(name);
@@ -156,6 +182,12 @@ export const buildSpatial: Builder<SpatialPanel> = (ctx) => {
   const focusId = isObj(focusVal) ? idOf(focusVal) : undefined;
   const lat = num(ctx.js(local("lat")));
   const lon = num(ctx.js(local("lon")));
+  // A place being added names the marker; otherwise it is the pin option ("you").
+  let named: string | undefined;
+  for (let f = ctx.step.stack.length - 1; f >= 0 && named === undefined; f--) {
+    const v = ctx.step.stack[f].vars.find(([n]) => n === "name")?.[1];
+    if (v?.t === "p" && typeof v.v === "string") named = v.v;
+  }
 
   const rects = nodes.flatMap((n) => {
     const r = asRect(n);
@@ -176,7 +208,14 @@ export const buildSpatial: Builder<SpatialPanel> = (ctx) => {
     const p = asPoint(o);
     return p ? [{ ...p, hot: p.id !== undefined && found.has(p.id) }] : [];
   });
-  const marker = lat !== undefined && lon !== undefined ? { x: lon, y: lat } : undefined;
+  const pin = spaced(opts.pin);
+  const markLabel = named ?? pin;
+  const marker =
+    lat !== undefined && lon !== undefined
+      ? { x: lon, y: lat, ...(markLabel ? { label: markLabel } : {}) }
+      : pin && box
+        ? { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, label: pin }
+        : undefined;
 
   let bounds: Rect;
   const rootRect = tree ? asRect(tree) : undefined;
@@ -211,8 +250,29 @@ export const buildSpatial: Builder<SpatialPanel> = (ctx) => {
       rects,
       points,
       ...(box ? { query: box } : {}),
+      ...(asRect(q?.box) ? { search: true } : {}),
       ...(marker ? { marker } : {}),
+      ...(Object.keys(opts).length ? { world: worldOf(opts, bounds) } : {}),
     },
     uses: [...uses],
   };
 };
+
+function worldOf(opts: Record<string, string>, bounds: Rect): NonNullable<SpatialPanel["world"]> {
+  const geo = opts.scale === "geo";
+  const perUnit = Number(opts.scale);
+  const midLat = (bounds.y0 + bounds.y1) / 2;
+  const metres = geo
+    ? { x: DEGREE_M * Math.cos((Math.max(-89, Math.min(89, midLat)) * Math.PI) / 180), y: DEGREE_M }
+    : perUnit > 0
+      ? { x: perUnit, y: perUnit }
+      : undefined;
+  // Streets only make sense while the view is about a city across (30 km or less).
+  const across = metres ? (bounds.x1 - bounds.x0) * metres.x : Infinity;
+  return {
+    dot: spaced(opts.dot) ?? "point",
+    ...(metres ? { metres } : {}),
+    ...(geo ? { geo } : {}),
+    ...(opts.map === "city" && across <= 30_000 ? { city: true } : {}),
+  };
+}

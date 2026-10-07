@@ -40,7 +40,7 @@ test("002: the score table names its columns (servers) and rows (keys)", () => {
   const grid = scene.panels.find((p) => p.kind === "grid");
   assert.ok(grid && grid.kind === "grid");
   assert.deepEqual(grid.colLabels, ["A", "B", "C"]);
-  assert.deepEqual(grid.rowLabels, ["user:1", "user:2", "user:3", "user:4", "user:5", "user:6"]);
+  assert.deepEqual(grid.rowLabels, ["user:1 → B", "user:2 → A", "user:3 → B", "user:4 → A", "user:5 → C", "user:6 → A"]);
 });
 
 test("005-007: the verdict is drawn once, in the bits panel, not again as a scalar", () => {
