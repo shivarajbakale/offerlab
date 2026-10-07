@@ -11,5 +11,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["neetcode-150/**/*.ts", "system-design/**/*.ts"]
+  "include": ["neetcode-150/**/*.ts", "system-design/**/*.ts", "practice/**/*.ts"]
 }

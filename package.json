@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"neetcode-150/**/*.ts\" \"system-design/**/*.ts\"",
+    "practice": "node --test \"practice/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "viz": "npm --prefix viz run dev",
     "viz:check": "npm --prefix viz run check"
