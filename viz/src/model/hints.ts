@@ -66,13 +66,18 @@ export type Hints = {
   notes: Notes;
   /** `@goal` templates keyed by the name of the function they sit above. */
   goal: Record<string, string>;
+  /**
+   * `// @caption [good:|bad:] text` above a line: what the picture shows once that line has run,
+   * in plain words, with `{expr}` filled in. It stays up until the next caption (see caption.ts).
+   */
+  caption: Record<number, string>;
   /** Mistakes in the hints, such as a duplicate @mark; the lesson and hints tests require none. */
   errors: string[];
 };
 
 export type Notes = { yes: Record<number, string>; no: Record<number, string>; then: Record<number, string>; returns: Record<number, string>; phase: Record<number, string> };
 
-const NOTE = /^\s*\/\/\s*@(goal|phase|say|yes|no|then|returns)\s+(.*)$/;
+const NOTE = /^\s*\/\/\s*@(goal|phase|say|yes|no|then|returns|caption)\s+(.*)$/;
 /** A comment line holding one decision note (or a `@why`), which the code panel hides. */
 export const isNoteLine = (line: string) => NOTE.test(line) || /^\s*\/\/\s*@why\s/.test(line);
 
@@ -105,6 +110,7 @@ function parseNotes(lines: string[], hints: Hints) {
         if (fn) hints.goal[fn] = text;
         else hints.errors.push(`line ${n}: @goal must sit above a function`);
       } else if (kind === "say") hints.say[n] = text;
+      else if (kind === "caption") hints.caption[n] = text;
       else hints.notes[kind as keyof Notes][n] = text;
     }
     pending = [];
@@ -116,6 +122,7 @@ export function parseHints(source: string): Hints {
     pointers: [], hide: [], values: [], say: {}, marks: {}, systems: [], errors: [], arcs: [], ask: {}, broken: [], moment: {},
     notes: { yes: {}, no: {}, then: {}, returns: {}, phase: {} },
     goal: {},
+    caption: {},
   };
   parseNotes(source.split("\n"), hints);
   source.split("\n").forEach((line, i) => {

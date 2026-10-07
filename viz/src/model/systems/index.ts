@@ -4,6 +4,7 @@ import type { HeapId, Step, Value } from "../../tracer/types.ts";
 import type { Hints } from "../hints.ts";
 import { buildBalancer, type BalancerPanel } from "./balancer.ts";
 import { buildBits, type BitsPanel } from "./bits.ts";
+import { buildGate, type GatePanel } from "./gate.ts";
 import { buildLevels, type LevelsPanel } from "./levels.ts";
 import { buildPages, type PagesPanel } from "./pages.ts";
 import { buildRing, type RingPanel } from "./ring.ts";
@@ -11,7 +12,7 @@ import { buildSpatial, type SpatialPanel } from "./spatial.ts";
 import { buildTimeline, type TimelinePanel } from "./timeline.ts";
 import type { Builder, SystemsCtx, SystemsKind } from "./types.ts";
 
-export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel | BalancerPanel;
+export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel | BalancerPanel | GatePanel;
 /** Scene variables, as collected by buildScene: `this` fields are flattened in. */
 export type SceneVar = { name: string; v: Value; frame: number; inner: boolean; field?: boolean };
 export type Builders = Partial<Record<SystemsKind, Builder<SystemsPanel>>>;
@@ -24,6 +25,7 @@ export const BUILDERS: Builders = {
   pages: buildPages,
   timeline: buildTimeline,
   balancer: buildBalancer,
+  gate: buildGate,
 };
 
 /** A variable by name (innermost frame first), then through object fields or array indexes. */

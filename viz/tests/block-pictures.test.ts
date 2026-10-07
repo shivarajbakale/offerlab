@@ -2,13 +2,15 @@
 // caption says in plain words what just happened, and the scenarios read as a story.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseHints } from "../src/model/hints.ts";
 import { buildScene } from "../src/model/scene.ts";
 import type { BalancerPanel } from "../src/model/systems/balancer.ts";
 import type { RingPanel } from "../src/model/systems/ring.ts";
-import { findRun, markStep, parseLesson, storyChapters } from "../src/sim/lesson.ts";
+import { isKernelSource } from "../src/parseProblem.ts";
+import { findRun, markStep, parseLesson, storyChapters, testNames } from "../src/sim/lesson.ts";
+import { runSimSource } from "../src/sim/run.ts";
 import { SYSTEMS_LIMITS } from "../src/tracer/recorder.ts";
 import { traceSource } from "../src/tracer/trace.ts";
 
@@ -114,4 +116,18 @@ test("chapters follow the lesson's story: the naive attempt first, problems mark
   assert.deepEqual(chapters[0], { run: findRun(trace.runs, "broken: hash mod N"), title: "Hash mod N — adding a server moves most keys", role: "problem" });
   assert.equal(chapters[1].role, "works");
   assert.equal(new Set(chapters.map((c) => c.run)).size, chapters.length);
+});
+
+test("simulation blocks: scenarios are the file's tests, in order, so chapters can be named before running", () => {
+  for (const group of readdirSync(root)) {
+    for (const f of readdirSync(join(root, group)).filter((x) => x.endsWith(".ts"))) {
+      const src = readFileSync(join(root, group, f), "utf8");
+      if (!isKernelSource(src)) continue;
+      assert.deepEqual(
+        runSimSource(src).runs.map((r) => r.label),
+        testNames(src),
+        f,
+      );
+    }
+  }
 });

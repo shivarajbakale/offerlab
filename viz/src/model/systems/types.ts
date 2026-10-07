@@ -4,8 +4,8 @@
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 
-export type SystemsKind = "ring" | "spatial" | "bits" | "levels" | "pages" | "timeline" | "balancer";
-export const SYSTEMS_KINDS: SystemsKind[] = ["ring", "spatial", "bits", "levels", "pages", "timeline", "balancer"];
+export type SystemsKind = "ring" | "spatial" | "bits" | "levels" | "pages" | "timeline" | "balancer" | "gate";
+export const SYSTEMS_KINDS: SystemsKind[] = ["ring", "spatial", "bits", "levels", "pages", "timeline", "balancer", "gate"];
 
 export type SystemsCtx = {
   step: Step;

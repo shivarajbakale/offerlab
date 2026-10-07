@@ -6,6 +6,9 @@ import type { Deps } from "../model/deps.ts";
 import type { Story } from "../model/story.ts";
 import { ArrayView, type ArrayLens } from "./views/ArrayView.tsx";
 import { BalancerView } from "./views/BalancerView.tsx";
+import { Callout } from "./views/Callout.tsx";
+import { GateView } from "./views/GateView.tsx";
+import type { Caption } from "../model/systems/types.ts";
 import { BitArrayView } from "./views/BitArrayView.tsx";
 import { CallTreeView } from "./views/CallTreeView.tsx";
 import { GraphView } from "./views/GraphView.tsx";
@@ -38,9 +41,10 @@ const KIND_LABEL: Record<Panel["kind"], string> = {
   pages: "pages",
   timeline: "timeline",
   balancer: "servers",
+  gate: "request path",
 };
 
-const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer"]);
+const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer", "gate"]);
 
 function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
   const kind =
@@ -131,6 +135,8 @@ function renderPanel(p: Panel, story?: StoryView, step?: StepLens) {
       return <TimelineView panel={p} />;
     case "balancer":
       return <BalancerView panel={p} />;
+    case "gate":
+      return <GateView panel={p} />;
   }
 }
 
@@ -140,12 +146,15 @@ export function Visual({
   index,
   story,
   step,
+  caption,
 }: {
   scene: Scene;
   callTree: CallTree;
   index: number;
   story?: StoryView;
   step?: StepLens;
+  /** A plain-words note for the whole picture (building blocks without a captioned view). */
+  caption?: Caption | null;
 }) {
   const showTree = callTree.recursive && callTree.nodes.length >= 3;
   const win = story?.story.win;
@@ -153,6 +162,7 @@ export function Visual({
   const showWindow = win && win.len <= 24 && !win.restarts;
   return (
     <div className="visual">
+      {caption && <Callout caption={caption} />}
       {story && (story.rule || story.quiz) && (
         <div className={`rule-bar ${story.broken ? "broken" : ""}`}>
           <span className="dot" />

@@ -48,7 +48,7 @@ type Point = { t: number; v: number };
 
 
 export class TokenBucket {
-  // @viz timeline:history,tokenLevel,queueLevel,capacity
+  // @viz gate:history,title=Token_bucket,level=tokens,max=capacity,unit=token gate:history,title=Leaky_bucket,level=queue,max=capacity,unit=request,queueRow=in timeline:history,tokenLevel,queueLevel,capacity hide:capacity,rate,tokens,last,ratePerSec,earned,fullAt,gap,queue,nextOut,drainPerSec,at,arrived,released,t
   // @why The most tokens the bucket can hold, which is the largest burst it lets through at once.
   capacity: number;
   // @why Tokens added per second. Over a long time no client can average more than this.
@@ -65,6 +65,7 @@ export class TokenBucket {
   constructor(capacity: number, ratePerSec: number) {
     this.capacity = capacity;
     this.rate = ratePerSec;
+    // @caption The bucket starts full: {capacity} tokens. Every request must take one token to get through. Tokens drip back in at {rate} per second, and the bucket never holds more than {capacity}.
     this.tokens = capacity;
     this.tokenLevel.push({ t: 0, v: capacity });
   }
@@ -74,10 +75,12 @@ export class TokenBucket {
     // @why One token per request. With none left, the client has used up its burst and its rate, so it must wait.
     if (this.tokens >= 1) {
       this.tokens -= 1;
+      // @caption good: The request at t={t} takes a token and goes through to the server. {Math.round(tokens * 100) / 100} tokens left in the bucket.
       this.history.push({ t, ok: true, label: `${tokensText(this.tokens)} left` }); // @mark take
       this.tokenLevel.push({ t, v: round(this.tokens) });
       return true;
     }
+    // @caption bad: The request at t={t} finds only {Math.round(tokens * 100) / 100} tokens, less than one, so it is turned away (an HTTP 429 "Too Many Requests"). The client has spent its burst and must wait for tokens to drip back.
     this.history.push({ t, ok: false, label: `only ${tokensText(this.tokens)}` }); // @mark reject
     return false;
   }
@@ -88,6 +91,7 @@ export class TokenBucket {
     const fullAt = this.last + (this.capacity - this.tokens) / this.rate;
     if (fullAt < t && this.tokens < this.capacity) this.tokenLevel.push({ t: round(fullAt), v: this.capacity });
     // @why The cap. Without it a long quiet spell piles up tokens, and they all come out as one huge burst.
+    // @caption A request arrives at t={t}. {history.length === 0 ? "It is the first one, so nothing has been spent yet" : t > last ? Math.round((t - last) * 100) / 100 + "s have passed since the last one, so " + Math.round(earned * 100) / 100 + " tokens dripped back in (" + rate + " per second)" : "It arrives at the same moment as the one before, so no tokens have dripped back"}. The bucket now holds {Math.round(tokens * 100) / 100} of at most {capacity}.
     this.tokens = Math.min(this.capacity, this.tokens + earned); // @mark refill
     this.last = t;
     this.tokenLevel.push({ t, v: round(this.tokens) });
@@ -114,10 +118,12 @@ export class LeakyBucket {
   offer(t: number): boolean {
     this.drain(t);
     if (this.queue.length >= this.capacity) {
+      // @caption bad: The request at t={t} finds the line already full ({queue.length} of {capacity} waiting), so it is turned away.
       this.history.push({ t, ok: false, row: "in", label: "queue full" }); // @mark full
       return false;
     }
     this.queue.push(t);
+    // @caption The request at t={t} joins the line inside the bucket: {queue.length} waiting. However fast requests arrive, the bucket lets out only one every {gap}s.
     this.history.push({ t, ok: true, row: "in", label: `queued, ${this.queue.length} waiting` });
     this.queueLevel.push({ t, v: this.queue.length });
     return true;
@@ -131,6 +137,7 @@ export class LeakyBucket {
       const at = Math.max(this.nextOut, this.queue[0]);
       if (at > t) break;
       const arrived = this.queue.shift()!; // @mark release
+      // @caption good: At t={at} one request leaves the bucket for the server, after waiting {at - arrived}s. The server sees a steady pace, one every {gap}s, even though the requests arrived in a burst.
       this.history.push({ t: at, ok: true, row: "out", label: `sent on after waiting ${round(at - arrived)}s` });
       this.queueLevel.push({ t: at, v: this.queue.length });
       this.nextOut = at + this.gap;
@@ -145,6 +152,7 @@ export class LeakyBucket {
 // Broken on purpose: refills without the cap, so tokens saved while idle have no limit.
 export class UncappedTokenBucket extends TokenBucket {
   refill(t: number) {
+    // @caption {tokens > capacity ? "bad: No cap: " + Math.round((t - last) * 100) / 100 + "s of quiet piled up " + Math.round(tokens * 100) / 100 + " tokens, far more than the " + capacity + " the bucket should hold. All of them can be spent at once, so a huge burst reaches the server." : "This bucket forgot the cap. Right now it holds " + Math.round(tokens * 100) / 100 + " tokens, which looks fine, but watch what a long quiet spell does."}
     this.tokens = this.tokens + (t - this.last) * this.rate; // @mark uncapped
     this.last = t;
     this.tokenLevel.push({ t, v: round(this.tokens) });

@@ -20,6 +20,7 @@ import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
 import { explain as explainStep, type Explanation } from "./model/explain.ts";
 import { buildScene } from "./model/scene.ts";
+import { captionAt } from "./model/caption.ts";
 import { lineDeps } from "./model/deps.ts";
 import { buildStory, leftWindow } from "./model/story.ts";
 import { usePlayer } from "./player/usePlayer.ts";
@@ -326,6 +327,9 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   const step = steps[shownK];
   const after = steps[shownK + 1] ?? step;
   const scene = useMemo(() => (after ? buildScene(after, step, problem.hints) : null), [after, step, problem.hints]);
+  // A building block's own words for the picture: the view's caption, else the latest @caption.
+  const ownCaption = scene?.panels.some((p) => "caption" in p) ?? false;
+  const caption = useMemo(() => (systems && !ownCaption ? captionAt(steps, shownK, problem.hints) : null), [systems, ownCaption, steps, shownK, problem.hints]);
   const narration = step ? narrationAt(shownK) : null;
   const explanation = step && !systems ? explainAt(shownK) : null;
 
@@ -581,7 +585,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             )}
             <ChapterStrip chapters={chapters} current={runIndex} onPick={setRunIndex} />
             {explanation && <ExplainCard ex={explanation} />}
-            <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} />
+            <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} caption={caption} />
           </div>
         )}
       </section>
@@ -589,7 +593,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       <div className="dock">
         {systems && (
           <NarrationBar
-            narration={scene?.panels.some((p) => "caption" in p) ? null : narration}
+            narration={ownCaption || caption ? null : narration}
             why={step ? problem.why[step.line] : undefined}
             hasNotes={hasNotes}
           />

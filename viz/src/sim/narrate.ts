@@ -70,3 +70,20 @@ export function narrateSim(steps: SimStep[], k: number): Narration {
   const problem = s.violation ?? s.error;
   return { kind: s.note ? "say" : "change", text: `${problem ? `⚠ ${problem}. ` : ""}${head}${tail}` };
 }
+
+/**
+ * The caption over the cluster picture at step k: a broken guarantee first, then the handler's
+ * own words (`ctx.say`, which may start with "good:" or "bad:"), else the event in plain words.
+ */
+export function simCaption(steps: SimStep[], k: number): { tone: "info" | "good" | "bad"; text: string } | null {
+  const s = steps[k];
+  if (!s) return null;
+  const problem = s.violation ?? s.error;
+  if (problem) return { tone: "bad", text: `${problem}.${s.note ? ` ${s.note.replace(/^(good|bad):\s*/, "")}` : ""}` };
+  if (s.note) {
+    const tone = s.note.match(/^(good|bad):\s*/)?.[1] as "good" | "bad" | undefined;
+    return { tone: tone ?? "info", text: s.note.replace(/^(good|bad):\s*/, "").replace(/ · (good|bad):\s*/g, " · ") };
+  }
+  const head = SAY[s.kind](s);
+  return { tone: s.kind === "crash" || s.kind === "drop" || s.kind === "partition" ? "bad" : "info", text: head.charAt(0).toUpperCase() + head.slice(1) + "." };
+}

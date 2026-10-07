@@ -275,3 +275,8 @@ export function storyChapters(runs: { label: string }[], lesson: Lesson): Chapte
     return { run: i, title: text.charAt(0).toUpperCase() + text.slice(1), role: broken ? "problem" : "works" };
   });
 }
+
+/** The names of a file's top-level `test("...")` calls, in order: one scenario each. */
+export function testNames(source: string): string[] {
+  return [...source.matchAll(/^test\("((?:[^"\\]|\\.)*)"/gm)].map((m) => JSON.parse(`"${m[1]}"`) as string);
+}

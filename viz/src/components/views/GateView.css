@@ -1,0 +1,220 @@
+.gate-view {
+  width: 100%;
+}
+.gate-stage {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.gate-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.gate-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 96px;
+}
+.gate-box b {
+  color: var(--ink);
+  font-size: 13px;
+}
+.gate-main {
+  flex: 1 1 auto;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.gate-main.state-open {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 2px var(--bad-soft);
+}
+.gate-main.state-half-open {
+  border-color: var(--warn);
+}
+.gate-main.state-closed {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 2px var(--ok-soft);
+}
+.gate-state {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font: 600 10.5px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.state-open .gate-state {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.state-half-open .gate-state {
+  color: var(--warn);
+}
+.state-closed .gate-state {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.gate-to.over {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+.gate-wire {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+.gate-arrow {
+  font-size: 20px;
+  color: var(--line-2);
+  transition: color 0.2s;
+}
+.gate-arrow.passed {
+  color: var(--ok);
+}
+.gate-arrow.failed,
+.gate-arrow.refused {
+  color: var(--bad);
+}
+.gate-arrow.queued {
+  color: var(--warn);
+}
+.gate-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.gate-slots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.gate-slot {
+  position: relative;
+  width: 13px;
+  height: 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.gate-slot.over {
+  border-color: var(--bad);
+}
+.gate-slot-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+.gate-slot.over .gate-slot-fill {
+  background: var(--bad);
+}
+.gate-bar {
+  width: 90px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.gate-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.gate-meter-text {
+  font: 11.5px var(--mono);
+}
+.gate-meter-text b {
+  color: var(--ink);
+}
+.gate-clients {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 4px;
+}
+.gate-client {
+  padding: 2px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  font: 11px var(--mono);
+  color: var(--ink-2);
+}
+.gate-client i {
+  font-style: normal;
+  margin-left: 4px;
+}
+.gate-client.passed {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.gate-client.failed,
+.gate-client.refused {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.gate-event {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.gate-event.fresh {
+  color: var(--ink);
+}
+.gate-event.passed .gate-event-icon {
+  color: var(--ok);
+}
+.gate-event.failed .gate-event-icon,
+.gate-event.refused .gate-event-icon {
+  color: var(--bad);
+}
+.gate-event.queued .gate-event-icon {
+  color: var(--warn);
+}
+.gate-event.fresh.refused,
+.gate-event.fresh.failed {
+  border-color: var(--bad);
+}
+.gate-event.fresh.passed {
+  border-color: var(--ok);
+}
+.gate-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+  font: 11.5px var(--mono);
+}
+.gate-foot .ok {
+  color: var(--ok);
+}
+.gate-foot .refused,
+.gate-foot .failed {
+  color: var(--bad);
+}
+.gate-foot .queued {
+  color: var(--warn);
+}
+@media (max-width: 700px) {
+  .gate-stage {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+}

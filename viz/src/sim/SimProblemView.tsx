@@ -7,14 +7,15 @@ import { chaosVerdict } from "./chaos.ts";
 import { CodePanel } from "../components/CodePanel.tsx";
 import { LessonView } from "../components/LessonView.tsx";
 import { Controls } from "../components/Controls.tsx";
-import { NarrationBar } from "../components/NarrationBar.tsx";
 import { ClusterView } from "../components/views/ClusterView.tsx";
 import { MessageLog } from "../components/views/MessageLog.tsx";
 import type { Problem } from "../parseProblem.ts";
 import { usePlayer } from "../player/usePlayer.ts";
 import { handlerRange } from "./handlers.ts";
-import { findRun, parseLesson, scenarioOptionLabel, stepAt, type PlayLink } from "./lesson.ts";
-import { narrateSim } from "./narrate.ts";
+import { findRun, parseLesson, scenarioOptionLabel, stepAt, storyChapters, testNames, type PlayLink } from "./lesson.ts";
+import { simCaption } from "./narrate.ts";
+import { ChapterStrip } from "../components/ChapterStrip.tsx";
+import { Callout } from "../components/views/Callout.tsx";
 import { useSimTrace } from "./useSimTrace.ts";
 
 const EMPTY_STEPS: SimStep[] = [];
@@ -22,7 +23,15 @@ const NO_LINES: number[] = [];
 const NO_FAULTS: Fault[] = [];
 
 export function SimProblemView({ problem }: { problem: Problem }) {
-  const [runIndex, setRunIndex] = useState(0);
+  const [pickedRun, setRunIndex] = useState<number | null>(null);
+  const lesson = useMemo(() => parseLesson(problem.lesson), [problem.lesson]);
+  // Scenarios play as a story; until one is picked, start at chapter 1. Each test is one scenario,
+  // in file order, so the chapters can be worked out before the simulation has run.
+  const chapters = useMemo(
+    () => storyChapters(testNames(problem.source).map((label) => ({ label })), lesson),
+    [problem.source, lesson],
+  );
+  const runIndex = pickedRun ?? chapters[0]?.run ?? 0;
   // Faults injected with the chaos bar belong to one scenario; switching scenarios plays it clean.
   const [chaos, setChaos] = useState<{ run: number; faults: Fault[] }>({ run: -1, faults: [] });
   const injected = chaos.run === runIndex ? chaos.faults : NO_FAULTS;
@@ -30,7 +39,6 @@ export function SimProblemView({ problem }: { problem: Problem }) {
   const state = useSimTrace(problem.id, problem.source, chaosArg);
   const trace = state.status === "ready" ? state.trace : null;
   const run = trace?.runs[runIndex];
-  const lesson = useMemo(() => parseLesson(problem.lesson), [problem.lesson]);
   const [tab, setTab] = useState<"learn" | "code">(problem.lesson ? "learn" : "code");
   // A play link picks a scenario and a moment; the jump happens once that scenario's steps are loaded.
   const [jump, setJump] = useState<{ run: number; t?: number } | null>(null);
@@ -55,7 +63,7 @@ export function SimProblemView({ problem }: { problem: Problem }) {
   const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell);
   const k = player.index;
   const step = steps[k];
-  const narration = useMemo(() => (steps[k] ? narrateSim(steps, k) : null), [steps, k]);
+  const caption = useMemo(() => simCaption(steps, k), [steps, k]);
   const activeLine = step?.handler ? (handlerRange(problem.lines, step.handler, step.className)?.start ?? null) : null;
 
   // Each play-link click is a new object, so a ref remembers which one has been carried out.
@@ -192,6 +200,12 @@ export function SimProblemView({ problem }: { problem: Problem }) {
                 onReset={resetChaos}
               />
             )}
+            <ChapterStrip chapters={chapters} current={runIndex} onPick={setRunIndex} />
+            {caption && (
+              <div className="sim-caption">
+                <Callout caption={caption} />
+              </div>
+            )}
             {step && <ClusterView key={`cluster-${runIndex}`} step={step} prev={steps[k - 1]} hasClient={hasClient} />}
             {step && (
               <MessageLog
@@ -209,7 +223,6 @@ export function SimProblemView({ problem }: { problem: Problem }) {
       </section>
 
       <div className="dock">
-        <NarrationBar narration={narration} hasNotes={false} />
         <Controls player={player} />
       </div>
     </main>
