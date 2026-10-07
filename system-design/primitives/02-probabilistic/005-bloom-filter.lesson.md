@@ -8,6 +8,14 @@
 - **Not the right tool when:** You need exact answers, deletes, or a list of the items; use a hash set if it fits in memory. To count distinct items use [HyperLogLog](#/sd-02-probabilistic/007-hyperloglog), and to estimate how often each item appears use a [count-min sketch](#/sd-02-probabilistic/006-count-min-sketch).
 - **Where you'll meet it:** LevelDB, RocksDB and Cassandra keep one per on-disk table so reads skip files that cannot hold the key; Burton Bloom's 1970 paper; and interview questions such as "Design a web crawler" or "Check whether a username is taken".
 
+## In plain words
+
+Imagine a sign-up page. Every time someone types a username, the app must check whether it is taken, and the full list of usernames lives in a database that is slow to ask. Most names people try are free, so most of those slow lookups find nothing. A Bloom filter is a small note kept in memory that can say "definitely not taken" for most of them, so the database is asked only when there is a real chance.
+
+Think of a coat check that, instead of keeping a list of names, punches three holes in a card for each guest, at spots picked from the guest's name. To ask about someone, look at their three spots: if any spot has no hole, they never came. If all three have holes, they probably came, but other guests may have punched those exact spots. That "probably" is the price of keeping only a card instead of a list.
+
+In the picture on the right, the row of numbered cells is the filter's bits: 1 is a hole punched, 0 is untouched. Above it are the question being asked and the item, with the bits that item hashes to. Those bits are outlined: solid for a bit this item just set, dashed for a bit some other item had already set, dotted for a bit that is still 0. Below the bits are the filter's answer, the reason, and what it costs if that answer is wrong. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Item** (or key) — one piece of data we store and later ask about, such as a username or the key of a database row.
@@ -102,6 +110,16 @@ Now apple, which was added and never removed, finds bit 8 at 0 and is reported a
   A: Many more: about 10% instead of under 1%. A never-added item needs only one set bit to fool a one-hash filter. [▶ See it](play:broken: one hash@at=maybe)
 - **Q:** In a filter with the best k, about what share of the bits are 1?
   A: About half. Here 101 of 200 bits are set after 20 items with k = 7. [▶ See it](play:sizing@at=added)
+
+## When to use which
+
+- **Bloom filter** — when most lookups are for things that are not there and a wasted slow lookup now and then is fine. Example: a database checks the filter of each file on disk and skips every file that cannot hold the key, as in an [LSM tree](#/sd-03-storage/009-lsm-tree).
+- **A plain set or hash map in memory** — when the items fit in memory, or you need exact answers, deletes, or the list of items back. A few million short usernames fit easily: just keep them in a set.
+- **Ask the database every time** — when lookups are rare, or most of them find something anyway. A filter only saves work on the misses.
+- **Counting Bloom filter or cuckoo filter** — when items must also be removed, such as a cache that evicts keys. They cost a few times the memory.
+- **[Count-min sketch](#/sd-02-probabilistic/006-count-min-sketch)** — when the question is "how often?", not "ever?".
+- **[HyperLogLog](#/sd-02-probabilistic/007-hyperloglog)** — when the question is "how many different items?", not "is this one in?".
+- **In an interview:** say "a Bloom filter in front of the store to skip lookups for missing keys, sized at about 10 bits per key for 1% false positives", and say that a "no" is always right while a "maybe" still goes to the store.
 
 ## Deep dive
 

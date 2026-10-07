@@ -44,7 +44,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class HyperLogLog {
-  // @viz bits:registers,touched,verdict hide:item,verdict values:b,m,j,rank,h,rest,sum,zeros,raw,alpha
+  // @viz bits:registers,touched,verdict,title=HyperLogLog,unit=register,ask=ask,answer=answer,cost=cost,costLabel=How_far_off hide:item,verdict,ask,answer,cost values:b,m,j,rank,h,rest,sum,zeros,raw,alpha
   b: number;
   m: number;
   // @why m small numbers instead of the items: memory is the same for a thousand items or a billion.
@@ -52,14 +52,21 @@ export class HyperLogLog {
   // The register the current item went to (or, after a merge, the registers that changed).
   touched: number[] = [];
   verdict = "";
+  // For the picture: the real-world question, the sketch's answer, and how far off that answer can be.
+  ask = "";
+  answer = "";
+  cost = "";
 
   constructor(b: number) {
     this.registers = new Array<number>(2 ** b).fill(0);
     this.b = b;
+    // @caption A HyperLogLog sketch: {m === 1 ? "a single register" : m + " small registers"} in memory, all 0 at the start. It answers "how many different items have we seen?", such as unique visitors to a site, without remembering the items. {m === 1 ? "Every item's hash goes to that one register." : "The first " + b + " bits of each item's hash pick its register."}
     this.m = 2 ** b;
   }
 
   add(item: string): number {
+    this.ask = `Seen "${item}": count it if it is new`;
+    this.answer = this.cost = "";
     const h = Hash.of(item, 0);
     // @why The first b bits pick the register, so each register sees its own random 1/m share of the items.
     const j = h >>> (32 - this.b);
@@ -73,14 +80,17 @@ export class HyperLogLog {
     // @why Keep only the maximum: a duplicate gives the same rank again and changes nothing.
     if (rank > this.registers[j]) {
       this.registers[j] = rank;
+      // @caption "{item}" hashes to {shown}. The first {b} bits pick register {j}. Then come {rank === 1 ? "no zeros" : rank === 2 ? "one zero" : rank - 1 + " zeros"} before the first 1: rank {rank}, which happens about once in {2 ** rank} items. That beats the register's best so far, so it goes up to {rank}. A big rank hints that many different items have passed.
       this.verdict = `"${item}": hash ${shown} → register ${j}, rank ${rank}; the register goes up to ${rank}`; // @mark keep
     } else {
+      // @caption "{item}" lands in register {j} with rank {rank}, but the register already holds {registers[j]}, so nothing changes. A register keeps only its best rank. That is also why repeats are free: the same item always gives the same register and rank, so seeing it again can never raise anything.
       this.verdict = `"${item}": hash ${shown} → register ${j}, rank ${rank}; the register already holds ${this.registers[j]}, so nothing changes`; // @mark skip
     }
     return rank;
   }
 
   estimate(): number {
+    // @caption How many different items so far? To answer, all {m} registers are read and combined into one estimate.
     this.touched = [];
     let sum = 0;
     let zeros = 0;
@@ -93,17 +103,24 @@ export class HyperLogLog {
     const alpha = this.m === 16 ? 0.673 : this.m === 32 ? 0.697 : this.m === 64 ? 0.709 : 0.7213 / (1 + 1.079 / this.m);
     const raw = (alpha * this.m * this.m) / sum;
     // @why With few items most registers are still 0 and the formula overshoots; counting the empty registers is more accurate there.
+    this.ask = "How many different items so far?";
+    this.cost = `Typically off by about ${Math.round(104 / Math.sqrt(this.m))}% with ${this.m} registers. It cannot say whether a given item was seen.`;
     if (raw <= 2.5 * this.m && zeros > 0) {
       const linear = this.m * Math.log(this.m / zeros);
+      this.answer = `About ${Math.round(linear)}.`;
+      // @caption How many different items so far? {zeros} of {m} registers are still 0, so only a few items have arrived. Counting the empty registers is more accurate here: {m} × ln({m}/{zeros}) ≈ {Math.round(linear * 10) / 10}, so about {Math.round(linear)} different items.
       this.verdict = `${zeros} of ${this.m} registers are still 0, so count from the empty ones: ${this.m} × ln(${this.m}/${zeros}) ≈ ${linear.toFixed(1)}`; // @mark linear
       return linear;
     }
+    this.answer = `About ${Math.round(raw)}.`;
+    // @caption How many different items so far? Each register's best rank is a rough guess for its 1/{m} share of the items. A harmonic mean combines the {m} guesses, so one lucky register cannot drag the total up: about {Math.round(raw)} different items, from {m} small numbers instead of a list of every item.
     this.verdict = `harmonic mean over ${this.m} registers: estimate ≈ ${Math.round(raw)}`; // @mark harmonic
     return raw;
   }
 
   // @why Each register is a max, and the max of maxes is the max over both streams: the merge is exact, and duplicates across the two count once.
   merge(other: HyperLogLog): number {
+    // @caption Two sketches, say Monday's and Tuesday's visitors. To count the different visitors across both days, compare them register by register and keep the larger value.
     this.touched = [];
     for (let j = 0; j < this.m; j++) {
       if (other.registers[j] > this.registers[j]) {
@@ -111,6 +128,10 @@ export class HyperLogLog {
         this.touched.push(j);
       }
     }
+    this.ask = "Combine with another sketch (another day, or another server)";
+    this.answer = "good: Exact: the same registers as one sketch that saw both streams.";
+    this.cost = "Nothing extra: an item seen in both streams still counts once.";
+    // @caption good: Two sketches, say Monday's and Tuesday's visitors, combine by taking the larger value in each register: {touched.length} of {m} came from the other sketch. A visitor seen on both days gave the same register and rank in both, so it still counts once.
     this.verdict = `merged: ${this.touched.length} of ${this.m} registers were larger in the other sketch and were taken from it`; // @mark merge
     return this.touched.length;
   }
@@ -137,10 +158,13 @@ class Hash {
 // Build it with b = 0: 2^0 = 1 register.
 export class OneRegisterSketch extends HyperLogLog {
   add(item: string): number {
+    this.ask = `Seen "${item}": count it if it is new`;
+    this.answer = this.cost = "";
     const h = Hash.of(item, 0);
     const rank = Math.min(Math.clz32(h), 32) + 1;
     this.touched = [0];
     if (rank > this.registers[0]) this.registers[0] = rank;
+    // @caption "{item}" has rank {rank}. With one register, the whole count rests on the single best rank ever seen, now {registers[0]}.
     this.verdict = `"${item}": rank ${rank}; the one register holds ${this.registers[0]}`;
     return rank;
   }
@@ -148,6 +172,10 @@ export class OneRegisterSketch extends HyperLogLog {
   estimate(): number {
     // 0.77351 is the correction from Flajolet and Martin's original single-register counter.
     const est = 2 ** this.registers[0] / 0.77351;
+    this.ask = "How many different items so far?";
+    this.answer = `bad: About ${Math.round(est)}.`;
+    this.cost = "One register: one lucky or unlucky hash can move the answer by a factor of 2 or more.";
+    // @caption bad: One register holding {registers[0]} says about 2^{registers[0]} / 0.77 ≈ {Math.round(est)} different items. The answer can only be a power of 2 (times 1.3), and one lucky hash doubles it while one missing hash halves it. Nothing averages that out.
     this.verdict = `one register holding ${this.registers[0]}: estimate 2^${this.registers[0]} / 0.77 ≈ ${Math.round(est)}`; // @mark one
     return est;
   }
@@ -156,6 +184,7 @@ export class OneRegisterSketch extends HyperLogLog {
 // Broken on purpose: averages 2^register with an ordinary mean, which the largest register dominates.
 export class ArithmeticMeanSketch extends HyperLogLog {
   estimate(): number {
+    // @caption How many different items so far? This sketch combines its {m} registers with an ordinary average of 2^register instead of a harmonic mean. Watch what the biggest registers do to it.
     let sum = 0;
     let top = 0;
     for (let j = 0; j < this.m; j++) {
@@ -166,6 +195,10 @@ export class ArithmeticMeanSketch extends HyperLogLog {
     // Same scale as the real estimate for 64 registers: α · m · (mean of 2^register) = 0.709 · sum.
     const est = 0.709 * sum;
     const share = Math.round((100 * 2 ** this.registers[top]) / sum);
+    this.ask = "How many different items so far?";
+    this.answer = `bad: About ${Math.round(est)}.`;
+    this.cost = "An ordinary mean: one register with a lucky hash can multiply the answer.";
+    // @caption bad: An ordinary average of 2^register says about {Math.round(est)} different items. Register {top} alone (2^{registers[top]}) is {share}% of the sum: {share >= 50 ? "one lucky hash decides the whole answer." : "the biggest registers drown out the rest."} The harmonic mean of these same registers says about {Math.round((0.709 * m * m) / registers.reduce((a, r) => a + 2 ** -r, 0))}.
     this.verdict = `ordinary mean of 2^register: estimate ≈ ${Math.round(est)}; register ${top} alone (2^${this.registers[top]}) is ${share}% of the sum`; // @mark mean
     return est;
   }

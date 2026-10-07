@@ -8,6 +8,14 @@
 - **Not the right tool when:** Exact counts matter, as in billing, or the distinct items are few enough for a hash map. To count how many distinct items there are, use [HyperLogLog](#/sd-02-probabilistic/007-hyperloglog); to ask only "was this ever seen?", use a [Bloom filter](#/sd-02-probabilistic/005-bloom-filter).
 - **Where you'll meet it:** Cormode and Muthukrishnan's 2005 paper; the Caffeine Java cache, whose TinyLFU policy uses a count-min style sketch to decide what to keep; RedisBloom's CMS commands; and interview questions such as "Design a top-K service" or "Design trending hashtags".
 
+## In plain words
+
+Say a search engine wants to show what is trending. Every search typed in the world goes past one server, and it wants to know which terms are the most common. Keeping an exact count for every term ever typed needs one counter per term, and there are billions of different terms, most typed once. A count-min sketch keeps a small fixed table of counters instead, shared between terms, and still finds the popular ones.
+
+Think of a few tally sheets, each with a handful of boxes. Every time a word comes in, each sheet puts a tick in one box, picked from the word in its own way. Many words share each box, so a box's tally is that word's ticks plus everyone else's in that box: it can be too high, never too low. Asking for a word, you read its box on every sheet and trust the smallest, because the smallest has the fewest strangers mixed in.
+
+In the picture on the right, the grid is the sketch: one row per hash, one column per counter. The item being counted or asked about has one outlined counter in each row, listed above the grid. Below it are the question, the answer, the reason (the counters it read and the smallest one), and what an overcount costs. The current top items are shown next to it, and the box at the top says what just happened.
+
 ## Words we'll use
 
 - **Stream** — a long sequence of items that arrive one at a time, such as search queries or the IP addresses of incoming requests. We see each item once and cannot store them all.
@@ -89,6 +97,16 @@ The same four items as the naive attempt, but with 4 rows: eel's other three cou
   A: First, at 51. With one row there is no other counter to show that the 51 is mostly apple's. [▶ See it](play:broken: one row@at=top#4)
 - **Q:** The same items go into 4 rows instead of 1. Does eel still make the top 3?
   A: No. Its counters in rows 1, 2 and 3 hold only its own 1, so the minimum is 1. [▶ See it](play:broken: one row@at=top#8)
+
+## When to use which
+
+- **Count-min sketch** — when you need rough counts or the top items of a huge stream in fixed memory, and counting a little too high is fine. Example: the top 100 search terms of the last hour, or the busiest client IPs for abuse detection.
+- **An exact count in a hash map** — when the distinct items are few enough to keep a counter each (thousands or a few million), or when every count must be right, as in billing.
+- **Sampling** — when you only need the share of the very biggest items: count every 100th event exactly and multiply. It is simple, but rare items are missed entirely, and small counts are very noisy.
+- **Per-key counters with a window** — when you must act on each key's exact recent rate, such as limiting each user to 100 requests a minute. See [window rate limiters](#/sd-04-traffic/013-window-rate-limiters).
+- **[HyperLogLog](#/sd-02-probabilistic/007-hyperloglog)** — when the question is how many different items there are, not how often each appears.
+- **[Bloom filter](#/sd-02-probabilistic/005-bloom-filter)** — when the question is only whether an item was ever seen.
+- **In an interview:** for "top K" or "trending", say "a count-min sketch per time window plus a small heap of the current top K", and mention that sketches from different servers add together.
 
 ## Deep dive
 

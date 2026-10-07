@@ -8,6 +8,14 @@
 - **Not the right tool when:** You need the exact number, need to know whether one particular item was seen (use a [Bloom filter](#/sd-02-probabilistic/005-bloom-filter)), or need how often each item appears (use a [count-min sketch](#/sd-02-probabilistic/006-count-min-sketch)). For small sets, an exact set is simpler.
 - **Where you'll meet it:** Redis's PFADD, PFCOUNT and PFMERGE, at about 12 KB per key; BigQuery's HLL_COUNT functions and Trino's approx_distinct; the 2007 paper by Flajolet, Fusy, Gandouet and Meunier; and interview questions such as "Count unique visitors" or "Design an analytics dashboard".
 
+## In plain words
+
+Say a website wants to show how many different people visited today. Counting visits is easy: add one per page view. Counting different people is hard, because a returning visitor must not count again, and the usual way to know that is to keep every visitor ID seen so far. With millions of visitors per day, per page, per country, those lists get huge. HyperLogLog keeps a few kilobytes instead and still gets within a few percent.
+
+Think of asking a crowd to flip coins and report their longest run of heads. If somebody reports ten heads in a row, a lot of people probably flipped, because that run comes up about once in a thousand tries. One report is a wild guess, so the crowd is split into many groups, each group remembers only its own longest run, and the groups' guesses are averaged in a way that one lucky group cannot spoil. A repeat visitor flips the exact same coins again, so they never change anything.
+
+In the picture on the right, the row of numbered cells is the sketch's registers: each holds the longest run seen in its group. The item being added, and the register its hash picks, are shown above the row, with the register outlined. Below it are the question, the sketch's answer, the reason (the item's hash and rank, or how the estimate was worked out), and how far off the answer can be. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Distinct items** (cardinality) — how many different items a stream holds. A stream of a million page views from 40,000 visitors has 40,000 distinct visitors.
@@ -106,6 +114,15 @@ The result is exactly the sketch of all 10,000 users, and the 2,000 users seen b
   A: No. Merging takes the larger value of each register, which is exactly what one sketch of all 10,000 users would hold. [▶ See it](play:merge@at=harmonic)
 - **Q:** Why not keep just one register and save memory?
   A: One longest run is a very noisy guess, and it moves only in powers of 2. Here it says about 42,000 for 10,000 users. [▶ See it](play:broken: one register@at=one)
+
+## When to use which
+
+- **HyperLogLog** — when the question is "how many different?" over a large stream, a few percent of error is fine, and especially when you keep many slices to combine later. Example: daily unique visitors per page, merged into weekly and monthly counts.
+- **An exact set (or `COUNT(DISTINCT)`)** — when the number of different items is small (thousands to a few million), or the exact number matters, such as counting paying customers for an invoice.
+- **Sampling** — when you can afford to look at only part of the data for totals. It does not work for distinct counts: a 1% sample of visits misses most people who visited once, and there is no safe way to scale up the number of different people seen.
+- **[Bloom filter](#/sd-02-probabilistic/005-bloom-filter)** — when you need to ask whether one particular item was seen. HyperLogLog cannot answer that.
+- **[Count-min sketch](#/sd-02-probabilistic/006-count-min-sketch)** — when you need how often each item appeared, not how many different items there were.
+- **In an interview:** for "unique visitors" or "daily and monthly actives", say "one HyperLogLog per day, about 12 KB each, merged for any range", and give the error, about 1% with 16,384 registers.
 
 ## Deep dive
 

@@ -9,6 +9,16 @@
 //   makes a Bloom filter's false positive visible: every cell it checks was set by someone else.
 // The item itself is a local named `item` in the frame that holds the cells, if there is one
 // (found even when hidden with `hide:item`).
+//
+// Options after the variable names (values use `_` for spaces), so the picture reads as the
+// real-world question it answers, not just cells:
+// - title=Bloom_filter       what the structure is called, shown with its size;
+// - unit=bit                 what one cell is ("bit 13", "32 bits");
+// - ask=<var>                a string: the real-world question about the current item;
+// - answer=<var>             a string: the short answer (a `good:` or `bad:` prefix sets its tone);
+// - cost=<var>               a string: what it costs when that answer is wrong;
+// - costLabel=How_far_off     the label for that line (default "If wrong").
+// Empty strings are left out.
 
 import type { HeapId, Value } from "../../tracer/types.ts";
 import type { Builder } from "./types.ts";
@@ -27,13 +37,28 @@ export type BitsPanel = {
   item?: string;
   /** True when the cells came as rows (keep them aligned); false for one row (free to wrap). */
   grid: boolean;
+  /** What the structure is called (`title=`), and what one cell is (`unit=`, default "cell"). */
+  title?: string;
+  unit: string;
+  /** The real-world question, its short answer (with a tone) and the cost of a wrong answer. */
+  ask?: string;
+  answer?: { text: string; tone: "info" | "good" | "bad" };
+  cost?: string;
+  costLabel?: string;
 };
 
 const isNumRow = (x: unknown): x is unknown[] => Array.isArray(x) && x.every((v) => !Array.isArray(v));
 const text = (v: unknown) => (typeof v === "number" ? String(Math.round(v * 1000) / 1000) : String(v));
 
 export const buildBits: Builder<BitsPanel> = (ctx) => {
-  const [cellsName, touchedName, verdictName, newName] = ctx.args;
+  const opt: Record<string, string> = {};
+  const names: string[] = [];
+  for (const a of ctx.args) {
+    const eq = a.indexOf("=");
+    if (eq < 0) names.push(a);
+    else opt[a.slice(0, eq)] = a.slice(eq + 1).replace(/_/g, " ");
+  }
+  const [cellsName, touchedName, verdictName, newName] = names;
   const cellsV = ctx.find(cellsName);
   const cells = ctx.js(cellsV);
   if (!Array.isArray(cells) || cellsV?.t !== "r") return null;
@@ -89,6 +114,14 @@ export const buildBits: Builder<BitsPanel> = (ctx) => {
   );
   const itemV = owner?.vars.find(([name]) => name === "item")?.[1];
   const item = ctx.js(itemV);
+  const str = (name: string | undefined) => {
+    const v = name ? ctx.js(ctx.find(name.replace(/ /g, "_"))) : undefined;
+    return typeof v === "string" && v ? v : undefined;
+  };
+  const ask = str(opt.ask);
+  const answerText = str(opt.answer);
+  const tone = answerText?.match(/^(good|bad):\s*/);
+  const cost = str(opt.cost);
   return {
     panel: {
       kind: "bits",
@@ -100,6 +133,11 @@ export const buildBits: Builder<BitsPanel> = (ctx) => {
       ...(typeof verdict === "string" && verdict ? { verdict } : {}),
       ...(typeof item === "string" || typeof item === "number" ? { item: String(item) } : {}),
       grid,
+      ...(opt.title ? { title: opt.title } : {}),
+      unit: opt.unit ?? "cell",
+      ...(ask ? { ask } : {}),
+      ...(answerText ? { answer: { text: answerText.slice(tone?.[0].length ?? 0), tone: (tone?.[1] as "good" | "bad" | undefined) ?? "info" } } : {}),
+      ...(cost ? { cost, costLabel: opt.costLabel ?? "If wrong" } : {}),
     },
     uses,
   };

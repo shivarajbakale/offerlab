@@ -44,7 +44,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class BloomFilter {
-  // @viz bits:bits,touched,verdict,newBits hide:item,verdict values:m,k,i,p,h1,h2
+  // @viz bits:bits,touched,verdict,newBits,title=Bloom_filter,unit=bit,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost,cleared values:m,k,i,p,h1,h2
   m: number;
   k: number;
   // @why One bit per position instead of the items themselves: memory is m bits no matter how long the items are.
@@ -54,10 +54,18 @@ export class BloomFilter {
   // The positions this add switched from 0 to 1 (the rest were already set by other items).
   newBits: number[] = [];
   verdict = "";
+  // For the picture: the real-world question about the current item, the filter's answer, and what a wrong answer costs.
+  ask = "";
+  answer = "";
+  cost = "";
+  // For the picture: bits a delete has set back to 0. A real Bloom filter never clears a bit, so this stays empty;
+  // only the broken ClearingBloomFilter below fills it.
+  cleared: number[] = [];
 
   constructor(m: number, k: number) {
     this.bits = new Array<number>(m).fill(0);
     this.m = m;
+    // @caption A Bloom filter: {m} bits in memory, all 0 at the start. It sits in front of a slow database and answers one question, such as "is this username taken?", before the database is asked. Each item will be hashed to {k === 1 ? "one bit" : k + " bits"}.
     this.k = k;
   }
 
@@ -65,6 +73,7 @@ export class BloomFilter {
   locate(item: string) {
     this.touched = [];
     this.newBits = [];
+    this.ask = this.answer = this.cost = "";
     const h1 = Hash.of(item, 1);
     // @why A step of 0 would make all k positions the same bit, so h2 runs from 1 to m−1.
     let h2 = 1 + (Hash.of(item, 2) % (this.m - 1));
@@ -72,11 +81,13 @@ export class BloomFilter {
     while (Hash.gcd(h2, this.m) !== 1) h2++;
     for (let i = 0; i < this.k; i++) {
       // @why Double hashing: k positions from two hashes, about as good as k independent hashes.
+      // @caption Hashing "{item}" picks {k === 1 ? "its one bit" : "its " + k + " bits, one per hash"}: {touched.join(", ") + (touched.length < k ? " so far" : "")}. The same item always picks the same bits, so checking an item looks exactly where adding it wrote.
       this.touched.push((h1 + i * h2) % this.m); // @mark hash
     }
   }
 
   add(item: string): number {
+    // @caption Storing "{item}" (think: a new username). The filter does not keep the name itself. It only switches on the bits that hashing "{item}" picks.
     this.locate(item);
     for (const p of this.touched) {
       if (this.bits[p] === 0) this.newBits.push(p);
@@ -84,21 +95,32 @@ export class BloomFilter {
       this.bits[p] = 1; // @mark set
     }
     const had = this.k - this.newBits.length;
+    // @caption {newBits.length === 0 ? '"' + item + '" is stored, but every one of its bits was already 1 from other items, so nothing changed.' : '"' + item + '" is stored: ' + newBits.length + (newBits.length === 1 ? " bit" : " bits") + " switched from 0 to 1" + (had ? ", and " + had + (had === 1 ? " was" : " were") + " already 1 from another item. Sharing bits is normal: it is what keeps the filter small." : ".")} Now {bits.filter((b) => b === 1).length} of {m} bits are 1.
     this.verdict = `added "${item}": set ${this.newBits.length} new bit(s)${had ? `; ${had} already set by other items` : ""}`; // @mark added
     // @why How many bits were new. 0 means every bit was already set: the filter already said "maybe" for this item.
     return this.newBits.length;
   }
 
   mightContain(item: string): boolean {
+    // @caption Someone asks: has "{item}" ever been stored? Before paying for the slow database lookup, the app asks the filter. Right now {bits.filter((b) => b === 1).length} of {m} bits are 1, switched on by the items stored so far.
     this.locate(item);
+    this.ask = `Has "${item}" ever been stored?`;
     for (const p of this.touched) {
       if (this.bits[p] === 0) {
         // @why One 0 is proof: adding the item would have set this bit, and bits are never cleared.
+        this.answer = this.cleared.includes(p) ? "bad: No, so the app skips the database. But this 0 came from a delete." : "good: No, definitely not. Skip the database.";
+        this.cost = this.cleared.includes(p)
+          ? "If it was stored, it is now treated as missing: a false negative. That is lost data."
+          : "Nothing: this \"no\" is always right, because bits are never cleared.";
+        // @caption {cleared.includes(p) ? "bad: Bit " + p + ' is 0, so the filter says "' + item + '" was never stored, and the app skips the database. But that bit was cleared by the delete, not left unset. If "' + item + '" was stored, it is now treated as missing: a false negative, which means lost data.' : "good: Bit " + p + ' is 0. Storing "' + item + '" would have set it, and bits are never cleared, so the answer is a sure "no": skip the database, no lookup wasted.'}
         this.verdict = `"${item}": bit ${p} is 0, so it was never added`; // @mark absent
         return false;
       }
     }
     // @why All k bits set is only "maybe": other items may have set every one of them.
+    this.answer = "Maybe. Ask the database to be sure.";
+    this.cost = "If it was never stored (a false positive), one wasted database lookup. A stored item is never missed.";
+    // @caption {k === 1 ? 'bad: The one bit of "' + item + '" is 1, so the filter says "maybe". With one hash, a single item that landed on that bit is enough to fool it: here about 1 in 10 never-stored items get a "maybe", and each one costs a wasted database lookup.' : "All " + k + ' bits of "' + item + '" are 1, so the filter says "maybe" and the app does the slow database lookup to be sure. If "' + item + '" was stored, the lookup finds it. If not, other items set those bits and the lookup is wasted: a false positive.'}
     this.verdict = `"${item}": ${this.k === 1 ? "its one bit is" : `all ${this.k} bits are`} set, so maybe present`; // @mark maybe
     return true;
   }
@@ -132,6 +154,11 @@ export class ClearingBloomFilter extends BloomFilter {
   remove(item: string): number {
     this.locate(item);
     for (const p of this.touched) this.bits[p] = 0;
+    this.cleared.push(...this.touched);
+    this.ask = `Delete "${item}"`;
+    this.answer = `bad: Its bits ${this.touched.join(", ")} are back to 0.`;
+    this.cost = "Bits are shared: any stored item that uses one of these bits now gets a wrong \"no\". That is lost data.";
+    // @caption bad: To "delete" "{item}", its bits {touched.join(", ")} were set back to 0. But bits are shared: any other stored item that uses one of these bits will now look like it was never stored.
     this.verdict = `removed "${item}" by clearing bits ${this.touched.join(", ")}, which other items may also need`; // @mark removed
     return this.touched.length;
   }

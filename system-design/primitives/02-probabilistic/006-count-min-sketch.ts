@@ -41,7 +41,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class CountMinSketch {
-  // @viz bits:rows,touched,verdict hide:item,verdict values:depth,width,topK,r,c,n,best
+  // @viz bits:rows,touched,verdict,title=Count-min_sketch,unit=counter,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost values:depth,width,topK,r,c,n,best
   depth: number;
   width: number;
   topK: number;
@@ -52,17 +52,25 @@ export class CountMinSketch {
   verdict = "";
   // @why The current heavy hitters, highest estimate first. Without it, finding them would mean estimating every item ever seen, and the sketch does not remember which items those were.
   top = new Map<string, number>();
+  // For the picture: the real-world question about the current item, the sketch's answer, and what a wrong answer costs.
+  ask = "";
+  answer = "";
+  cost = "";
 
   constructor(depth: number, width: number, topK = 3) {
     this.rows = Array.from({ length: depth }, () => new Array<number>(width).fill(0));
     this.depth = depth;
     this.width = width;
+    // @caption A count-min sketch: {depth === 1 ? "one row" : depth + " rows"} of {width} counters, all 0 at the start. Think of counting how often each search term is typed, without keeping a counter for every term. {depth === 1 ? "One hash picks one counter per item, shared with whatever other items land there." : "Each row has its own hash, so every item gets one counter per row, shared with whatever other items land there."}
     this.topK = topK;
   }
 
   add(item: string, n = 1) {
     this.touched = [];
     // @why Say what is happening now, so the previous item's verdict is not left on screen.
+    this.ask = `"${item}" was seen${n === 1 ? "" : ` ${n} times`}: count it`;
+    this.answer = this.cost = "";
+    // @caption {'"' + item + '" was seen' + (n === 1 ? "" : " " + n + " times") + ". Each row's hash picks one counter for it, and that counter goes up by " + n + ". The counters are shared, so other items may already have added to them."}
     this.verdict = `adding "${item}"${n === 1 ? "" : ` ${n} times`}: one counter in each row goes up by ${n}`;
     for (let r = 0; r < this.depth; r++) {
       // @why Each row has its own hash, so two items that share a counter in one row rarely share one in every row.
@@ -85,6 +93,10 @@ export class CountMinSketch {
       // @why Every counter is the item's count plus collisions, so each is too high or exact. The smallest is the least polluted.
       best = Math.min(best, this.rows[r][c]);
     }
+    this.ask = `How many times has "${item}" been seen?`;
+    this.answer = `About ${best}, and never fewer than the true count.`;
+    this.cost = "It can only be too high: other items that share these counters add to them.";
+    // @caption {depth === 1 ? 'With one row, the estimate for "' + item + '" is simply its one counter: ' + best + ". That counter also holds every other item that hashes there, and there is no second row to check it against." : 'How often was "' + item + '" seen? Its ' + depth + " counters hold " + seen.join(", ") + ". Each is its own count plus whatever other items that share it added, so each is too high or exact. The smallest, " + best + ", is the best guess" + (seen.some((x) => x > best) ? ": the rows disagree, and the bigger counters were inflated by collisions." : ".")}
     this.verdict = `"${item}": its counters hold ${seen.join(", ")}, so the estimate is the smallest, ${best}`; // @mark estimate
     return best;
   }
@@ -96,6 +108,10 @@ export class CountMinSketch {
     entries.push([item, count]);
     entries.sort((a, b) => b[1] - a[1]);
     this.top = new Map(entries.slice(0, this.topK));
+    this.ask = `Is "${item}" one of the ${this.topK} most frequent items?`;
+    this.answer = this.top.has(item) ? `Yes, with about ${count}.` : `No: about ${count}, below the top ${this.topK}.`;
+    this.cost = `If its count is inflated by collisions, a rare item can push a real heavy hitter off the list.`;
+    // @caption {depth === 1 && top.has(item) && count > n ? 'bad: "' + item + '" was just added ' + (n === 1 ? "once" : n + " times") + ", but its only counter reads " + count + ": unless it was seen before, the rest came from other items sharing that counter. With one row nothing outvotes the collision, so it enters the top " + topK + ": " + [...top].map((e) => e[0] + " " + e[1]).join(", ") + "." : "Only a short list of the top " + topK + " is kept, checked on every add, because the sketch cannot list its items later. Now: " + [...top].map((e) => e[0] + " " + e[1]).join(", ") + "."}
     this.verdict = `"${item}" estimated at ${count}; top ${this.topK}: ${[...this.top].map(([name, n]) => `${name} ${n}`).join(", ")}`; // @mark top
     return count;
   }

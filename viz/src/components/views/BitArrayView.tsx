@@ -1,6 +1,8 @@
 // A row of bits or counters (Bloom filter, HyperLogLog) or a grid of counters (count-min sketch).
 // The current item's cells are outlined; with newCells in the hint, cells this item set are told
-// apart from cells that were already set, so a Bloom filter false positive is visible.
+// apart from cells that were already set, so a Bloom filter false positive is visible. With the
+// hint's options it reads as a real-world exchange: the question about the item, the cells it
+// hashes to, the answer, and what a wrong answer costs.
 
 import type { BitsPanel } from "../../model/systems/bits.ts";
 import "./BitArrayView.css";
@@ -20,27 +22,41 @@ function Cell({ cell, at, mark }: { cell: BitsPanel["rows"][number][number]; at:
   );
 }
 
+const plural = (n: number, unit: string) => `${unit}${n === 1 ? "" : "s"}`;
+
 export function BitArrayView({ panel }: { panel: BitsPanel }) {
   const mark = new Map(panel.touched.map((t) => [`${t.r},${t.c}`, t]));
   const hows = [...new Set(panel.touched.flatMap((t) => (t.how ? [t.how] : [])))];
-  const where = panel.touched.map((t) => (panel.grid ? `[${t.r}][${t.c}]` : `${t.c}`)).join(", ");
+  const unit = panel.unit;
+  const where = panel.grid
+    ? panel.touched.map((t) => `${unit} ${t.c} in row ${t.r}`).join(", ")
+    : `${plural(panel.touched.length, unit)} ${panel.touched.map((t) => t.c).join(", ")}`;
   const row = panel.rows[0] ?? [];
+  const size = panel.grid
+    ? `${panel.rows.length} rows × ${row.length} ${plural(row.length, unit)}`
+    : `${row.length} ${plural(row.length, unit)}`;
   const cols = row.length <= 16 ? Math.max(1, row.length) : row.length <= 64 ? 16 : 20;
   const lines = panel.grid ? [] : Array.from({ length: Math.ceil(row.length / cols) }, (_, i) => i * cols);
 
   return (
     <div className="bits">
+      {panel.title && (
+        <div className="bits-title">
+          <b>{panel.title}</b> <span>{size} in memory</span>
+        </div>
+      )}
+      {panel.ask && <div className="bits-ask">{panel.ask}</div>}
       {(panel.item !== undefined || panel.touched.length > 0) && (
         <div className="bits-item">
           {panel.item !== undefined && (
             <>
-              item <b>{panel.item}</b>
+              item <b>"{panel.item}"</b>
             </>
           )}
           {panel.touched.length > 0 && (
             <span className="bits-where">
-              {panel.item !== undefined ? " → " : ""}
-              {panel.grid ? "cells" : panel.touched.length === 1 ? "cell" : "cells"} {where}
+              {panel.item !== undefined ? " hashes to " : ""}
+              {where}
             </span>
           )}
         </div>
@@ -84,7 +100,19 @@ export function BitArrayView({ panel }: { panel: BitsPanel }) {
             ))}
         </div>
       )}
+      {panel.answer && (
+        <div className={`bits-answer ${panel.answer.tone}`}>
+          <span className="bits-tag">Answer</span>
+          {panel.answer.text}
+        </div>
+      )}
       {panel.verdict && <div className={`bits-verdict ${/false|wrong|lost/i.test(panel.verdict) ? "bad" : ""}`}>{panel.verdict}</div>}
+      {panel.cost && (
+        <div className="bits-cost">
+          <span className="bits-tag">{panel.costLabel ?? "If wrong"}</span>
+          {panel.cost}
+        </div>
+      )}
     </div>
   );
 }

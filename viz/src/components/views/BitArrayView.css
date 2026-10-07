@@ -120,3 +120,56 @@
   border-left-color: var(--bad);
   background: var(--bad-soft);
 }
+.bits-title {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+}
+.bits-title span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.bits-ask {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.bits-answer,
+.bits-cost {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 13px;
+  max-width: 560px;
+}
+.bits-answer {
+  font-weight: 600;
+  color: var(--ink);
+}
+.bits-answer.good .bits-tag {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.bits-answer.bad .bits-tag {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.bits-cost {
+  font-size: 12px;
+  color: var(--muted);
+}
+.bits-tag {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
