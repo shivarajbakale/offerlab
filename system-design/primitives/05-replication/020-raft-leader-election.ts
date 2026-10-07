@@ -69,16 +69,38 @@ export class RaftNode extends SimNode {
   }
 
   state() {
-    return { role: this.role, term: this.currentTerm, votedFor: this.votedFor, votes: [...this.votes], leader: this.leader };
+    return {
+      role: this.role,
+      term: this.currentTerm,
+      votedFor: this.votedFor,
+      votes: [...this.votes],
+      leader: this.leader,
+      summary: this.summary(),
+    };
+  }
+
+  // In words, under the node in the picture.
+  protected summary(): string {
+    if (this.role === "leader") return "sends heartbeats";
+    if (this.role === "candidate") return `has ${this.votes.length} vote${this.votes.length === 1 ? "" : "s"}: ${this.votes.join(",")}`;
+    const vote = this.votedFor ? `voted for ${this.votedFor}` : "no vote yet this term";
+    return `${this.leader ? `follows ${this.leader}` : "knows no leader"} · ${vote}`;
   }
 
   // @why Without a running timer a follower would wait forever for a leader that may never exist.
   onStart(ctx: Ctx) {
+    if (ctx.now > 0)
+      ctx.say(
+        (this.constructor as typeof RaftNode).durable.includes("votedFor")
+          ? `${ctx.id} restarts as a follower. From disk it remembers term ${this.currentTerm} and ${this.votedFor ? `its vote for ${this.votedFor}` : "that it has not voted this term"}`
+          : `bad: ${ctx.id} restarts with nothing saved on disk. It has forgotten its term and the vote it already gave, so it is free to vote a second time`,
+      );
     this.resetElectionTimer(ctx, ctx.now === 0 ? this.firstTimeout : null);
   }
 
   // @why Silence for a whole timeout is the only sign of a dead leader: there is no shared clock and no failure detector.
   onElectionTimeout(ctx: Ctx) {
+    const prevLeader = this.leader;
     // @why A fresh term, so this election can never be confused with an earlier one.
     this.currentTerm++;
     this.role = "candidate";
@@ -86,7 +108,9 @@ export class RaftNode extends SimNode {
     this.votedFor = ctx.id;
     this.votes = [ctx.id];
     this.leader = null;
-    ctx.say(`${ctx.id} heard no leader, so it runs for term ${this.currentTerm} and votes for itself`);
+    ctx.say(
+      `${ctx.id} has heard nothing from ${prevLeader ? `its leader ${prevLeader}` : "a leader"} for too long${prevLeader ? `, so it assumes ${prevLeader} is gone` : ""}. It starts an election: it becomes a candidate for term ${this.currentTerm}, votes for itself and asks the others for their votes`,
+    );
     for (const peer of ctx.peers) ctx.send(peer, "RequestVote", { term: this.currentTerm });
     // @why If this election splits, the timer fires again and starts the next one.
     this.resetElectionTimer(ctx);
@@ -104,8 +128,10 @@ export class RaftNode extends SimNode {
     }
     ctx.say(
       granted
-        ? `${ctx.id} votes for ${from} in term ${body.term}`
-        : `${ctx.id} refuses ${from}: ${body.term < this.currentTerm ? "its term is stale" : `already voted for ${this.votedFor}`}`,
+        ? `${ctx.id} votes for ${from} in term ${body.term}. It has used its one vote for this term`
+        : body.term < this.currentTerm
+          ? `${ctx.id} refuses ${from}: ${from} asks for old term ${body.term}, but ${ctx.id} is already in term ${this.currentTerm}`
+          : `${ctx.id} refuses ${from}: it already gave its one vote for term ${body.term} to ${this.votedFor}`,
     );
     ctx.send(from, "Vote", { term: this.currentTerm, granted });
   }
@@ -114,35 +140,69 @@ export class RaftNode extends SimNode {
     // @why A bigger term in the reply means this candidacy is already out of date.
     if (body.term > this.currentTerm) return this.stepDown(ctx, body.term);
     // @why Ignore refusals, late votes, and votes from an older election.
-    if (this.role !== "candidate" || body.term !== this.currentTerm || !body.granted) return;
+    if (this.role !== "candidate" || body.term !== this.currentTerm || !body.granted) {
+      ctx.say(
+        !body.granted
+          ? `${ctx.id} gets a "no" from ${from}`
+          : this.role === "leader"
+            ? `${ctx.id} already leads; ${from}'s late vote changes nothing`
+            : `${ctx.id} gets a vote from ${from} for an election it is no longer running, and ignores it`,
+      );
+      return;
+    }
     if (!this.votes.includes(from)) this.votes.push(from);
+    const size = ctx.peers.length + 1;
     // @why More than half the whole cluster. Any two such groups share a node, and that node voted only once.
-    if (this.votes.length * 2 > ctx.peers.length + 1) {
-      ctx.say(`${ctx.id} has votes from ${this.votes.join(", ")}, a majority, so it leads term ${this.currentTerm}`);
+    if (this.votes.length * 2 > size) {
+      ctx.say(
+        `good: ${ctx.id} has votes from ${this.votes.join(", ")}: ${this.votes.length} of ${size}, a majority. It is now the leader of term ${this.currentTerm} and tells everyone at once`,
+      );
       this.becomeLeader(ctx);
+    } else {
+      ctx.say(`${ctx.id} gets a vote from ${from}: ${this.votes.length} of ${size}, it needs ${Math.floor(size / 2) + 1}`);
     }
   }
 
   // @why While heartbeats keep arriving, followers keep resetting their timers and nobody starts an election.
   onHeartbeat(ctx: Ctx) {
+    ctx.say(`${ctx.id}, leader of term ${this.currentTerm}, sends its regular heartbeat ("I'm still here") to everyone`);
     for (const peer of ctx.peers) ctx.send(peer, "AppendEntries", { term: this.currentTerm });
     ctx.setTimer("Heartbeat", HEARTBEAT);
   }
 
   onAppendEntries(ctx: Ctx, body: { term: number }, from: NodeId) {
     // @why A message from an older term comes from a replaced leader; answering with the newer term makes it step down.
-    if (body.term < this.currentTerm) return ctx.send(from, "AppendReply", { term: this.currentTerm });
+    if (body.term < this.currentTerm) {
+      ctx.say(
+        `${ctx.id} gets a heartbeat from ${from}, an old leader of term ${body.term}, and replies "the term is now ${this.currentTerm}"`,
+      );
+      return ctx.send(from, "AppendReply", { term: this.currentTerm });
+    }
     // @why Two leaders in one term can only happen if safety is already broken; this one keeps leading so the failure stays visible.
-    if (body.term === this.currentTerm && this.role === "leader") return;
+    if (body.term === this.currentTerm && this.role === "leader") {
+      ctx.say(
+        `bad: ${ctx.id} hears from ${from}, another leader of the same term ${body.term}, and keeps leading too. Clients can now write to either one and get conflicting answers`,
+      );
+      return;
+    }
     // @why A leader for this term exists, so a candidate in the same term gives up and follows it.
+    const wasFollower = this.role === "follower";
     if (body.term > this.currentTerm || this.role === "candidate") this.stepDown(ctx, body.term);
+    const known = this.leader === from;
     this.leader = from;
+    if (wasFollower)
+      ctx.say(
+        known
+          ? `${ctx.id} hears ${from}'s heartbeat and restarts its countdown, so it won't start an election`
+          : `${ctx.id} hears from ${from}, the leader of term ${body.term}, and now follows it`,
+      );
     this.resetElectionTimer(ctx);
   }
 
   // @why This is how a leader that was cut off learns it has been replaced: someone answers with a bigger term.
-  onAppendReply(ctx: Ctx, body: { term: number }) {
+  onAppendReply(ctx: Ctx, body: { term: number }, from: NodeId) {
     if (body.term > this.currentTerm) this.stepDown(ctx, body.term);
+    else ctx.say(`${ctx.id} hears back from ${from}, which is still in term ${body.term}: nothing changes`);
   }
 
   protected becomeLeader(ctx: Ctx) {
@@ -156,7 +216,8 @@ export class RaftNode extends SimNode {
 
   // @why Someone newer exists: adopt their term, forget this term's vote and old leader, and follow.
   private stepDown(ctx: Ctx, term: number) {
-    const wasFollower = this.role === "follower";
+    const was = this.role;
+    const wasFollower = was === "follower";
     const newer = term > this.currentTerm;
     if (term > this.currentTerm) {
       this.currentTerm = term;
@@ -167,7 +228,11 @@ export class RaftNode extends SimNode {
     this.votes = [];
     ctx.cancelTimer("Heartbeat");
     if (!wasFollower) {
-      ctx.say(newer ? `${ctx.id} sees newer term ${term} and steps down to follower` : `${ctx.id} finds term ${term} already has a leader and follows it`);
+      ctx.say(
+        newer
+          ? `${ctx.id} sees a newer term ${term}, so it is out of date: it stops being a ${was} and becomes a follower`
+          : `${ctx.id} learns term ${term} already has a leader, so it stops its own election and follows`,
+      );
       this.resetElectionTimer(ctx);
     }
   }
@@ -198,7 +263,9 @@ class LeaderOnTimeout extends RaftNode {
   onElectionTimeout(ctx: Ctx) {
     this.currentTerm++;
     this.votedFor = ctx.id;
-    ctx.say(`${ctx.id} heard no leader and simply declares itself leader of term ${this.currentTerm}`);
+    ctx.say(
+      `bad: ${ctx.id} heard no leader and simply declares itself leader of term ${this.currentTerm}, without asking anyone. Nothing stops another node doing the same`,
+    );
     this.becomeLeader(ctx);
   }
 }
@@ -214,7 +281,9 @@ class NoNewTerms extends RaftNode {
     if (this.currentTerm === 0) return super.onElectionTimeout(ctx);
     this.role = "candidate";
     this.votes = [ctx.id];
-    ctx.say(`${ctx.id} heard no leader and asks for votes again, still in term ${this.currentTerm}`);
+    ctx.say(
+      `bad: ${ctx.id} heard no leader and asks for votes again, still in term ${this.currentTerm}. Everyone already spent their term-${this.currentTerm} vote on n1, so nobody can win, and with no leader the cluster can't take any writes ever again`,
+    );
     for (const peer of ctx.peers) ctx.send(peer, "RequestVote", { term: this.currentTerm });
     this.resetElectionTimer(ctx);
   }
@@ -222,11 +291,28 @@ class NoNewTerms extends RaftNode {
 
 // Broken on purpose: the leader never sends heartbeats.
 class NoHeartbeats extends RaftNode {
-  onHeartbeat(_ctx: Ctx) {}
+  onElectionTimeout(ctx: Ctx) {
+    if (this.currentTerm >= 1)
+      ctx.say(
+        `bad: with no heartbeats, ${ctx.id} can't tell that the leader is alive, so it throws it out and starts yet another election. Writes stall during every election`,
+      );
+    super.onElectionTimeout(ctx);
+  }
+
+  onHeartbeat(ctx: Ctx) {
+    ctx.say(`but ${ctx.id} never sends a heartbeat, so the followers can't tell it is alive`);
+  }
 }
 
 // Broken on purpose: every node waits exactly the same time before starting an election.
 class FixedTimeoutNode extends RaftNode {
+  onElectionTimeout(ctx: Ctx) {
+    ctx.say(
+      `bad: every node waits exactly ${ELECTION_MIN} ticks, so they all run at once and each keeps its own vote. Nobody reaches a majority, and with no leader no write can be accepted`,
+    );
+    super.onElectionTimeout(ctx);
+  }
+
   protected resetElectionTimer(ctx: Ctx) {
     ctx.setTimer("ElectionTimeout", ELECTION_MIN);
   }

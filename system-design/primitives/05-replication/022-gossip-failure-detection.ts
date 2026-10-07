@@ -96,7 +96,21 @@ export class SwimNode extends SimNode {
       view,
       probe: this.probe ? `${this.probe.target}, waiting for ${this.probe.helpers ? "helpers" : "ack"}` : "none",
       news: this.news.map((n) => `${n.node} ${n.status}${n.inc ? ` #${n.inc}` : ""}`),
+      role: "member",
+      summary: this.summary(),
     };
+  }
+
+  // @why The picture's words under this node: whom it doubts, and what it is checking right now.
+  private summary() {
+    const ids = (st: Status) => Object.keys(this.members).filter((id) => this.members[id].status === st);
+    const parts: string[] = [];
+    if (ids("suspect").length) parts.push(`suspects ${ids("suspect").join(", ")}`);
+    if (ids("dead").length) parts.push(`thinks ${ids("dead").join(", ")} dead`);
+    if (!parts.length) parts.push("all others look alive");
+    if (this.probe) parts.push(`checking ${this.probe.target}${this.probe.helpers ? " via helpers" : ""}`);
+    if (this.incarnation) parts.push(`proved alive (#${this.incarnation})`);
+    return parts.slice(0, 2).join(" · ");
   }
 
   // @why Everyone starts from the same member list and believes all of it is alive.
@@ -113,7 +127,7 @@ export class SwimNode extends SimNode {
     const target = this.nextTarget(ctx);
     if (!target) return;
     this.probe = { target, seq: ++this.seq, helpers: false };
-    ctx.say(`${ctx.id} probes ${target}`);
+    ctx.say(`${ctx.id} checks on ${target}: "are you alive?" (a ping)`);
     ctx.send(target, "Ping", { seq: this.seq, updates: this.outgoing() });
     ctx.setTimer("PingTimeout", ACK_TIMEOUT);
   }
@@ -121,7 +135,9 @@ export class SwimNode extends SimNode {
   // @why Answering proves this node is alive; the ack also carries news back the other way.
   onPing(ctx: Ctx, body: { seq: number; updates: Update[] }, from: NodeId) {
     this.merge(ctx, body.updates);
-    ctx.send(from, "Ack", { seq: body.seq, updates: this.outgoing() });
+    const updates = this.outgoing();
+    ctx.say(`${ctx.id} answers ${from}: "I'm alive"${updates.length ? `, and passes on news: ${newsText(updates)}` : ""}`);
+    ctx.send(from, "Ack", { seq: body.seq, updates });
   }
 
   onAck(ctx: Ctx, body: { seq: number; updates: Update[] }, from: NodeId) {
@@ -130,17 +146,21 @@ export class SwimNode extends SimNode {
     const relay = this.relays[body.seq];
     if (relay) {
       delete this.relays[body.seq];
-      ctx.say(`${ctx.id} got an ack from ${from} and relays it to ${relay.to}`);
+      ctx.say(`${ctx.id} got ${from}'s reply and passes it back to ${relay.to}`);
       return ctx.send(relay.to, "Ack", { seq: relay.seq, updates: this.outgoing() });
     }
     // @why Only an ack for the current probe counts; an old one says nothing about the peer right now.
-    if (!this.probe || this.probe.seq !== body.seq) return;
+    if (!this.probe || this.probe.seq !== body.seq) return ctx.say(`${ctx.id} gets a late reply from ${from}; that check is already over`);
     const { target } = this.probe;
     // @why The probe is over: the peer is alive. Later acks for the same ping number are ignored.
     this.probe = null;
     ctx.cancelTimer("PingTimeout");
     ctx.cancelTimer("IndirectTimeout");
-    if (from !== target) ctx.say(`${ctx.id} hears, through ${from}, that ${target} is alive`);
+    ctx.say(
+      from === target
+        ? `good: ${ctx.id} hears back from ${target}: it is alive`
+        : `good: ${ctx.id} hears, through ${from}, that ${target} is alive. Only the direct path was bad`,
+    );
   }
 
   // @why No direct ack may just mean the link between us is bad. Ask others to try along their own paths.
@@ -153,7 +173,7 @@ export class SwimNode extends SimNode {
     );
     if (!helpers.length) return this.probeFailed(ctx);
     probe.helpers = true;
-    ctx.say(`${ctx.id} got no ack from ${probe.target}, so it asks ${helpers.join(" and ")} to ping it`);
+    ctx.say(`${ctx.id} got no reply from ${probe.target}. Maybe only the wire between them is bad, so it asks ${helpers.join(" and ")} to try`);
     for (const h of helpers) ctx.send(h, "PingReq", { target: probe.target, seq: probe.seq, updates: this.outgoing() });
     ctx.setTimer("IndirectTimeout", INDIRECT_TIMEOUT);
   }
@@ -162,13 +182,13 @@ export class SwimNode extends SimNode {
   onPingReq(ctx: Ctx, body: { target: NodeId; seq: number; updates: Update[] }, from: NodeId) {
     this.merge(ctx, body.updates);
     this.relays[++this.seq] = { to: from, seq: body.seq };
-    ctx.say(`${ctx.id} pings ${body.target} on behalf of ${from}`);
+    ctx.say(`${ctx.id} pings ${body.target} for ${from}, along a different path`);
     ctx.send(body.target, "Ping", { seq: this.seq, updates: this.outgoing() });
   }
 
   // @why Nobody, along any path, got an answer. Still not proof of death, so only suspect it.
   onIndirectTimeout(ctx: Ctx) {
-    ctx.say(`${ctx.id} got no ack from ${this.probe!.target}, even indirectly`);
+    ctx.say(`${ctx.id} got no reply from ${this.probe!.target}, not even through helpers`);
     this.probeFailed(ctx);
   }
 
@@ -181,15 +201,15 @@ export class SwimNode extends SimNode {
 
   protected suspect(ctx: Ctx, id: NodeId) {
     const m = this.members[id];
-    if (m.status !== "alive") return ctx.say(`${ctx.id} already lists ${id} as ${m.status}`);
-    ctx.say(`${ctx.id} marks ${id} suspect`);
+    if (m.status !== "alive") return ctx.say(`${ctx.id} already ${m.status === "dead" ? "lists" : "suspects"} ${id}${m.status === "dead" ? " as dead" : ""}`);
+    ctx.say(`${ctx.id} now suspects ${id} is dead, but gives it ${SUSPICION_TIMEOUT} ticks to prove it is alive`);
     this.apply(ctx, { node: id, status: "suspect", inc: m.inc });
   }
 
   protected declareDead(ctx: Ctx, id: NodeId) {
     const m = this.members[id];
     if (m.status === "dead") return;
-    ctx.say(`${ctx.id} declares ${id} dead`);
+    ctx.say(`${ctx.id} declares ${id} dead and stops sending it work`);
     this.apply(ctx, { node: id, status: "dead", inc: m.inc });
   }
 
@@ -197,7 +217,7 @@ export class SwimNode extends SimNode {
   private expireSuspects(ctx: Ctx) {
     for (const [id, m] of Object.entries(this.members)) {
       if (m.status === "suspect" && ctx.now - m.suspectedAt >= SUSPICION_TIMEOUT) {
-        ctx.say(`${ctx.id} has heard no refutation from ${id} in ${ctx.now - m.suspectedAt} ticks`);
+        ctx.say(`${ctx.id} has heard no "I'm alive" from ${id} in ${ctx.now - m.suspectedAt} ticks`);
         this.declareDead(ctx, id);
       }
     }
@@ -212,7 +232,11 @@ export class SwimNode extends SimNode {
       }
       const m = this.members[u.node];
       if (!m || !this.overrides(u, m)) continue;
-      ctx.say(`${ctx.id} learns ${u.node} is ${u.status}${u.inc ? ` (incarnation ${u.inc})` : ""}`);
+      ctx.say(
+        u.status === "alive"
+          ? `good: ${ctx.id} hears by gossip that ${u.node} proved it is alive (#${u.inc}), and stops suspecting it`
+          : `${ctx.id} hears by gossip that ${u.node} is ${u.status === "dead" ? "dead" : "suspected"}`,
+      );
       this.apply(ctx, u);
     }
   }
@@ -220,9 +244,9 @@ export class SwimNode extends SimNode {
   // @why Only the accused can clear its name: a bigger incarnation beats every rumour about the old one.
   private hearAboutMe(ctx: Ctx, u: Update) {
     if (u.status === "alive" || u.inc < this.incarnation) return;
-    if (u.status === "dead") return ctx.say(`${ctx.id} hears it was declared dead; it would have to rejoin`);
+    if (u.status === "dead") return ctx.say(`bad: ${ctx.id} hears it was declared dead, though it is running. It would have to rejoin`);
     this.incarnation = u.inc + 1;
-    ctx.say(`${ctx.id} hears it is suspected, so it refutes: alive, incarnation ${this.incarnation}`);
+    ctx.say(`good: ${ctx.id} hears it is suspected and spreads "I'm alive", with a new number (#${this.incarnation}) that beats the rumour`);
     this.addNews({ node: ctx.id, status: "alive", inc: this.incarnation });
   }
 
@@ -272,6 +296,8 @@ export class SwimNode extends SimNode {
 
 }
 
+const newsText = (us: Update[]) => us.map((u) => `${u.node} ${u.status === "suspect" ? "suspected" : u.status}`).join(", ");
+
 // @why Accuracy, checked after every event: no running node is listed as dead. SWIM makes a false death rare, not impossible.
 export function noLiveNodeDeclaredDead(nodes: Record<NodeId, SimNode>, up: Record<NodeId, boolean>): string | null {
   for (const [observer, node] of Object.entries(nodes)) {
@@ -290,7 +316,7 @@ class DirectPingsOnly extends SwimNode {
   onPingTimeout(ctx: Ctx) {
     const target = this.probe!.target;
     this.probe = null;
-    ctx.say(`${ctx.id} got no ack from ${target} and asks nobody else`);
+    ctx.say(`bad: ${ctx.id} got no reply from ${target}, asks nobody else, and throws it out at once. One bad wire can remove a healthy server`);
     this.declareDead(ctx, target);
   }
 }
@@ -298,7 +324,7 @@ class DirectPingsOnly extends SwimNode {
 // Broken on purpose: no indirect probes. Suspicion and refutation still work, but one missed direct ack is enough to suspect.
 class NoIndirectProbes extends SwimNode {
   onPingTimeout(ctx: Ctx) {
-    ctx.say(`${ctx.id} got no ack from ${this.probe!.target} and asks nobody else`);
+    ctx.say(`bad: ${ctx.id} got no reply from ${this.probe!.target} and asks nobody else to check, so one bad wire is enough to suspect it`);
     this.probeFailed(ctx);
   }
 }
@@ -308,7 +334,7 @@ class NoSuspicion extends SwimNode {
   onIndirectTimeout(ctx: Ctx) {
     const target = this.probe!.target;
     this.probe = null;
-    ctx.say(`${ctx.id} got no ack from ${target}, even indirectly`);
+    ctx.say(`bad: ${ctx.id} got no reply from ${target}, even through helpers, and declares it dead at once, with no chance to prove it is alive`);
     this.declareDead(ctx, target);
   }
 }
@@ -317,6 +343,10 @@ class NoSuspicion extends SwimNode {
 class NoGossip extends SwimNode {
   protected outgoing() {
     return [];
+  }
+  protected declareDead(ctx: Ctx, id: NodeId) {
+    super.declareDead(ctx, id);
+    ctx.say(`bad: but its messages carry no news, so nobody else hears it. They keep sending ${id} work until each finds out alone`);
   }
 }
 

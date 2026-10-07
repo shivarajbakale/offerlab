@@ -1,12 +1,13 @@
-// One simulation step: nodes on a circle with messages on the wire, and every node's state below.
+// One simulation step: nodes on a circle with messages on the wire, each labelled in words with
+// its role and a short summary (`state().summary`), and every node's raw state in a table below.
 
 import { motion } from "framer-motion";
 import type { SimStep } from "../../../../system-design/kernel/types.ts";
-import { clusterLayout, lerp } from "../../sim/layout.ts";
+import { clusterLayout, lerp, nodeLabel } from "../../sim/layout.ts";
 import { fmt, json } from "../../sim/narrate.ts";
 
-const W = 560;
-const H = 340;
+const W = 600;
+const H = 400;
 const R = 30;
 const ROLE_FILL: Record<string, string> = { leader: "var(--p0)", candidate: "var(--p1)" };
 
@@ -16,7 +17,9 @@ export function ClusterView({ step, prev, hasClient }: { step: SimStep; prev?: S
   const at = (id: string) => pos[id] ?? { x: 50, y: 34 };
   const groupOf = (id: string) => step.partitions.findIndex((g) => g.includes(id));
   const isCut = (a: string, b: string) => groupOf(a) >= 0 && groupOf(b) >= 0 && groupOf(a) !== groupOf(b);
-  const keys = [...new Set(ids.flatMap((id) => Object.keys(step.nodes[id].state)))];
+  // The summary is drawn in words under each node, so the table keeps only the raw fields.
+  const keys = [...new Set(ids.flatMap((id) => Object.keys(step.nodes[id].state)))].filter((k) => k !== "summary");
+  const toClient = step.kind === "deliver" && step.node === "client" ? step.msg : undefined;
   const event = step.kind === "deliver" || step.kind === "drop" ? step.msg : undefined;
   const eventAt = event ? lerp(at(event.from), at(event.to), 0.82) : null;
 
@@ -66,6 +69,7 @@ export function ClusterView({ step, prev, hasClient }: { step: SimStep; prev?: S
           const v = step.nodes[id];
           const role = typeof v.state.role === "string" ? v.state.role : "";
           const term = v.state.term;
+          const label = nodeLabel(v.state, v.up);
           return (
             <g
               key={id}
@@ -73,26 +77,41 @@ export function ClusterView({ step, prev, hasClient }: { step: SimStep; prev?: S
               className={`sim-node ${v.up ? `role-${role}` : "down"} ${step.node === id ? "active" : ""}`}
             >
               <circle r={R} style={{ fill: v.up ? (ROLE_FILL[role] ?? "var(--panel)") : "var(--panel-2)" }} />
-              <text y={-6} className="node-id">
+              <text y={typeof term === "number" ? -4 : 4} className="node-id">
                 {id}
               </text>
-              <text y={6} className="node-role">
-                {v.up ? role : "down"}
-              </text>
               {typeof term === "number" && (
-                <text y={17} className="node-role">
+                <text y={11} className="node-role">
                   term {term}
                 </text>
               )}
+              {label.role && (
+                <text y={R + 13} className="node-role" style={{ fill: "var(--ink)", fontWeight: 600, fontSize: 10 }}>
+                  {label.role}
+                </text>
+              )}
+              {label.lines.map((line, i) => (
+                <text key={i} y={R + (label.role ? 26 : 13) + 12 * i} className="node-role" style={{ fill: "var(--ink-2)", fontSize: 10 }}>
+                  {line}
+                </text>
+              ))}
             </g>
           );
         })}
         {hasClient && (
           <g transform={`translate(${at("client").x},${at("client").y})`} className={`sim-node client ${step.node === "client" ? "active" : ""}`}>
-            <rect x={-30} y={-14} width={60} height={28} rx={6} />
-            <text y={4} className="node-role">
+            <rect x={-40} y={-18} width={80} height={36} rx={6} />
+            <text y={-3} className="node-id" style={{ fontSize: 11 }}>
               client
             </text>
+            <text y={10} className="node-role">
+              the user&apos;s app
+            </text>
+            {toClient && (
+              <text y={31} className="node-role" style={{ fill: "var(--ink-2)", fontSize: 10 }}>
+                got {toClient.type} from {toClient.from}
+              </text>
+            )}
           </g>
         )}
       </svg>

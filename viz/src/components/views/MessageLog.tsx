@@ -1,9 +1,13 @@
-// Every event of the run as one line; the current one is highlighted and clicking jumps there.
+// Every event of the run as one line, with the handler's own note in words when it left one; the
+// current one is highlighted and clicking jumps there.
 
 import { useEffect, useRef } from "react";
 import type { SimStep } from "../../../../system-design/kernel/types.ts";
 import { logLine } from "../../sim/narrate.ts";
 import { scrollWithin } from "../scrollWithin.ts";
+
+/** A note without its good:/bad: tone markers, which only colour the caption. */
+const plainNote = (note: string) => note.replace(/(^|· )(good|bad):\s*/g, "$1");
 
 /** Rows rendered either side of the current step, so long runs stay cheap. */
 const WINDOW = 150;
@@ -27,6 +31,7 @@ export function MessageLog({ steps, index, onJump }: { steps: SimStep[]; index: 
           >
             <span className="log-t">t={s.t}</span>
             <span>{logLine(s)}</span>
+            {s.note && <span style={{ color: "var(--muted)" }}>— {plainNote(s.note)}</span>}
             {s.violation && <span className="log-warn">⚠ {s.violation}</span>}
           </button>
         );

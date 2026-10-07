@@ -8,6 +8,14 @@
 - **Not the right tool when:** You need one agreed order of writes, or reads that behave exactly like a single copy; quorums alone don't give that, so use [Raft](#/sd-05-replication/021-raft-log-replication). For scaling reads with one writer, [leader-follower replication](#/sd-05-replication/017-leader-follower-replication) is simpler.
 - **Where you'll meet it:** Amazon's Dynamo paper (2007) popularised N, R and W. Apache Cassandra lets each request pick a consistency level such as ONE, QUORUM or ALL, and Riak lets clients set n_val, r and w. The overlap rule goes back to Gifford's weighted voting (1979). Interview: "Design a key-value store".
 
+## In plain words
+
+Imagine three friends each keep a copy of the family shopping list. When you add "milk", you text all three, and once two of them reply "got it" you stop worrying. Later, to check the list, you ask all three and wait for two answers. Because two plus two is more than three, at least one of the friends you hear back from must be one who wrote down "milk", even if the third one's phone was off. Each item also carries a number that only goes up, so when the answers disagree you trust the higher number.
+
+That is a quorum: no single friend is in charge, nobody has to be reachable every time, and a few overlapping answers are enough to be sure you see the latest change. The numbers W (how many must confirm a write) and R (how many must answer a read) are dials you turn between speed and freshness.
+
+In the picture on the right, the coordinator (the server the client talks to) and the three copies r1, r2 and r3 sit on a circle. Under each one is its role and, in words, what it holds right now, such as "has x=new v2". The client box is in the top-left corner. Dots on the lines are messages on their way: Store carries a copy of a write, Stored is a copy saying "saved", Fetch and Fetched are a read's question and answer, and Repair fixes a stale copy. The box at the top says what just happened, green when the system did the right thing and red when something went wrong. Below the circle is the raw state of every server, and under that, a log of every event.
+
 ## Words we'll use
 
 - **Replica** — one copy of the data, on its own server. Here there are three: r1, r2 and r3.
@@ -105,6 +113,16 @@ Without read repair, the read is still correct, because r1 and r2 outvote r3. Bu
   A: The next read of that key hears its old version and sends it the newest value. Without read repair it stays stale. [▶ See it](play:read repair@t=18)
 - **Q:** With W = 3, a write gets only 2 acks and the client is told it failed. Is the value gone?
   A: No. r1 and r2 stored it and keep it. The coordinator reports failure, but nothing undoes the write on the replicas that took it. [▶ See it](play:broken: wait for all@t=12)
+
+## When to use which
+
+- **Quorum reads and writes (this lesson)** — when writes must keep working while any one copy is down, with no leader to fail over. A shopping-cart store in the style of Dynamo or Cassandra, set to N=3, W=2, R=2, keeps taking orders while one server reboots.
+- **W=1, R=1 (fast but loose)** — when speed matters more than freshness and an old value now and then is harmless, such as a view counter or "last seen" time. Reads can miss a confirmed write, as in the [R + W ≤ N story](play:broken: R + W@t=19).
+- **W=N (wait for every copy)** — almost never for writes: it is synchronous replication to every copy, so one down server blocks all writes, as in the [wait-for-all story](play:broken: wait for all@t=12).
+- **A single leader** — when one server can take all the writes and you mostly need to scale reads, such as a typical web app's database with read replicas. Use [leader-follower replication](#/sd-05-replication/017-leader-follower-replication). Its copies are usually filled asynchronously (the leader says "done" before the copies have it), so it is fast, but a failover can lose the newest writes. Waiting for one follower first (semi-synchronous) closes most of that gap.
+- **Consensus (Raft)** — when every write must land in one agreed order and reads must never go backwards, such as a lock service, a bank ledger or cluster settings. Use [Raft log replication](#/sd-05-replication/021-raft-log-replication). It also waits for a majority, but through a single elected leader.
+- **Version numbers versus [vector clocks](#/sd-05-replication/019-vector-clocks)** — one counter on the coordinator orders writes simply. When several servers accept writes on their own and two users can change the same thing at once, vector clocks spot the conflict instead of silently dropping one write.
+- **In an interview:** say "N=3 copies, W=2, R=2, so R + W > N and every read overlaps the last confirmed write", then mention read repair and a background anti-entropy job for keys that are rarely read.
 
 ## Deep dive
 

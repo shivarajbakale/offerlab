@@ -8,6 +8,14 @@
 - **Not the right tool when:** Doing the work twice is only wasteful, not harmful; a lease alone, even a simple Redis lock, is enough. If the protected resource can't check tokens, fencing can't protect it, so make the operation safe to repeat. To choose a leader among your own servers, use [Raft leader election](#/sd-05-replication/020-raft-leader-election).
 - **Where you'll meet it:** Google's Chubby paper describes leases, sequencers and lock-delay. With ZooKeeper, a zxid or znode version can serve as the token. Kleppmann's 2016 critique of Redlock and Sanfilippo's reply are the classic debate, and a Raft term acts as a fencing token. Interview: "Design a distributed lock".
 
+## In plain words
+
+Some jobs must be done by exactly one worker at a time, like writing to one shared file. The usual answer is a lock: whoever holds it does the job. But a worker can crash while holding the lock, and then nobody can ever get it back. Worse, a worker can freeze for a while without knowing, wake up, and keep writing as if it still had the lock, after someone else has taken over. Two writers at once means corrupted or lost data for the user.
+
+Think of a hotel key card that stops working at checkout time. If a guest vanishes, the room frees itself when the card expires; that is a lease. And each new guest's card has a higher number. The door lock remembers the highest number it has seen and refuses any lower one, so an old guest who wanders back with an expired card can't get in, even if they honestly believe it is still their room. That number is the fencing token, and the door, not the guest, does the checking.
+
+In the picture on the right, the four parts sit on a circle: the lock service, the storage, and two workers, w1 and w2, each with its id inside. Under each one, in words, is its role and what it holds right now: who has the lock and with which token, when the lease ends, what the storage has saved, or that a worker is frozen. Dots on the lines are messages on their way (Acquire, Granted, Renew, Write, Rejected). The client box in the top-left corner stands for whatever freezes w1 in the pause scenarios. The box at the top says what just happened, in red when something goes wrong. The table below shows each part's raw state, and the log at the bottom lists every event.
+
 ## Words we'll use
 
 - **Worker** — a process that wants to do a job that only one process may do at a time, here writing to shared storage. There are two: w1 and w2.
@@ -96,6 +104,15 @@ A rejection is also how a stale holder can learn it was replaced. In this run w1
   A: Because w1 paused between the check and the write. When it woke at t=40, the next line it ran sent the write, 22 ticks after its lease had ended. Its next clock check came after the write was already sent. [▶ See it](play:fencing@t=40)
 - **Q:** Who has to check the fencing token, and what goes wrong if nobody does?
   A: The storage, because it is the only place that sees every write, including late ones. If it ignores tokens, the stale holder's write replaces newer data. [▶ See it](play:broken: lease without a fencing token@t=41)
+
+## When to use which
+
+- **Lease with fencing tokens** — when two holders at once would corrupt data and the protected resource can check a number on every write. Example: a nightly billing job that writes invoices, where the database row stores the highest token it has accepted, or a storage system that rejects writes from an old primary.
+- **Lease alone (a plain timeout lock, no token)** — when doing the work twice is only wasteful, not harmful. Example: a cache-warming job or sending a "your report is ready" email that is fine to send twice in rare cases. A simple Redis lock with an expiry is enough. Don't use it to protect data: a paused holder can still write after its lease ends.
+- **A lock with no expiry** — almost never across machines. A crashed holder keeps it forever, as the broken run shows. Only safe inside one process, where a crash takes the lock with it.
+- **Consensus ([Raft leader election](#/sd-05-replication/020-raft-leader-election), or ZooKeeper and etcd, which run consensus inside)** — when your own servers must agree on one leader, or when the lock service itself must survive crashes. A Raft term is a fencing token: followers refuse messages from an older term. In practice you take leases from etcd or ZooKeeper rather than building the lock service yourself.
+- **Make the operation safe to repeat** — when the resource can't check tokens at all, such as an outside payment API. Send an idempotency key, so a second identical request does nothing.
+- **In an interview:** for "design a distributed lock", say: a lease from a consensus-backed service (etcd or ZooKeeper), renewed by the holder, plus a fencing token that the storage checks on every write. Mention that the holder's own clock check is not enough, because it can pause between the check and the write.
 
 ## Deep dive
 

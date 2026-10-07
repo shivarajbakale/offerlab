@@ -108,7 +108,16 @@ export class VClockReplica extends SimNode {
   }
 
   state() {
+    const vals = this.siblings.map((v) => v.value);
+    const summary =
+      vals.length === 0
+        ? "empty"
+        : vals.length === 1
+          ? `holds ${vals[0]} · clock ${showClock(clockOf(this.siblings[0]))}`
+          : `${vals.length} siblings: ${vals.join(" | ")} · waiting for a merge`;
     return {
+      role: "copy",
+      summary,
       values: this.siblings.map((v) => v.value),
       dots: this.siblings.map((v) => showDot(v.dot)),
       clocks: this.siblings.map((v) => showClock(clockOf(v))),
@@ -124,7 +133,11 @@ export class VClockReplica extends SimNode {
   onRead(ctx: Ctx, _body: unknown, from: NodeId) {
     const values = this.siblings.map((v) => v.value).sort();
     const context = mergeClocks(...this.siblings.map(clockOf));
-    ctx.say(`${ctx.id} returns ${values.length ? values.join(" and ") : "nothing"} with context ${showClock(context)}`);
+    ctx.say(
+      values.length
+        ? `A client reads from ${ctx.id} and gets ${values.join(" and ")}, plus the context ${showClock(context)}: a note of which writes it has now seen. It must send this back with its next write`
+        : `A client reads from ${ctx.id} and gets nothing yet, with an empty context {}. Any write it makes next has seen nothing`,
+    );
     ctx.send(from, "ReadResult", { values, context });
   }
 
@@ -138,18 +151,27 @@ export class VClockReplica extends SimNode {
 
   // @why Push every sibling to every peer, again and again. A peer that missed one round, or was down, catches up on the next.
   onGossip(ctx: Ctx) {
-    if (this.siblings.length) for (const peer of ctx.peers) ctx.send(peer, "Sync", { versions: this.siblings });
+    if (this.siblings.length) {
+      for (const peer of ctx.peers) ctx.send(peer, "Sync", { versions: this.siblings });
+      ctx.say(`${ctx.id} gossips: it sends ${this.siblings.map((v) => v.value).join(" and ")} to ${ctx.peers.join(" and ")}, so every copy ends up with every write`);
+    } else ctx.say(`${ctx.id} has nothing to share yet`);
     ctx.setTimer("Gossip", GOSSIP_EVERY);
   }
 
-  onSync(ctx: Ctx, body: { versions: Version[] }) {
-    for (const v of body.versions) this.keep(ctx, v);
+  onSync(ctx: Ctx, body: { versions: Version[] }, from: NodeId) {
+    // Narration only: notice whether keep() had anything to say.
+    let said = false;
+    const c: Ctx = { ...ctx, say: (text) => ((said = true), ctx.say(text)) };
+    for (const v of body.versions) this.keep(c, v);
+    if (!said) ctx.say(`${ctx.id} already has everything ${from} sent (${body.versions.map((v) => v.value).join(" and ")}), so nothing changes`);
   }
 
   // @why A fresh dot for every write, kept apart from the client's context, so the version says both "which write" and "what its writer saw".
   protected stamp(ctx: Ctx, value: string, context: Clock): Version {
     const v: Version = { value, dot: { node: ctx.id, n: ++this.counter }, context };
-    ctx.say(`${ctx.id} stamps ${value} with dot ${showDot(v.dot)} (write ${v.dot.n} through ${ctx.id}) and the client's context ${showClock(context)}: clock ${showClock(clockOf(v))}`);
+    ctx.say(
+      `A client writes ${value} to ${ctx.id}. ${ctx.id} names this write ${showDot(v.dot)} (its write number ${v.dot.n}) and keeps the client's context ${showClock(context)}${Object.keys(context).length ? ", which says what the client had read" : ": the client had read nothing first"}`,
+    );
     return v;
   }
 
@@ -159,7 +181,7 @@ export class VClockReplica extends SimNode {
   }
 
   protected why(later: Version, earlier: Version[]): string {
-    return `its context ${showClock(later.context)} includes ${earlier.map((s) => showDot(s.dot)).join(" and ")}, so its writer had seen ${earlier.length > 1 ? "them" : "it"}`;
+    return `its writer's context ${showClock(later.context)} includes ${earlier.map((s) => showDot(s.dot)).join(" and ")}, so the writer had seen ${earlier.length > 1 ? "them" : "it"} and chose to change ${earlier.length > 1 ? "them" : "it"}`;
   }
 
   // @why The whole decision: replace only what the new writer had seen, ignore what a stored writer had seen, and keep both otherwise.
@@ -167,7 +189,7 @@ export class VClockReplica extends SimNode {
     // @why The same dot is the same write arriving again.
     if (this.siblings.some((s) => sameDot(s.dot, v.dot))) return;
     const newer = this.siblings.find((s) => this.hasSeen(s, v));
-    if (newer) return ctx.say(`${ctx.id} ignores ${showVersion(v)}: ${showVersion(newer)} was written by someone who had already seen it`);
+    if (newer) return ctx.say(`${ctx.id} ignores the older ${showVersion(v)} that arrived: it already holds ${showVersion(newer)}, whose writer had seen it`);
     const replaced = this.siblings.filter((s) => this.hasSeen(v, s));
     const concurrent = this.siblings.filter((s) => !this.hasSeen(v, s));
     // @why Only a value whose writer saw yours may replace it: that writer chose to change it.
@@ -175,7 +197,9 @@ export class VClockReplica extends SimNode {
     this.everHeld.push(v);
     if (replaced.length) ctx.say(`${ctx.id} replaces ${replaced.map(showVersion).join(" and ")} with ${showVersion(v)}: ${this.why(v, replaced)}`);
     else if (concurrent.length)
-      ctx.say(`${ctx.id} keeps ${showVersion(v)} next to ${concurrent.map(showVersion).join(" and ")}: neither writer had seen the other's write, so they are concurrent siblings`);
+      ctx.say(
+        `good: ${ctx.id} keeps ${showVersion(v)} next to ${concurrent.map(showVersion).join(" and ")}. Neither writer had seen the other's write, so both are kept as siblings for a client to merge. Nothing is lost`,
+      );
     else ctx.say(`${ctx.id} stores ${showVersion(v)}`);
   }
 }
@@ -203,7 +227,11 @@ class LastArrivalWins extends VClockReplica {
     const gone = this.siblings.filter((s) => s.value !== v.value);
     this.siblings = [v];
     this.everHeld.push(v);
-    ctx.say(gone.length ? `${ctx.id} overwrites ${gone.map((s) => s.value).join(" and ")} with ${v.value}, because it arrived last` : `${ctx.id} stores ${v.value}`);
+    ctx.say(
+      gone.length
+        ? `bad: ${ctx.id} overwrites ${gone.map((s) => s.value).join(" and ")} with ${v.value}, just because ${v.value} arrived last. The user who wrote ${gone.map((s) => s.value).join(" and ")} was told "saved", and the change is now silently gone here`
+        : `${ctx.id} stores ${v.value}`,
+    );
   }
 }
 
@@ -218,7 +246,9 @@ class LastTimestampWins extends VClockReplica {
   }
   protected stamp(ctx: Ctx, value: string, context: Clock): Version {
     const ts = ctx.now + this.offset;
-    ctx.say(`${ctx.id}'s wall clock reads ${ts}, so ${value} gets timestamp ${ts}`);
+    ctx.say(
+      `A client writes ${value} to ${ctx.id}. ${ctx.id}'s wall clock reads ${ts}, so ${value} gets timestamp ${ts}${this.offset < 100 ? ` (this clock runs ${100 - this.offset} ticks behind the others)` : ""}`,
+    );
     const v: Timed = { value, dot: { node: ctx.id, n: ++this.counter }, context, ts };
     return v;
   }
@@ -230,7 +260,12 @@ class LastTimestampWins extends VClockReplica {
     if (!cur || t.ts > cur.ts) {
       this.siblings = [t];
       ctx.say(cur ? `${ctx.id} replaces ${cur.value} (timestamp ${cur.ts}) with ${t.value} (timestamp ${t.ts}): the later timestamp wins` : `${ctx.id} stores ${t.value} (timestamp ${t.ts})`);
-    } else ctx.say(`${ctx.id} keeps ${cur.value} (timestamp ${cur.ts}) and throws away ${t.value} (timestamp ${t.ts}): the later timestamp wins`);
+    } else
+      ctx.say(
+        includes(t.context, cur.dot)
+          ? `bad: ${ctx.id} keeps ${cur.value} (timestamp ${cur.ts}) and throws away ${t.value} (timestamp ${t.ts}), because the later timestamp wins. But ${t.value} is the newer write: its writer had read ${cur.value}. A slow clock just erased the user's latest change`
+          : `bad: ${ctx.id} keeps ${cur.value} (timestamp ${cur.ts}) and throws away ${t.value} (timestamp ${t.ts}), because the later timestamp wins. One of two concurrent writes is silently lost`,
+      );
   }
 }
 
@@ -239,8 +274,16 @@ class ServerClock extends VClockReplica {
   protected stamp(ctx: Ctx, value: string, context: Clock): Version {
     const all = mergeClocks(context, ...this.siblings.map(clockOf));
     const v: Version = { value, dot: { node: ctx.id, n: ++this.counter }, context: all };
-    ctx.say(`${ctx.id} stamps ${value} with dot ${showDot(v.dot)} and context ${showClock(all)}: everything ${ctx.id} holds, though the client's context was ${showClock(context)}`);
+    if (showClock(all) === showClock(context))
+      ctx.say(`A client writes ${value} to ${ctx.id}. ${ctx.id} names it ${showDot(v.dot)}, with context ${showClock(all)}: everything ${ctx.id} holds, which so far matches what the client had seen`);
+    else
+      ctx.say(
+        `bad: A client writes ${value} to ${ctx.id}. ${ctx.id} names it ${showDot(v.dot)} but gives it the context ${showClock(all)}, everything ${ctx.id} holds, though the client had seen only ${showClock(context)}. The stamp now claims the writer saw values it never read`,
+      );
     return v;
+  }
+  protected why(later: Version, earlier: Version[]): string {
+    return `its stamped context ${showClock(later.context)} includes ${earlier.map((s) => showDot(s.dot)).join(" and ")}, so it looks as if the writer had seen ${earlier.length > 1 ? "them" : "it"}, though the client never read ${earlier.map((s) => s.value).join(" or ")}`;
   }
 }
 
@@ -250,7 +293,7 @@ class NoDot extends VClockReplica {
     return covers(clockOf(later), clockOf(earlier));
   }
   protected why(later: Version, earlier: Version[]): string {
-    return `its clock ${showClock(clockOf(later))} covers ${earlier.map((s) => showClock(clockOf(s))).join(" and ")}`;
+    return `its one merged clock ${showClock(clockOf(later))} covers ${earlier.map((s) => showClock(clockOf(s))).join(" and ")}, so it looks as if its writer had seen ${earlier.length > 1 ? "them" : "it"}, though nobody checked`;
   }
 }
 

@@ -57,6 +57,8 @@ type AppendEntries = { term: number; prevLogIndex: number; prevLogTerm: number; 
 type AppendReply = { term: number; success: boolean; prevLogIndex: number; matchIndex: number };
 
 const show = (log: Entry[]) => log.map((e) => `${e.term}:${e.cmd}`).join(" ");
+// For notes: a log in words, "empty" when it has no entries.
+const said = (log: Entry[]) => (log.length ? `[${show(log)}]` : "empty");
 
 // @why Every node runs this same code; its role decides which messages it acts on right now.
 export class RaftNode extends SimNode {
@@ -100,11 +102,23 @@ export class RaftNode extends SimNode {
       commitIndex: this.commitIndex,
       nextIndex: leading ? { ...this.nextIndex } : null,
       matchIndex: leading ? { ...this.matchIndex } : null,
+      summary: this.summary(),
     };
+  }
+
+  // In words, under the node in the picture.
+  protected summary(): string {
+    const log = this.log.length ? `log: ${this.log.map((e) => e.cmd).join(" ")}` : "log is empty";
+    if (this.role === "candidate") return `${log} · has ${this.votes.length} vote${this.votes.length === 1 ? "" : "s"}`;
+    return `${log} · ${this.commitIndex ? `committed up to #${this.commitIndex}` : "nothing committed yet"}`;
   }
 
   // @why Without a running timer a follower would wait forever for a leader that may never exist.
   onStart(ctx: Ctx) {
+    if (ctx.now > 0)
+      ctx.say(
+        `${ctx.id} restarts as a follower. From disk it still has term ${this.currentTerm}, its vote and its log (${said(this.log)}); it waits to hear from a leader`,
+      );
     this.resetElectionTimer(ctx, ctx.now === 0 ? this.firstTimeout : null);
   }
 
@@ -112,6 +126,7 @@ export class RaftNode extends SimNode {
 
   // @why Silence for a whole timeout is the only sign of a dead leader: there is no shared clock and no failure detector.
   onElectionTimeout(ctx: Ctx) {
+    const prevLeader = this.leader;
     // @why A fresh term, so this election can never be confused with an earlier one.
     this.currentTerm++;
     this.role = "candidate";
@@ -119,7 +134,9 @@ export class RaftNode extends SimNode {
     this.votedFor = ctx.id;
     this.votes = [ctx.id];
     this.leader = null;
-    ctx.say(`${ctx.id} heard no leader, so it runs for term ${this.currentTerm} with log [${show(this.log)}]`);
+    ctx.say(
+      `${ctx.id} has heard nothing from ${prevLeader ? `its leader ${prevLeader}` : "a leader"} for too long, so it runs for leader in term ${this.currentTerm}. It votes for itself and asks for votes, showing its log (${said(this.log)})`,
+    );
     // @why Voters compare these against their own log; see logOk.
     const ask = { term: this.currentTerm, lastLogIndex: this.log.length, lastLogTerm: this.lastTerm() };
     for (const peer of ctx.peers) ctx.send(peer, "RequestVote", ask);
@@ -142,13 +159,13 @@ export class RaftNode extends SimNode {
     }
     ctx.say(
       granted
-        ? `${ctx.id} votes for ${from} in term ${body.term}`
+        ? `${ctx.id} votes for ${from} in term ${body.term}. It has used its one vote for this term`
         : `${ctx.id} refuses ${from}: ${
             body.term < this.currentTerm
-              ? "its term is stale"
+              ? `${from} asks for old term ${body.term}, but ${ctx.id} is already in term ${this.currentTerm}`
               : !freeVote
-                ? `already voted for ${this.votedFor}`
-                : `its log (last entry #${body.lastLogIndex}, term ${body.lastLogTerm}) is behind mine (#${this.log.length}, term ${this.lastTerm()})`
+                ? `it already gave its one vote for term ${body.term} to ${this.votedFor}`
+                : `${from}'s log (last entry #${body.lastLogIndex}, term ${body.lastLogTerm}) is behind its own (#${this.log.length}, term ${this.lastTerm()}). A leader missing entries could erase committed writes`
           }`,
     );
     ctx.send(from, "Vote", { term: this.currentTerm, granted });
@@ -158,12 +175,26 @@ export class RaftNode extends SimNode {
     // @why A bigger term in the reply means this candidacy is already out of date.
     if (body.term > this.currentTerm) return this.stepDown(ctx, body.term);
     // @why Ignore refusals, late votes, and votes from an older election.
-    if (this.role !== "candidate" || body.term !== this.currentTerm || !body.granted) return;
+    if (this.role !== "candidate" || body.term !== this.currentTerm || !body.granted) {
+      ctx.say(
+        !body.granted
+          ? `${ctx.id} gets a "no" from ${from}`
+          : this.role === "leader"
+            ? `${ctx.id} already leads; ${from}'s late vote changes nothing`
+            : `${ctx.id} gets a vote from ${from} for an election it is no longer running, and ignores it`,
+      );
+      return;
+    }
     if (!this.votes.includes(from)) this.votes.push(from);
+    const size = ctx.peers.length + 1;
     // @why More than half the whole cluster. Any two such groups share a node, and that node voted only once.
-    if (this.votes.length * 2 > ctx.peers.length + 1) {
-      ctx.say(`${ctx.id} has votes from ${this.votes.join(", ")}, a majority, so it leads term ${this.currentTerm}`);
+    if (this.votes.length * 2 > size) {
+      ctx.say(
+        `good: ${ctx.id} has votes from ${this.votes.join(", ")}: ${this.votes.length} of ${size}, a majority. It is now the leader of term ${this.currentTerm} and tells everyone at once`,
+      );
       this.becomeLeader(ctx);
+    } else {
+      ctx.say(`${ctx.id} gets a vote from ${from}: ${this.votes.length} of ${size}, it needs ${Math.floor(size / 2) + 1}`);
     }
   }
 
@@ -172,18 +203,31 @@ export class RaftNode extends SimNode {
   onWrite(ctx: Ctx, body: { cmd: string }, from: NodeId) {
     // @why Only the leader orders writes. A follower answering would create a second, competing order.
     if (this.role !== "leader") {
-      ctx.say(`${ctx.id} is not the leader and turns ${body.cmd} away`);
+      ctx.say(
+        `${ctx.id} is not the leader, so it turns the write ${body.cmd} away and tells the client to try ${this.leader ?? "again later"}`,
+      );
       return ctx.send(from, "NotLeader", { leader: this.leader });
     }
     this.log.push({ term: this.currentTerm, cmd: body.cmd });
     this.waiting[this.log.length] = from;
-    ctx.say(`${ctx.id} appends ${body.cmd} as #${this.log.length} in term ${this.currentTerm} and sends it to the followers`);
+    const committed = this.commitIndex;
     this.replicate(ctx);
     this.advanceCommit(ctx);
+    // A leader that commits at once (the broken variant below) explains itself instead.
+    if (this.commitIndex === committed)
+      ctx.say(
+        `A client asks the leader ${ctx.id} to write ${body.cmd}. ${ctx.id} adds it to its log as #${this.log.length} (term ${this.currentTerm}) and sends copies to the followers. It is not "done" until a majority has a copy`,
+      );
   }
 
   // @why Each heartbeat also resends whatever a follower hasn't confirmed, so lost messages and restarted followers are repaired.
   onHeartbeat(ctx: Ctx) {
+    const behind = ctx.peers.filter((p) => this.nextIndex[p] <= this.log.length);
+    ctx.say(
+      behind.length
+        ? `${ctx.id}, leader of term ${this.currentTerm}, sends its heartbeat, with the entries ${behind.join(", ")} ${behind.length === 1 ? "hasn't" : "haven't"} confirmed yet`
+        : `${ctx.id}, leader of term ${this.currentTerm}, sends its regular heartbeat ("I'm still here") to everyone`,
+    );
     this.replicate(ctx);
     ctx.setTimer("Heartbeat", HEARTBEAT);
   }
@@ -209,30 +253,61 @@ export class RaftNode extends SimNode {
     const reply = (success: boolean, matchIndex = 0) =>
       ctx.send(from, "AppendReply", { term: this.currentTerm, success, prevLogIndex: body.prevLogIndex, matchIndex } satisfies AppendReply);
     // @why A message from an older term comes from a replaced leader; answering with the newer term makes it step down.
-    if (body.term < this.currentTerm) return reply(false);
+    if (body.term < this.currentTerm) {
+      ctx.say(
+        `${ctx.id} gets a message from ${from}, an old leader of term ${body.term}, and replies "the term is now ${this.currentTerm}"`,
+      );
+      return reply(false);
+    }
     // @why Two leaders in one term can only happen if safety is already broken; this one keeps leading so the failure stays visible.
-    if (body.term === this.currentTerm && this.role === "leader") return;
+    if (body.term === this.currentTerm && this.role === "leader") {
+      ctx.say(`bad: ${ctx.id} hears from ${from}, another leader of the same term, and keeps leading too`);
+      return;
+    }
     // @why A leader for this term exists, so a candidate in the same term gives up and follows it.
     if (body.term > this.currentTerm || this.role === "candidate") this.stepDown(ctx, body.term);
+    const newLeader = this.leader !== from;
     this.leader = from;
     this.resetElectionTimer(ctx);
 
     if (!this.matches(body.prevLogIndex, body.prevLogTerm)) {
       ctx.say(
         body.prevLogIndex > this.log.length
-          ? `${ctx.id} refuses: it has no #${body.prevLogIndex} (its log ends at #${this.log.length})`
-          : `${ctx.id} refuses: its #${body.prevLogIndex} is from term ${this.log[body.prevLogIndex - 1].term}, not ${body.prevLogTerm}`,
+          ? `${ctx.id} says no to ${from}: the new entries go after #${body.prevLogIndex}, but ${this.log.length ? `its log ends at #${this.log.length}` : "its log is empty"}. Accepting would leave a gap`
+          : `${ctx.id} says no to ${from}: its #${body.prevLogIndex} is from term ${this.log[body.prevLogIndex - 1].term}, not ${body.prevLogTerm}, so the logs differ there`,
       );
       return reply(false);
     }
     const before = show(this.log);
+    const old = this.log.map((e) => ({ ...e }));
+    const oldCommit = this.commitIndex;
     this.store(body.prevLogIndex, body.entries);
     const last = body.prevLogIndex + body.entries.length;
     // @why Only up to the last entry this message vouched for. Entries past it may be leftovers from an old leader that the leader hasn't overwritten yet.
     const commit = Math.min(body.leaderCommit, last);
     if (commit > this.commitIndex) this.commitIndex = commit;
     const now = show(this.log);
-    if (now !== before) ctx.say(`${ctx.id} log [${before}] → [${now}], committed through #${this.commitIndex}`);
+    // The first position where an entry this node held was replaced or cut.
+    const cut = old.findIndex((e, i) => !this.log[i] || this.log[i].term !== e.term || this.log[i].cmd !== e.cmd);
+    if (cut >= 0 && cut < oldCommit)
+      ctx.say(
+        `bad: ${ctx.id} replaces its log ${said(old)} with ${said(this.log)}. It had #${cut + 1} ${old[cut].cmd} marked committed, so a write a client was told is done is now gone`,
+      );
+    else if (cut >= 0)
+      ctx.say(
+        `${ctx.id} replaces its log ${said(old)} with the leader's ${said(this.log)}. The dropped ${old
+          .slice(cut)
+          .map((e) => e.cmd)
+          .join(", ")} came from a leader that lost and was never committed, so no client was told "done"`,
+      );
+    else if (now !== before)
+      ctx.say(
+        `${ctx.id} stores ${from}'s entries: log ${said(old)} → ${said(this.log)}${this.commitIndex > oldCommit ? `, and learns everything up to #${this.commitIndex} is committed` : ""}. It confirms to ${from}`,
+      );
+    else if (this.commitIndex > oldCommit) ctx.say(`${ctx.id} learns from ${from} that everything up to #${this.commitIndex} is committed`);
+    else if (newLeader)
+      ctx.say(`${ctx.id} hears from ${from}, the leader of term ${body.term}, and now follows it`);
+    else ctx.say(`${ctx.id} hears ${from}'s heartbeat and restarts its countdown, so it won't start an election`);
     reply(true, last);
   }
 
@@ -240,17 +315,35 @@ export class RaftNode extends SimNode {
     // @why This is how a leader that was cut off learns it has been replaced: someone answers with a bigger term.
     if (body.term > this.currentTerm) return this.stepDown(ctx, body.term);
     // @why Ignore replies to an older term's messages, or ones that arrive after this node stopped leading.
-    if (this.role !== "leader" || body.term !== this.currentTerm) return;
+    if (this.role !== "leader" || body.term !== this.currentTerm) {
+      ctx.say(`${ctx.id} gets an old reply from ${from} and ignores it`);
+      return;
+    }
     if (body.success) {
+      const had = this.matchIndex[from];
       // @why Replies can arrive out of order; an older, smaller one must not move the leader backwards.
       this.matchIndex[from] = Math.max(this.matchIndex[from], body.matchIndex);
       this.nextIndex[from] = Math.max(this.nextIndex[from], body.matchIndex + 1);
-      return this.advanceCommit(ctx);
+      const committed = this.commitIndex;
+      this.advanceCommit(ctx);
+      // The commit note already names who holds the entry.
+      if (this.commitIndex > committed) return;
+      ctx.say(
+        this.matchIndex[from] > had
+          ? `${from} confirms to ${ctx.id} that it now holds everything up to #${this.matchIndex[from]}`
+          : `${from} confirms to ${ctx.id} that it is still in step`,
+      );
+      return;
     }
     // @why Only the refusal of the latest probe counts; repeated heartbeats would otherwise back up past the real match.
-    if (body.prevLogIndex !== this.nextIndex[from] - 1 || this.nextIndex[from] <= 1) return;
+    if (body.prevLogIndex !== this.nextIndex[from] - 1 || this.nextIndex[from] <= 1) {
+      ctx.say(`${ctx.id} gets a repeated "no" from ${from} that it has already handled`);
+      return;
+    }
     this.nextIndex[from]--;
-    ctx.say(`${from} failed the check at #${body.prevLogIndex}, so ${ctx.id} backs up and checks #${this.nextIndex[from] - 1} next`);
+    ctx.say(
+      `${from} said no at #${body.prevLogIndex}, so ${ctx.id} steps back one entry and tries again: ${this.nextIndex[from] > 1 ? `it checks #${this.nextIndex[from] - 1} and sends everything after it` : "it sends its whole log"}. It keeps stepping back until their logs agree`,
+    );
     // @why Retry at once rather than waiting a heartbeat, so a far-behind follower is repaired in round trips, not heartbeats.
     this.sendAppend(ctx, from);
   }
@@ -261,7 +354,10 @@ export class RaftNode extends SimNode {
       if (this.log[n - 1].term !== this.currentTerm) break;
       const holders = [ctx.id, ...ctx.peers.filter((p) => this.matchIndex[p] >= n)];
       if (holders.length * 2 > ctx.peers.length + 1) {
-        ctx.say(`${holders.join(", ")} store #${n}, a majority, so ${ctx.id} commits through #${n}`);
+        const told = Object.keys(this.waiting).some((i) => Number(i) <= n);
+        ctx.say(
+          `good: ${holders.join(", ")} store #${n}: ${holders.length} of ${ctx.peers.length + 1}, a majority. Everything up to #${n} is now committed, safe even if a server dies${told ? `, and ${ctx.id} tells the client "done"` : ""}`,
+        );
         this.commit(ctx, n);
         return;
       }
@@ -321,6 +417,7 @@ export class RaftNode extends SimNode {
 
   // @why Someone newer exists: adopt their term, forget this term's vote and old leader, and follow.
   private stepDown(ctx: Ctx, term: number) {
+    const wasRole = this.role;
     const wasFollower = this.role === "follower";
     const newer = term > this.currentTerm;
     if (term > this.currentTerm) {
@@ -334,7 +431,11 @@ export class RaftNode extends SimNode {
     this.waiting = {};
     ctx.cancelTimer("Heartbeat");
     if (!wasFollower) {
-      ctx.say(newer ? `${ctx.id} sees newer term ${term} and steps down to follower` : `${ctx.id} finds term ${term} already has a leader and follows it`);
+      ctx.say(
+        newer
+          ? `${ctx.id} sees a newer term ${term}, so it is out of date: it stops being a ${wasRole} and becomes a follower`
+          : `${ctx.id} learns term ${term} already has a leader, so it stops its own election and follows`,
+      );
       this.resetElectionTimer(ctx);
     }
   }
@@ -371,13 +472,23 @@ export function committedNeverChange() {
 class CommitAlone extends RaftNode {
   protected advanceCommit(ctx: Ctx) {
     if (this.role !== "leader" || this.log.length <= this.commitIndex) return;
-    ctx.say(`${ctx.id} commits through #${this.log.length} on its own say-so and tells the client "done"`);
+    ctx.say(
+      `bad: A client writes ${this.log.at(-1)!.cmd}. ${ctx.id} adds it as #${this.log.length}, counts it as committed on its own and tells the client "done" without waiting for any copy. If ${ctx.id} is cut off or dies, that write is lost`,
+    );
     this.commit(ctx, this.log.length);
   }
 }
 
 // Broken on purpose: votes for any candidate in a newer term, without comparing logs.
 class VotesIgnoreLog extends RaftNode {
+  onRequestVote(ctx: Ctx, body: { term: number; lastLogIndex: number; lastLogTerm: number }, from: NodeId) {
+    if (!RaftNode.prototype["logOk"].call(this, body.lastLogIndex, body.lastLogTerm))
+      ctx.say(
+        `bad: ${from}'s log is behind ${ctx.id}'s, but ${ctx.id} doesn't compare logs before voting. A leader missing committed entries can be elected`,
+      );
+    super.onRequestVote(ctx, body, from);
+  }
+
   protected logOk() {
     return true;
   }
@@ -387,7 +498,9 @@ class VotesIgnoreLog extends RaftNode {
 class NoConsistencyCheck extends RaftNode {
   onAppendEntries(ctx: Ctx, body: AppendEntries, from: NodeId) {
     if (body.term >= this.currentTerm && body.prevLogIndex > this.log.length) {
-      ctx.say(`${ctx.id} has no #${body.prevLogIndex} but skips the check and tells ${from} it holds everything through #${body.prevLogIndex + body.entries.length}`);
+      ctx.say(
+        `bad: ${ctx.id} has no #${body.prevLogIndex} but skips the check and tells ${from} it holds everything up to #${body.prevLogIndex + body.entries.length}. The leader now counts a copy that doesn't exist`,
+      );
     }
     super.onAppendEntries(ctx, body, from);
   }

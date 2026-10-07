@@ -8,6 +8,14 @@
 - **Not the right tool when:** Every node must agree on exactly one leader or lock holder at the same moment; gossip views disagree for a while, so use [Raft leader election](#/sd-05-replication/020-raft-leader-election) or [leases with fencing tokens](#/sd-05-replication/023-leases-and-fencing-tokens). A small, fixed cluster can simply have everyone heartbeat everyone.
 - **Where you'll meet it:** The SWIM paper (Das, Gupta and Motivala, 2002). HashiCorp's memberlist library implements it, with the Lifeguard extensions, and Serf and Consul use it for membership. Cassandra spreads cluster state by gossip and uses a phi-accrual failure detector.
 
+## In plain words
+
+When you run many servers, each one needs to know which of the others are still working, so it stops sending work to a server that has died. The simple way is for every server to keep saying "I'm still here" to every other server, but with a thousand servers that is a million messages every few seconds. And one broken cable between two servers can make a perfectly healthy server look dead.
+
+Think of a large office where nobody is in charge of attendance. Each person, once in a while, taps one random colleague on the shoulder. If there is no answer, they don't shout "she's gone!" straight away; they ask two other colleagues to try her desk phone. If those fail too, they whisper "I think she's out", and anyone who hears that rumour passes it on during their next coffee chat. If she is actually just busy, she hears the rumour and says "I'm here!", and that correction spreads the same way. That is SWIM.
+
+In the picture on the right, the five servers (n1 to n5) sit on a circle, with each one's id inside it. Under each server, in words, is what it currently believes ("all others look alive", "suspects n3", "thinks n4 dead") and who it is checking right now. Dots on the lines between servers are messages on their way: Ping ("are you alive?"), Ack ("yes"), and PingReq ("please ping it for me"). A crossed-out dashed line means that link is broken. The box at the top says what just happened and why it matters, in red when something has gone wrong. The table below shows each server's raw state, and the log at the bottom lists every event.
+
 ## Words we'll use
 
 - **Node** — one server in the cluster. Every node runs the same program.
@@ -111,6 +119,14 @@ Without gossip, every node has to find out for itself by probing the dead node, 
   A: Suspicion is a race between the timeout and the refutation getting around. Across a bad link, the suspect can't answer the accuser directly, so it can lose that race. Helpers stop a bad link from starting the race at all. [▶ See it](play:broken: no indirect probes@t=77)
 - **Q:** n3 notices n4 has crashed. How do the other nodes find out, without n3 messaging each of them?
   A: The news rides on the pings and acks n3 sends anyway, and every node that hears it passes it on. Without that, each node has to probe n4 itself, so at t=113 only n3 knows. [▶ See it](play:broken: no gossip@t=113)
+
+## When to use which
+
+- **Gossip with SWIM** — when the cluster is large (hundreds to thousands of nodes), every node needs its own roughly current list of who is up, and there should be no central server that can fail or fall behind. Example: Consul agents on every machine in a data center, or Cassandra nodes deciding where to send reads.
+- **Heartbeats to a central monitor** — when the cluster is small or medium and one place should decide who is alive. Every server sends "I'm still here" to the monitor every second, and the monitor marks any server it hasn't heard from in, say, 5 seconds as dead. Example: a load balancer health-checking its 20 web servers. Simple to reason about, but the monitor must itself be kept alive and can become the bottleneck, and one bad path to the monitor looks like a dead server.
+- **Everyone heartbeats everyone** — when there are only a handful of nodes, such as a 3-node database cluster. About n² messages per interval is fine for n = 3 or 5, and every node hears from every other directly.
+- **A coordination service (ZooKeeper sessions, etcd leases)** — when a decision must be agreed by everyone at the same moment: which node is the leader, who holds a lock. A node's session expires if it stops sending heartbeats to the service, and the service, which runs consensus, makes the call once for everyone. Pair it with [leases and fencing tokens](#/sd-05-replication/023-leases-and-fencing-tokens) or use [Raft leader election](#/sd-05-replication/020-raft-leader-election) directly.
+- **In an interview:** for "thousands of nodes, no single point of failure, who is up?", say SWIM-style gossip: random probes, indirect probes, suspicion, news piggybacked on probes. Add that gossip views can disagree for a few seconds, so leader choice and locks go through consensus, not gossip.
 
 ## Deep dive
 

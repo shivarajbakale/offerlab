@@ -8,6 +8,14 @@
 - **Not the right tool when:** Losing the last few writes on failover is acceptable and write latency matters more; asynchronous [leader-follower replication](#/sd-05-replication/017-leader-follower-replication) is cheaper. When writes must keep working on both sides of a network split, use a leaderless store with sloppy [quorums](#/sd-05-replication/018-quorum-read-write) and accept conflicts.
 - **Where you'll meet it:** The Raft paper, sections 5.3 and 5.4, and Ongaro's thesis "Consensus: Bridging Theory and Practice". etcd and Consul replicate their stores with Raft, CockroachDB and TiKV run a Raft group per range, and Kafka's KRaft keeps metadata in a Raft log. Interview: "Design a distributed key-value store".
 
+## In plain words
+
+Once a group of servers has a leader, the leader has to copy every write to the others so that losing one server loses nothing. The hard part is saying "done" to the client at the right moment. Say it too early, before the copies exist, and a crash can erase a write the user was promised. Raft says "done" only once more than half of the servers have stored the write, so any future majority, and therefore any future leader, is sure to include a server that has it.
+
+Think of a notary office with five clerks. A contract counts as signed only when at least three clerks have filed a copy in their own binders. If the head clerk falls ill, the new head clerk is chosen only among clerks whose binders are at least as complete as the voters' binders, so no signed contract can go missing. A clerk with a gap in their binder is brought up to date page by page.
+
+In the picture on the right, each server is a circle on a ring, with its name and term inside. Under it, its role is written in words (follower, candidate or leader; the leader is filled in colour) and a summary of its log, such as "log: x=1 y=2 · committed up to #2". The client box in the top-left corner sends writes and receives the "done" (WriteOk) replies. Dots moving along the lines are messages: entries being copied, confirmations, votes and heartbeats. A faded node is down, and a dashed red line is a network cut. The box at the top says what just happened and turns green when a write is safely committed, red when something goes wrong. Below, a table shows each server's raw state (its log is written as term:write, for example 1:x=1), and the event log lists every step.
+
 ## Words we'll use
 
 - **Node** — one server in the cluster. Every node runs the same program.
@@ -111,6 +119,15 @@ Why compare the last term before the length? A longer log can be full of entries
   A: It assumes the follower matches it, and the consistency check refuses if not. Each refusal makes it back up one entry, until the check passes and it sends everything after that point. [▶ See it](play:repair@t=75)
 - **Q:** What goes wrong if the leader says "done" as soon as it has the write itself?
   A: If it is cut off or crashes, the others elect a leader without that write, and a different write gets the same index. The client's "done" write is lost. [▶ See it](play:broken: commit on the leader alone@t=70)
+
+## When to use which
+
+- **Raft log replication** — when a confirmed write must never be lost and failover must be automatic, and you can afford a majority round trip on every write. Example: etcd storing Kubernetes' cluster state, or each range of a CockroachDB table.
+- **Asynchronous [leader-follower replication](#/sd-05-replication/017-leader-follower-replication)** — when writes must be fast and losing the last few on failover is acceptable. The leader says "done" at once and ships copies later. Example: read replicas for a blog or product catalogue database.
+- **Semi-synchronous replication** — a middle ground: wait for one follower, ship to the rest in the background. Example: MySQL semi-sync. Cheaper than a majority, but failover still needs care to pick the follower that has the write.
+- **Leaderless [quorum reads and writes](#/sd-05-replication/018-quorum-read-write)** — when writes must keep working even when no single leader is reachable, and conflicting versions can be merged later. Example: a shopping cart in a Dynamo-style store.
+- **Use an existing Raft store, don't write your own** — when you need a little consistent state (config, locks, leader lease) for a bigger system. Run etcd, Consul or ZooKeeper and keep the bulk data elsewhere; pair it with [leases and fencing tokens](#/sd-05-replication/023-leases-and-fencing-tokens) for "one worker at a time".
+- **In an interview:** say "writes go to the Raft leader and are acknowledged once a majority has them; a 5-node group survives 2 failures, and each write costs one round trip to the nearest majority". Contrast it with async replication's lower latency and possible loss on failover.
 
 ## Deep dive
 

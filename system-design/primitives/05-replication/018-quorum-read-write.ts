@@ -49,6 +49,7 @@ const N = 3;
 // @why How long the coordinator waits for W acks or R replies before telling the client it failed.
 const TIMEOUT = 10;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const show = (s: Stored) => `${s.value ?? "(nothing)"} (version ${s.version})`;
 
 type Stored = { value: string | null; version: number };
 type PendingWrite = { id: number; key: string; value: string; version: number; acks: NodeId[]; client: NodeId; deadline: number; done: boolean };
@@ -70,7 +71,15 @@ export class Replica extends SimNode {
   kv: Record<string, Stored> = {};
 
   state() {
-    return { kv: { ...this.kv } };
+    const held = Object.entries(this.kv).map(([k, v]) => `${k}=${v.value} v${v.version}`);
+    return { role: "copy", summary: held.length ? `has ${held.join(" ")}` : "empty", kv: { ...this.kv } };
+  }
+
+  // Narration only: after a restart, say what survived on disk.
+  onStart(ctx: Ctx) {
+    if (ctx.now === 0) return;
+    const held = Object.entries(this.kv).map(([k, v]) => `${k}=${show(v)}`);
+    ctx.say(`${ctx.id} is back up with only what was on its disk: ${held.join(", ") || "nothing"}. Anything written while it was down, it missed`);
   }
 
   onStore(ctx: Ctx, body: { id: number; key: string; value: string; version: number }, from: NodeId) {
@@ -81,22 +90,32 @@ export class Replica extends SimNode {
 
   // @why Read repair: the coordinator pushes the newest value to a replica that answered with an older one.
   onRepair(ctx: Ctx, body: { key: string; value: string; version: number }) {
-    this.keepIfNewer(ctx, body.key, body);
+    this.keepIfNewer(ctx, body.key, body, true);
   }
 
   onFetch(ctx: Ctx, body: { id: number; key: string }, from: NodeId) {
     const have = this.kv[body.key] ?? { value: null, version: 0 };
-    ctx.say(`${ctx.id} answers ${body.key}=${have.value ?? "(missing)"} at version ${have.version}`);
+    ctx.say(`${ctx.id} answers the coordinator: it has ${body.key}=${show(have)}`);
     // @why The version travels with the value; without it the coordinator could not pick the newest reply.
     ctx.send(from, "Fetched", { id: body.id, ...have });
   }
 
   // @why Messages can arrive late and out of order. Never letting a lower version replace a higher one keeps a slow old write from undoing a newer one.
-  protected keepIfNewer(ctx: Ctx, key: string, incoming: { value: string; version: number }) {
+  protected keepIfNewer(ctx: Ctx, key: string, incoming: { value: string; version: number }, repair = false) {
     const have = this.kv[key]?.version ?? 0;
-    if (incoming.version <= have) return ctx.say(`${ctx.id} already has ${key} at version ${have}, so it keeps it`);
+    if (incoming.version <= have) {
+      return ctx.say(
+        incoming.version < have
+          ? `good: A late, older copy reaches ${ctx.id}: ${key}=${show(incoming)}. ${ctx.id} already has version ${have}, which is newer, so it ignores the old one`
+          : `${ctx.id} already has ${key} at version ${have}, so it keeps it`,
+      );
+    }
     this.kv[key] = { value: incoming.value, version: incoming.version };
-    ctx.say(`${ctx.id} stores ${key}=${incoming.value} at version ${incoming.version}`);
+    ctx.say(
+      repair
+        ? `good: Read repair: ${ctx.id} was behind and now saves ${key}=${show(incoming)}, so all copies agree again`
+        : `${ctx.id} saves its copy of ${key}=${show(incoming)} and tells the coordinator "stored"`,
+    );
   }
 }
 
@@ -125,7 +144,10 @@ export class Coordinator extends SimNode {
   }
 
   state() {
+    const open = this.writes.filter((p) => !p.done).length + this.reads.filter((p) => !p.answer).length;
     return {
+      role: "coordinator",
+      summary: `waits for ${this.w} of ${N} on write · ${this.r} of ${N} on read${open ? ` (${open} open)` : ""}`,
       W: this.w,
       R: this.r,
       clock: this.clock,
@@ -139,7 +161,9 @@ export class Coordinator extends SimNode {
     // @why Stamping here, once, gives every copy of this write the same version.
     const version = ++this.clock;
     this.writes.push({ id: this.nextId++, key: body.key, value: body.value, version, acks: [], client: from, deadline: ctx.now + TIMEOUT, done: false });
-    ctx.say(`coord stamps ${body.key}=${body.value} as version ${version} and sends it to all ${N} replicas; it needs ${plural(this.w, "ack")}`);
+    ctx.say(
+      `The client writes ${body.key}=${body.value}. The coordinator stamps it version ${version} and sends a copy to all ${N} servers; it will say "saved" once ${this.w} of them confirm (W=${this.w})`,
+    );
     // @why Send to every replica, not just W of them: the extra copies are free insurance if one of the W is slow or lost.
     for (const peer of ctx.peers) ctx.send(peer, "Store", { id: this.writes.at(-1)!.id, key: body.key, value: body.value, version });
     this.armExpiry(ctx);
@@ -153,9 +177,18 @@ export class Coordinator extends SimNode {
     // @why W acks, not N: the write survives on W replicas, and a down replica can't hold it up.
     if (!p.done && p.acks.length >= this.w) {
       p.done = true;
-      this.acked[p.key] = Math.max(this.acked[p.key] ?? 0, p.version);
-      ctx.say(`coord has ${p.acks.length} of the ${plural(this.w, "ack")} it needs (${p.acks.join(", ")}), so it tells the client ${p.key}=${p.value} is written`);
+      const newer = this.acked[p.key] ?? 0;
+      this.acked[p.key] = Math.max(newer, p.version);
+      ctx.say(
+        newer > p.version
+          ? `${p.acks.length} of ${N} servers confirm the late ${p.key}=${p.value} (version ${p.version}), so the client is told "saved". It is older than version ${newer}, already confirmed, so a correct copy keeps version ${newer}`
+          : `good: ${p.acks.length} of ${N} copies of ${p.key}=${p.value} are saved (${p.acks.join(", ")}), which is the ${this.w} it needs, so the coordinator tells the client "saved"${p.acks.length < N ? ". It does not wait for the last copy" : ""}`,
+      );
       ctx.send(p.client, "WriteAck", { key: p.key, version: p.version });
+    } else if (!p.done) {
+      ctx.say(`${from} confirms ${p.key}=${p.value}: ${p.acks.length} of the ${this.w} confirmations needed. The client keeps waiting`);
+    } else {
+      ctx.say(`${from} also confirms ${p.key}=${p.value}, after the client was already told "saved"`);
     }
     if (p.acks.length === N) this.writes = this.writes.filter((x) => x !== p);
   }
@@ -171,7 +204,9 @@ export class Coordinator extends SimNode {
       mustSee: this.acked[body.key] ?? 0,
     };
     this.reads.push(p);
-    ctx.say(`coord asks all ${N} replicas for ${body.key}; it needs ${plural(this.r, "reply").replace("replys", "replies")}`);
+    ctx.say(
+      `The client reads ${body.key}. The coordinator asks all ${N} servers and will answer after ${plural(this.r, "reply").replace("replys", "replies")} (R=${this.r}), taking the highest version it hears`,
+    );
     for (const peer of ctx.peers) ctx.send(peer, "Fetch", { id: p.id, key: body.key });
     this.armExpiry(ctx);
   }
@@ -184,13 +219,23 @@ export class Coordinator extends SimNode {
       const { best, why } = this.pick(p.replies);
       p.answer = { value: best.value, version: best.version };
       this.lastRead = { key: p.key, version: best.version, mustSee: p.mustSee };
-      const seen = p.replies.map((x) => `${x.node} v${x.version}`).join(", ");
-      ctx.say(`coord has the ${this.r === 1 ? "1 reply" : `${this.r} replies`} it needs (${seen}) and answers ${p.key}=${best.value ?? "(missing)"}, ${why}`);
+      const seen = p.replies.map((x) => `${x.node} has v${x.version}`).join(", ");
+      const missed = best.version < p.mustSee;
+      const because = p.replies.length === 1 ? "the only reply it waited for" : why;
+      ctx.say(
+        missed
+          ? `bad: The coordinator has the ${this.r === 1 ? "1 reply" : `${this.r} replies`} it needs (${seen}) and answers ${p.key}=${show(best)}, ${because}. Version ${p.mustSee} was already confirmed as saved, so the user sees old data and their change looks lost`
+          : `good: The coordinator has the ${this.r === 1 ? "1 reply" : `${this.r} replies`} it needs (${seen}) and answers ${p.key}=${show(best)}, ${because}`,
+      );
       ctx.send(p.client, "ReadResult", { key: p.key, value: best.value, version: best.version });
       this.readRepair(ctx, p, p.replies);
     } else if (p.answer) {
       // @why A reply that arrives after the answer is still worth checking: it may come from the stalest replica of all.
-      this.readRepair(ctx, p, [p.replies.at(-1)!]);
+      const late = p.replies.at(-1)!;
+      if (late.version >= p.answer.version) ctx.say(`${from}'s late reply (version ${late.version}) is not older than the answer, so nothing needs fixing`);
+      this.readRepair(ctx, p, [late]);
+    } else {
+      ctx.say(`${from} replies with ${p.key}=${show(body)}: ${p.replies.length} of the ${this.r} replies needed. Still waiting`);
     }
     if (p.replies.length === N) this.reads = this.reads.filter((x) => x !== p);
   }
@@ -205,20 +250,27 @@ export class Coordinator extends SimNode {
     const a = p.answer!;
     const stale = replies.filter((x) => x.version < a.version);
     for (const x of stale) ctx.send(x.node, "Repair", { key: p.key, value: a.value, version: a.version });
-    if (stale.length) ctx.say(`coord sends ${p.key}=${a.value} v${a.version} to ${stale.map((x) => x.node).join(", ")}, which answered with an older version`);
+    if (stale.length)
+      ctx.say(
+        `${stale.map((x) => x.node).join(", ")} answered with an older version, so the coordinator sends it ${p.key}=${show(a)}. This is read repair: a read fixes a stale copy for free`,
+      );
   }
 
   // @why Without a deadline, a write or read that can never reach its quorum would leave the client waiting forever.
   onExpire(ctx: Ctx) {
+    const overdue = this.writes.some((x) => x.deadline <= ctx.now && !x.done) || this.reads.some((x) => x.deadline <= ctx.now && !x.answer);
+    if (!overdue) ctx.say(`The coordinator checks for requests past their ${TIMEOUT}-tick deadline: none`);
     for (const p of this.writes.filter((x) => x.deadline <= ctx.now)) {
       if (!p.done) {
-        ctx.say(`coord has only ${p.acks.length} of ${this.w} acks for ${p.key}=${p.value} after ${TIMEOUT} ticks, so it reports failure`);
+        ctx.say(
+          `bad: After ${TIMEOUT} ticks only ${p.acks.length} of the ${this.w} confirmations for ${p.key}=${p.value} arrived${p.acks.length ? ` (${p.acks.join(", ")})` : ""}, so the client is told the write FAILED. One down server blocked it${p.acks.length ? `, yet ${p.acks.join(" and ")} already saved it and keep it` : ""}`,
+        );
         ctx.send(p.client, "WriteFailed", { key: p.key, acks: p.acks.length, needed: this.w });
       }
     }
     for (const p of this.reads.filter((x) => x.deadline <= ctx.now)) {
       if (!p.answer) {
-        ctx.say(`coord has only ${p.replies.length} of ${this.r} replies for ${p.key} after ${TIMEOUT} ticks, so it reports failure`);
+        ctx.say(`bad: After ${TIMEOUT} ticks only ${p.replies.length} of the ${this.r} replies for ${p.key} arrived, so the client is told the read FAILED`);
         ctx.send(p.client, "ReadFailed", { key: p.key, replies: p.replies.length, needed: this.r });
       }
     }
@@ -251,14 +303,17 @@ export function readsSeeAckedWrites(nodes: Record<NodeId, SimNode>): string | nu
 class NoReadRepair extends Coordinator {
   protected readRepair(ctx: Ctx, p: PendingRead, replies: (Stored & { node: NodeId })[]) {
     const stale = replies.filter((x) => x.version < p.answer!.version).map((x) => x.node);
-    if (stale.length) ctx.say(`coord sees that ${stale.join(", ")} answered with an older version, and leaves it stale`);
+    if (stale.length)
+      ctx.say(
+        `bad: ${stale.join(", ")} answered with an older version, and nobody fixes it. It stays stale, so every later read that lands on it has to be outvoted, and one more failure could make it the only answer`,
+      );
   }
 }
 
 // Broken on purpose: answers with whichever reply arrived first, ignoring the versions.
 class FirstReplyWins extends Coordinator {
   protected pick(replies: (Stored & { node: NodeId })[]) {
-    return { best: replies[0], why: `the first reply to arrive (from ${replies[0].node})` };
+    return { best: replies[0], why: `just because it arrived first (from ${replies[0].node}), ignoring versions` };
   }
 }
 
@@ -269,8 +324,8 @@ class NoVersionCheck extends Replica {
     this.kv[key] = { value: incoming.value, version: incoming.version };
     ctx.say(
       had && had.version > incoming.version
-        ? `${ctx.id} overwrites ${key}=${had.value} v${had.version} with ${key}=${incoming.value} v${incoming.version}, because it arrived last`
-        : `${ctx.id} stores ${key}=${incoming.value} at version ${incoming.version}`,
+        ? `bad: A late, older copy reaches ${ctx.id}, and it overwrites ${key}=${show(had)} with ${key}=${show(incoming)} just because it arrived last. The newer write is gone from ${ctx.id}`
+        : `${ctx.id} saves its copy of ${key}=${show(incoming)} and tells the coordinator "stored"`,
     );
   }
 }

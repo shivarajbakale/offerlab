@@ -8,6 +8,14 @@
 - **Not the right tool when:** Writes must keep working while the leader is unreachable; a leaderless [quorum](#/sd-05-replication/018-quorum-read-write) design keeps taking writes while any W copies are reachable. When failover must be automatic and never lose a write the client was told is done, use consensus, as in [Raft log replication](#/sd-05-replication/021-raft-log-replication).
 - **Where you'll meet it:** PostgreSQL streaming replication, MySQL binary log replication, MongoDB replica sets and Redis replicas all work this way. Kleppmann's "Designing Data-Intensive Applications", chapter 5, covers replication lag, read-your-writes and failover. Read replicas come up in almost every system design interview.
 
+## In plain words
+
+One computer holding all your data is risky: if it dies, the data is gone, and it can only answer so many people at once. So we keep copies of the data on other computers. The hard part is keeping the copies the same while new writes keep arriving.
+
+Think of a teacher writing on the board (the leader) while students copy it into their notebooks (the followers). Only the teacher writes anything new, and each new line gets a number. A student who looked away asks "what came after line 2?" and copies the rest. Anyone can read from a student's notebook, but it may be a few lines behind the board.
+
+In the picture on the right, each circle is a server. The coloured one at the top is the leader (main server); the others are followers that keep copies. Under each server it says, in words, which writes it has and its data. The client box in the top-left is the user's app sending writes and reads. Dots moving along the lines are messages on the network; a ✗ means a message was lost. The box at the top says what just happened and why it matters, in green when things go right and red when something breaks. The table below shows each server's raw state, and the log at the bottom lists every event.
+
 ## Words we'll use
 
 - **Replica** — one copy of the database, on its own server.
@@ -36,20 +44,20 @@ Keep several copies of the same data, so reads can be spread across servers and 
 "The leader sends each write to the followers once."
 
 That works until a follower is down for a moment. Whatever was sent while it was down is gone, and nothing ever sends it again. The follower is now missing data for good, and nobody notices.
-[▶ Broken: n2 is down when write #3 is shipped and never gets it](play:broken: ship each write once@t=8)
+[▶ Broken: n2 was down when write #3 was shipped; it gets #4 but can never use it](play:broken: ship each write once@t=18)
 
 ## Building it up
 
 **1. Number every write and apply in order.** The leader gives each write the next sequence number. Followers apply entries strictly in number order and hold back anything that arrives early. So every follower passes through exactly the leader's states, only later. That delay is replication lag.
 [▶ Followers trail the leader, then catch up](play:async replication@t=1)
 Applying entries the moment they arrive goes wrong as soon as an old message is slow: it lands after newer ones and overwrites them.
-[▶ Broken: a late batch puts x back to 1 on the followers](play:broken: apply as it arrives@t=9)
+[▶ Broken: a late batch puts x back to 1 on the followers](play:broken: apply as it arrives@t=15)
 
 **2. Followers ack how far they got, and the leader resends the rest.** Every few ticks the leader sends each follower every entry it hasn't confirmed. Duplicates are harmless, because a follower skips numbers it already has. A follower that missed messages, for any reason, catches up on the next round.
 [▶ n2 is down from t=8 to t=20, then catches up](play:follower restarts@t=8)
 
 **3. Keep the log on disk.** There are two reasons. First, at failover a follower may be promoted, and then its copy is the only copy; if it lived in memory, one restart would erase writes the client was told were done. Second, a replica that comes back empty has to be rebuilt by copying the whole data set again. In this simulation it is worse: the leader only ever moves a follower's position forward, because acks can arrive late and out of order, so it ignores the restarted follower's "I have nothing" and never refills it. Real systems detect this case and re-copy from a snapshot, which is slow.
-[▶ Broken: data only in memory](play:broken: data only in memory@t=8)
+[▶ Broken: data only in memory, so n2 restarts empty](play:broken: data only in memory@t=12)
 [▶ With the log on disk, a restarted follower picks up where it left off](play:follower restarts@t=20)
 
 **4. Read your own writes.** Followers lag, so a client that writes and then reads from a follower can get back its old value.
@@ -87,7 +95,16 @@ The fix: the leader's ack carries the write's sequence number. The client sends 
 - **Q:** A client writes x and immediately reads x from a follower. What can it see?
   A: The old value, because the follower hasn't received the write yet. Sending the write's sequence number with the read makes the follower wait. [▶ See it](play:stale read@t=2)
 - **Q:** Why does each follower need its log on disk, if the leader has everything anyway?
-  A: Because at failover a follower can be promoted, and then its copy is the only copy of the acknowledged writes. A follower that restarts empty also has to be rebuilt from scratch; in this run it never recovers at all. [▶ See it](play:broken: data only in memory@t=8)
+  A: Because at failover a follower can be promoted, and then its copy is the only copy of the acknowledged writes. A follower that restarts empty also has to be rebuilt from scratch; in this run it never recovers at all. [▶ See it](play:broken: data only in memory@t=19)
+
+## When to use which
+
+- **Asynchronous leader-follower (this lesson)** — when writes must be fast and losing the last second of writes on a crash is acceptable. Example: read replicas for a blog or a product catalogue, where a reader seeing a page a second old is fine.
+- **Synchronous replication** (the leader waits for the copies before saying "done") — when a write the user was told is saved must never be lost, and you can afford every write being as slow as the slowest copy it waits for. Example: a bank ledger. Most systems pick **semi-synchronous**: wait for one copy, send the rest in the background.
+- **Read-your-writes on followers** — when users must see their own changes right away (they edit a profile and reload), but other people's slightly old data is fine. Send the write's number with the read, or read from the leader for a few seconds after a write.
+- **Leaderless quorum** ([quorum reads and writes](#/sd-05-replication/018-quorum-read-write)) — when writes must keep working even while some servers are unreachable and there is no single leader to fail. Example: a shopping cart in Dynamo or Cassandra. The price is that conflicting writes can happen and must be resolved ([vector clocks](#/sd-05-replication/019-vector-clocks)).
+- **Consensus** ([Raft log replication](#/sd-05-replication/021-raft-log-replication)) — when failover must be automatic and must never lose a write the client was told is done. Example: etcd or ZooKeeper storing a cluster's configuration. Each write waits for a majority, so it is slower.
+- **In an interview:** say "one leader takes writes, followers replicate the log asynchronously and serve reads". Then name the costs out loud: stale reads (fix with read-your-writes), and lost writes on failover (fix with synchronous or semi-synchronous replication, plus fencing the old leader).
 
 ## Deep dive
 

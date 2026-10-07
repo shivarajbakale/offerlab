@@ -8,6 +8,14 @@
 - **Not the right tool when:** Writers can safely act at the same time and their conflicts can be merged; leaderless [quorums](#/sd-05-replication/018-quorum-read-write) avoid elections entirely. If you already run etcd, ZooKeeper or Consul, use their leader election rather than building one; a [lease](#/sd-05-replication/023-leases-and-fencing-tokens) from them is often enough.
 - **Where you'll meet it:** The Raft paper (Ongaro and Ousterhout, 2014), section 5.2. etcd, which stores Kubernetes' cluster state, and Consul use Raft. CockroachDB and TiKV run one Raft group per range of data, and Kafka's KRaft mode replaced ZooKeeper with a Raft controller quorum.
 
+## In plain words
+
+A group of servers that keeps one shared copy of some data needs exactly one of them in charge, the leader, so that writes happen in one agreed order. If the leader dies, the others must pick a new one by themselves, and they must never end up with two leaders at once, because two leaders would accept different writes and the data would split in two.
+
+Think of a club choosing a chair by show of hands. Each member gets one vote per meeting, and you need more than half the members to win. Two people can't both get more than half, because that would need someone to vote twice. Each new meeting gets a higher number (a "term"), so a vote from an old meeting never counts in a new one. The chair keeps saying "I'm still here" (a heartbeat); if members hear nothing for a while, they call a new meeting.
+
+In the picture on the right, each server is a circle on a ring, with its name and current term inside. Under it, its role is written in words (follower, candidate asking for votes, or leader, which is filled in colour) with a short summary such as "follows n1 · voted for n1" or "has 2 votes: n3,n1". Dots moving along the lines are messages: vote requests, votes and heartbeats. A faded node marked "down" has crashed, and a dashed red line is a network cut. The box at the top says what just happened and turns red when something goes wrong. Below the picture, a table shows each server's raw state, and the event log lists every step.
+
 ## Words we'll use
 
 - **Node** — one server in the cluster. Every node runs the same program.
@@ -95,6 +103,15 @@ Without heartbeats, followers can't tell a healthy leader from a dead one, so th
   A: They all become candidates together, vote for themselves, and nobody ever gets a majority. [▶ See it](play:broken: fixed timeouts@t=15)
 - **Q:** A node receives a heartbeat whose term is lower than its own. What does it do?
   A: It ignores it and answers with its own, newer term. The old leader steps down as soon as any newer-term message reaches it; in this run the new leader's heartbeat gets there first. [▶ See it](play:partition@t=160)
+
+## When to use which
+
+- **Raft leader election** — when a small group (3 or 5 servers) must agree on one leader by itself and fail over automatically, with no outside service to lean on. Example: the servers of a coordination store such as etcd electing which one takes writes.
+- **A lease from an existing coordination service** ([leases and fencing tokens](#/sd-05-replication/023-leases-and-fencing-tokens)) — when your own servers just need "one of us is in charge" and you already run etcd, ZooKeeper or Consul. Example: one of ten scheduler instances runs the nightly jobs; it holds a lease in etcd, and the others take over when it expires. This is the usual answer: don't build elections into every service.
+- **Manual or scripted failover of a [leader-follower](#/sd-05-replication/017-leader-follower-replication) database** — when failover can take a minute and a person or a tool like Patroni (which itself uses etcd) can promote the most caught-up replica. Example: a PostgreSQL primary with read replicas.
+- **No leader at all: [quorum reads and writes](#/sd-05-replication/018-quorum-read-write)** — when any server should accept writes and conflicts can be merged, so there is nothing to elect. Example: a shopping cart in a Dynamo-style store.
+- **Gossip membership** ([gossip failure detection](#/sd-05-replication/022-gossip-failure-detection)) — when you only need to know who is alive, not who is in charge. It never picks a leader.
+- **In an interview:** say "the metadata or lock service is a 3- or 5-node Raft group (etcd/ZooKeeper); everything else gets leadership from it through leases with fencing tokens". Mention that a majority must be reachable, so a 5-node group survives 2 failures.
 
 ## Deep dive
 

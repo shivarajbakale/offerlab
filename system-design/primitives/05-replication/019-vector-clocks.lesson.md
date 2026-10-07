@@ -8,6 +8,14 @@
 - **Not the right tool when:** Losing one of two simultaneous updates is fine, as for a cache entry or a "last seen" time; last-write-wins timestamps are simpler. With a single [leader](#/sd-05-replication/017-leader-follower-replication) ordering all writes, there are no concurrent versions to detect. Data types with a built-in merge (CRDTs) resolve conflicts on their own.
 - **Where you'll meet it:** Lamport's 1978 paper defines happened-before. Amazon's Dynamo paper used vector clocks for its shopping cart. Riak returns conflicting values as siblings and later added dotted version vectors; Cassandra chose last-write-wins timestamps instead. Kleppmann's DDIA, chapter 5, walks through the cart example.
 
+## In plain words
+
+Picture a shared shopping list kept on three phones that sync now and then. You add milk on your phone while your partner, offline, adds eggs on theirs. When the phones sync, which list is "right"? Neither: you each changed the list without seeing the other's change, so the honest answer is to keep both and merge them. But if your partner had first looked at the list with milk on it and then added eggs, their list simply replaces yours. The question is always "had this writer seen that change?", and a clock on the wall can't answer it.
+
+A vector clock answers it. Every write gets a name, such as n1:1 (the first write that went through n1), and remembers which other writes its writer had read. If a new write's memory includes an old write's name, it may replace it. If neither includes the other, both are kept side by side as siblings until someone reads both and writes a merge.
+
+In the picture on the right, the three copies n1, n2 and n3 sit on a circle. Under each one is what it holds right now, in words: one value and its clock, or several siblings waiting for a merge. The client box is in the top-left corner. Dots on the lines are messages: Write and Read from the client, and Sync, the regular gossip in which each copy sends what it holds to the others. The box at the top says what just happened, green when both writes were safely kept and red when a write was thrown away. Below the circle is the raw state of every copy, and under that, a log of every event.
+
 ## Words we'll use
 
 - **Replica** — one copy of the data, on its own server. Here there are three: n1, n2 and n3.
@@ -111,6 +119,15 @@ With the dot kept apart, n1 asks the real question: does eggs' context, which is
   A: The plain clocks are `{n1:1}` and `{n1:2}`, and the second covers the first, so it looks as if the second writer saw the first. With the dot kept apart, the second write's context is empty and does not include `n1:1`, so both are kept. [▶ See it](play:broken: no dot@t=2)
 - **Q:** A client reads two siblings and writes a merged value. Why does that replace both everywhere?
   A: The read's context covers both siblings' clocks, so it includes both their dots. Every replica that receives the merged value sees that its writer had seen both, and drops them. [▶ See it](play:resolve@t=12)
+
+## When to use which
+
+- **Vector clocks with siblings (this lesson)** — when any copy may accept writes and losing a confirmed change is not acceptable, such as a shopping cart in a multi-region store, or notes edited offline on two devices. The price is extra data on every value and merge code in every client.
+- **Last-write-wins timestamps** — when losing one of two simultaneous updates is harmless, such as a cache entry, a "last seen" time or a user's current status. Cassandra works this way. Beware clocks that drift: a newer write can lose, as in the [timestamp story](play:broken: last write wins by timestamp@t=8).
+- **A single leader** — when one server can order every write for a key, so there is never a conflict to detect. Most databases do this with [leader-follower replication](#/sd-05-replication/017-leader-follower-replication), or with [Raft](#/sd-05-replication/021-raft-log-replication) when failover must be automatic and safe. The cost: writes stop reaching that data while the leader is unreachable.
+- **Quorums with one version counter** — when writes come through one coordinator that can number them, as in [quorum reads and writes](#/sd-05-replication/018-quorum-read-write). A single number orders writes but cannot tell "newer" from "concurrent".
+- **CRDTs (data types with a built-in merge)** — when the data is a counter, a set or a text document, and you want conflicts resolved automatically instead of handed to the client. Riak's data types and collaborative-editing libraries such as Automerge and Yjs use them.
+- **In an interview:** for "users can write in two regions at once", say "any region accepts writes; versions carry vector clocks, so concurrent edits are kept as siblings and merged, not silently dropped as with last-write-wins".
 
 ## Deep dive
 

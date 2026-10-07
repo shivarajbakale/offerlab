@@ -63,19 +63,32 @@ export class LockService extends SimNode {
   expiresAt: number | null = null;
 
   state() {
-    return { holder: this.holder, token: this.lastToken, expiresAt: this.expiresAt };
+    return {
+      holder: this.holder,
+      token: this.lastToken,
+      expiresAt: this.expiresAt,
+      role: "lock service",
+      summary: this.holder
+        ? `${this.holder} holds it, token ${this.lastToken} · ${this.expiresAt === null ? "no end date" : `lease ends t=${this.expiresAt}`}`
+        : `lock is free · last token ${this.lastToken}`,
+    };
   }
 
   // @why After a restart the expiry timer is gone; re-arm it so a lease that was running still ends.
   onStart(ctx: Ctx) {
     if (this.expiresAt !== null) ctx.setTimer("LeaseExpiry", Math.max(0, this.expiresAt - ctx.now));
+    if (ctx.now > 0) ctx.say(`the lock service restarts and reads from disk: ${this.holder ? `${this.holder} holds token ${this.lastToken}` : "the lock is free"}, so it never hands out an old token again`);
   }
 
   onAcquire(ctx: Ctx, body: { askedAt: number }, from: NodeId) {
     // @why A lease that has run out frees the lock even if the expiry timer has not fired yet.
     const free = this.holder === null || (this.expiresAt !== null && ctx.now >= this.expiresAt);
     if (!free && this.holder !== from) {
-      ctx.say(`lock refuses ${from}: ${this.holder} holds it${this.expiresAt === null ? " with no end" : ` until t=${this.expiresAt}`}`);
+      ctx.say(
+        this.expiresAt === null
+          ? `bad: the lock service turns ${from} away: ${this.holder} holds the lock with no end date. If ${this.holder} has died, nobody can ever do the job again`
+          : `the lock service turns ${from} away: ${this.holder} holds the lock until t=${this.expiresAt}`,
+      );
       return ctx.send(from, "Busy", { holder: this.holder, until: this.expiresAt });
     }
     // @why Every grant gets a new, bigger token, so the storage can tell this holder from every earlier one.
@@ -84,7 +97,9 @@ export class LockService extends SimNode {
     const length = this.leaseLength();
     this.expiresAt = length === null ? null : ctx.now + length;
     if (length !== null) ctx.setTimer("LeaseExpiry", length);
-    ctx.say(`lock grants ${from} token ${this.lastToken}${this.expiresAt === null ? ", with no expiry" : `, valid until t=${this.expiresAt}`}`);
+    ctx.say(
+      `the lock service gives ${from} the lock with token ${this.lastToken} (one higher than any before)${this.expiresAt === null ? ", with no end date" : `, as a lease that ends at t=${this.expiresAt} unless renewed`}`,
+    );
     ctx.send(from, "Granted", { token: this.lastToken, ttl: length, askedAt: body.askedAt });
   }
 
@@ -92,19 +107,19 @@ export class LockService extends SimNode {
     // @why Only the current holder, with the current token, and only before expiry. A late renewal must not revive a lease someone else now holds.
     const valid = this.holder === from && body.token === this.lastToken && (this.expiresAt === null || ctx.now < this.expiresAt);
     if (!valid) {
-      ctx.say(`lock refuses to renew ${from}'s token ${body.token}: ${this.holder ? `${this.holder} holds token ${this.lastToken} now` : "that lease has expired"}`);
+      ctx.say(`the lock service refuses to extend ${from}'s token ${body.token}: ${this.holder ? `${this.holder} holds token ${this.lastToken} now` : "that lease has already run out"}.${this.holder && this.holder !== from ? ` But the lock service can't stop ${from} from acting on its old lease: if ${from} already sent a write, only the storage can catch it` : ""}`);
       return ctx.send(from, "Lost", { token: body.token });
     }
     const length = this.leaseLength();
     this.expiresAt = length === null ? null : ctx.now + length;
     if (length !== null) ctx.setTimer("LeaseExpiry", length);
-    ctx.say(`lock renews ${from}'s token ${body.token} until t=${this.expiresAt}`);
+    ctx.say(`the lock service extends ${from}'s lease (token ${body.token}) to t=${this.expiresAt}`);
     ctx.send(from, "Renewed", { token: body.token, askedAt: body.askedAt });
   }
 
   // @why This is what a plain lock lacks: a holder that stops renewing, because it crashed or is cut off, loses the lock on its own.
   onLeaseExpiry(ctx: Ctx) {
-    ctx.say(`${this.holder}'s lease (token ${this.lastToken}) ran out without a renewal, so the lock is free`);
+    ctx.say(`${this.holder} did not renew in time, so its lease (token ${this.lastToken}) runs out and the lock is free for someone else`);
     this.holder = null;
     this.expiresAt = null;
   }
@@ -127,14 +142,24 @@ export class Storage extends SimNode {
   rejected = 0;
 
   state() {
-    return { value: this.value, writer: this.writer, token: this.token, highestToken: this.highestToken, rejected: this.rejected };
+    return {
+      value: this.value,
+      writer: this.writer,
+      token: this.token,
+      highestToken: this.highestToken,
+      rejected: this.rejected,
+      role: "storage",
+      summary: `${this.value === null ? "empty" : `has ${this.value} (token ${this.token})`} · ${
+        this.rejected ? `turned away ${this.rejected} late write${this.rejected > 1 ? "s" : ""}` : `newest token seen: ${this.highestToken}`
+      }`,
+    };
   }
 
   onWrite(ctx: Ctx, body: { value: string; token: number }, from: NodeId) {
     // @why The fencing check. The writer may honestly believe it holds the lock; the token proves it does not.
     if (body.token < this.highestToken) {
       this.rejected++;
-      ctx.say(`storage rejects ${from}'s ${body.value}: token ${body.token} is older than token ${this.highestToken}, which it has already seen`);
+      ctx.say(`good: storage turns away ${from}'s ${body.value}: token ${body.token} is older than token ${this.highestToken}, which it has already seen. The newer data stays safe`);
       return ctx.send(from, "Rejected", { token: body.token, highestToken: this.highestToken });
     }
     this.accept(ctx, body, from);
@@ -145,7 +170,7 @@ export class Storage extends SimNode {
     this.value = body.value;
     this.writer = from;
     this.token = body.token;
-    ctx.say(`storage takes ${body.value} from ${from} with token ${body.token}`);
+    ctx.say(`storage saves ${body.value} from ${from}, which carries token ${body.token}`);
     ctx.send(from, "Accepted", { token: body.token });
   }
 }
@@ -182,16 +207,26 @@ export class Worker extends SimNode {
       pausedUntil: this.pausedUntil,
       held: this.held.map((h) => h.name),
       writes: this.writes,
+      role: "worker",
+      summary: [
+        ...(this.pausedUntil !== null ? [`frozen until t=${this.pausedUntil}`] : []),
+        this.token === null ? "no lock, waiting" : `has the lock, token ${this.token}`,
+        this.leaseUntil !== null ? `thinks lease ends t=${this.leaseUntil}` : `${this.writes} write${this.writes === 1 ? "" : "s"} done`,
+      ]
+        .slice(0, 2)
+        .join(" · "),
     };
   }
 
   onStart(ctx: Ctx) {
     ctx.setTimer("TryLock", ctx.now === 0 ? this.startAt : RETRY);
+    if (ctx.now > 0) ctx.say(`${ctx.id} restarts with no lease in memory, so it must ask for the lock again`);
   }
 
   // @why Keep asking until the lock is free. A Busy reply only means "not yet".
   onTryLock(ctx: Ctx) {
     if (this.frozen(ctx, "TryLock")) return;
+    ctx.say(`${ctx.id} asks the lock service for the lock`);
     ctx.send("lock", "Acquire", { askedAt: ctx.now });
     ctx.setTimer("TryLock", RETRY);
   }
@@ -207,7 +242,9 @@ export class Worker extends SimNode {
     this.token = body.token;
     // @why Counted from when the worker asked, not when the answer arrived. The lock service started its clock somewhere in between, so this guess ends no later than the real lease.
     this.leaseUntil = body.ttl === null ? null : body.askedAt + body.ttl;
-    ctx.say(`${ctx.id} holds token ${body.token}${this.leaseUntil === null ? " for good" : ` and treats its lease as good until t=${this.leaseUntil}`}`);
+    ctx.say(
+      `good: ${ctx.id} has the lock, with token ${body.token}${this.leaseUntil === null ? ", for good" : `. It counts its lease from when it asked, so it treats it as good until t=${this.leaseUntil}`}`,
+    );
     // @why Renew well before the lease ends, so one slow renewal does not lose it.
     if (body.ttl !== null) ctx.setTimer("Renew", RENEW_EVERY);
     if (this.writes < this.jobs) ctx.setTimer("Work", 1);
@@ -216,19 +253,22 @@ export class Worker extends SimNode {
   onRenew(ctx: Ctx) {
     if (this.frozen(ctx, "Renew")) return;
     if (this.token === null) return;
+    ctx.say(`${ctx.id} asks the lock service to extend its lease (token ${this.token})`);
     ctx.send("lock", "Renew", { token: this.token, askedAt: ctx.now });
     ctx.setTimer("Renew", RENEW_EVERY);
   }
 
   onRenewed(ctx: Ctx, body: { token: number; askedAt: number }, from: NodeId) {
     if (this.frozen(ctx, "Renewed", body, from)) return;
-    if (body.token !== this.token) return;
+    if (body.token !== this.token) return ctx.say(`${ctx.id} ignores an extension for token ${body.token}; it no longer holds that token`);
     this.leaseUntil = Math.max(this.leaseUntil ?? 0, body.askedAt + LEASE);
+    ctx.say(`${ctx.id}'s lease is extended; it now treats it as good until t=${this.leaseUntil}`);
   }
 
   onLost(ctx: Ctx, body: { token: number }, from: NodeId) {
     if (this.frozen(ctx, "Lost", body, from)) return;
     if (body.token === this.token) this.giveUp(ctx, `${ctx.id} hears its token ${body.token} is no longer valid and stops`);
+    else ctx.say(`${ctx.id} hears its old token ${body.token} is no longer valid; it had already stopped`);
   }
 
   // @why Check the lease, then do the work. The gap between the two is where a pause hurts.
@@ -259,6 +299,7 @@ export class Worker extends SimNode {
 
   onAccepted(ctx: Ctx, body: { token: number }, from: NodeId) {
     if (this.frozen(ctx, "Accepted", body, from)) return;
+    ctx.say(`storage confirms ${ctx.id}'s write with token ${body.token}`);
   }
 
   // @why The storage has seen a newer token, so someone else holds the lock. Stop, rather than keep writing into a wall.
@@ -272,7 +313,7 @@ export class Worker extends SimNode {
   onPause(ctx: Ctx, body: { ticks: number }) {
     this.pausedUntil = ctx.now + body.ticks;
     ctx.setTimer("Resume", body.ticks);
-    ctx.say(`${ctx.id} freezes until t=${this.pausedUntil}: its timers and messages pile up unhandled`);
+    ctx.say(`bad: ${ctx.id} freezes until t=${this.pausedUntil}, like a long garbage-collection pause. It doesn't notice; its timers and messages pile up unhandled`);
   }
 
   // @why On waking, everything that piled up runs in order. Nothing tells the worker's code that time jumped; only a line that reads the clock can notice.
@@ -280,7 +321,7 @@ export class Worker extends SimNode {
     const held = this.held;
     this.pausedUntil = null;
     this.held = [];
-    ctx.say(`${ctx.id} wakes at t=${ctx.now} and carries on: ${held.map((h) => h.name).join(", ") || "nothing waiting"}`);
+    ctx.say(`bad: ${ctx.id} wakes at t=${ctx.now} and carries on as if no time had passed: ${held.map((h) => h.name).join(", ") || "nothing waiting"}`);
     for (const h of held) {
       const fn = (this as unknown as Record<string, (ctx: Ctx, body?: unknown, from?: NodeId) => void>)[`on${h.name}`];
       fn.call(this, ctx, h.body, h.from);
@@ -318,6 +359,9 @@ export function noStaleWriteWins(nodes: Record<NodeId, SimNode>): string | null 
 // Broken on purpose: storage ignores the token and takes every write, as if there were no token at all.
 class NoTokenCheck extends Storage {
   onWrite(ctx: Ctx, body: { value: string; token: number }, from: NodeId) {
+    if (body.token < this.highestToken) {
+      ctx.say(`bad: storage doesn't check tokens, so ${from}'s late write with old token ${body.token} overwrites the current holder's newer data. Users now read lost or wrong data`);
+    }
     this.accept(ctx, body, from);
   }
 }

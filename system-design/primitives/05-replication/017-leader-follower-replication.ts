@@ -66,14 +66,31 @@ export class Replica extends SimNode {
   }
 
   state() {
+    // In words, under the node in the picture: how many writes this copy has, and its data.
+    const has = this.applied > 1 ? `has writes #1-#${this.applied}` : this.applied ? "has write #1" : "has no writes yet";
+    const data = this.waiting.length ? `holding ${this.waiting.length} read` : showKv(this.kv);
+    const summary = data ? `${has} · ${data}` : has;
     return this.role === "leader"
-      ? { role: this.role, applied: this.applied, acked: { ...this.acked }, kv: { ...this.kv } }
-      : { role: this.role, applied: this.applied, kv: { ...this.kv }, waiting: this.waiting.length };
+      ? { role: this.role, applied: this.applied, acked: { ...this.acked }, kv: { ...this.kv }, summary }
+      : { role: this.role, applied: this.applied, kv: { ...this.kv }, waiting: this.waiting.length, summary };
   }
 
   // @why The flush timer drives replication; without it the leader would never ship anything.
   onStart(ctx: Ctx) {
     if (this.role === "leader") ctx.setTimer("Flush", FLUSH_EVERY);
+    if (ctx.now === 0) {
+      ctx.say(
+        this.role === "leader"
+          ? `${ctx.id} is the leader (the main server): every write goes to it first`
+          : `${ctx.id} is a follower: it keeps a copy of the leader's data and can answer reads`,
+      );
+    } else if (this.role === "leader") {
+      ctx.say(`good: the leader ${ctx.id} restarts with its log on disk (writes up to #${this.applied}) and goes back to sending copies`);
+    } else if (this.applied === 0 && this.log.length === 0) {
+      ctx.say(`bad: ${ctx.id} restarts empty: its copy was only in memory, so everything it had is gone`);
+    } else {
+      ctx.say(`${ctx.id} restarts with its copy on disk (writes up to #${this.applied}). Whatever was sent while it was down is lost, so the leader must resend it`);
+    }
   }
 
   // @why Only the leader takes writes. Two servers numbering writes on their own would produce two different logs.
@@ -81,7 +98,7 @@ export class Replica extends SimNode {
     if (this.role !== "leader") return ctx.send(from, "Error", { reason: "not the leader" });
     // @why The next number fixes this write's place in the order, for every copy.
     this.apply({ seq: this.applied + 1, key: body.key, value: body.value });
-    ctx.say(`leader applies ${body.key}=${body.value} as #${this.applied} and acks right away`);
+    ctx.say(`The client writes ${body.key}=${body.value}. The leader saves it as write #${this.applied} and answers "done" at once, before any copy has it`);
     // @why Acking before any follower has the write is what makes writes fast, and what risks losing them.
     ctx.send(from, "Ack", { seq: this.applied });
   }
@@ -93,24 +110,42 @@ export class Replica extends SimNode {
       const batch = this.log.filter((e) => e.seq > (this.acked[peer] ?? 0));
       if (!batch.length) continue;
       ctx.send(peer, "Replicate", { entries: batch });
-      shipped.push(`#${batch[0].seq}..#${batch.at(-1)!.seq} to ${peer}`);
+      shipped.push(`${span(batch)} to ${peer}`);
     }
-    if (shipped.length) ctx.say(`leader ships ${shipped.join(", ")}`);
+    if (shipped.length) ctx.say(`The leader sends copies of every write each follower hasn't confirmed yet: ${shipped.join(", ")}`);
+    else if (this.applied) ctx.say(`Every follower has confirmed writes up to #${this.applied}, so the leader has nothing to send`);
     ctx.setTimer("Flush", FLUSH_EVERY);
   }
 
   // @why Without confirmations the leader couldn't tell a follower that has everything from one that missed a batch. Acks can arrive late and out of order, so an older, smaller ack must not move the leader backwards.
-  onReplicateAck(_ctx: Ctx, body: { applied: number }, from: NodeId) {
+  onReplicateAck(ctx: Ctx, body: { applied: number }, from: NodeId) {
+    const before = this.acked[from] ?? 0;
     this.acked[from] = Math.max(this.acked[from] ?? 0, body.applied);
+    if (body.applied < before) ctx.say(this.olderAckNote(from, body.applied, before));
+    else if (body.applied > before) ctx.say(`${from} confirms it has writes up to #${body.applied}, so the leader stops resending those to ${from}`);
+    else ctx.say(`${from} confirms #${body.applied} again; the leader already knew`);
+  }
+
+  // The words for an ack older than what the follower confirmed before.
+  protected olderAckNote(from: NodeId, got: number, before: number) {
+    return `A late, older confirmation from ${from} (#${got}) arrives; the leader keeps #${before}, since old news must not move it backwards`;
   }
 
   onReplicate(ctx: Ctx, body: { entries: Entry[] }, from: NodeId) {
     // @why Resends repeat entries; skipping the ones already applied makes duplicates harmless.
+    const was = this.applied;
     for (const e of body.entries) if (e.seq > this.applied) this.early.set(e.seq, e);
     // @why Apply strictly in number order, so every follower passes through exactly the leader's states.
     while (this.early.has(this.applied + 1)) {
       this.apply(this.early.get(this.applied + 1)!);
       this.early.delete(this.applied);
+    }
+    if (this.applied > was) {
+      ctx.say(`${ctx.id} stores copies of ${was + 1 === this.applied ? `#${this.applied}` : `#${was + 1}-#${this.applied}`} in order. It now matches the leader up to write #${this.applied}`);
+    } else if (this.early.size) {
+      ctx.say(`bad: ${ctx.id} got ${span(body.entries)} but is missing #${this.applied + 1}, so it can't use what it got. Its copy stays stuck at #${this.applied} until #${this.applied + 1} is sent again`);
+    } else {
+      ctx.say(`${ctx.id} already has ${span(body.entries)}; it ignores the repeats and confirms #${this.applied} again`);
     }
     // @why Reads that were waiting for this follower to catch up can be answered now.
     const ready = this.waiting.filter((r) => r.minSeq <= this.applied);
@@ -124,7 +159,7 @@ export class Replica extends SimNode {
   onRead(ctx: Ctx, body: { key: string; minSeq?: number }, from: NodeId) {
     const read = { key: body.key, minSeq: body.minSeq ?? 0, from };
     if (this.applied >= read.minSeq) return this.answer(ctx, read);
-    ctx.say(`${ctx.id} has only #${this.applied} but the client needs #${read.minSeq}: hold the read`);
+    ctx.say(`good: the client says it wrote #${read.minSeq}, but ${ctx.id}'s copy only has up to #${this.applied}. ${ctx.id} holds the read until the copy catches up, instead of answering with old data`);
     this.waiting.push(read);
   }
 
@@ -135,7 +170,12 @@ export class Replica extends SimNode {
   }
 
   private answer(ctx: Ctx, r: PendingRead) {
-    ctx.say(`${ctx.id} answers ${r.key}=${this.kv[r.key] ?? "(missing)"} as of #${this.applied}`);
+    const value = this.kv[r.key] === undefined ? `${r.key} doesn't exist` : `${r.key}=${this.kv[r.key]}`;
+    ctx.say(
+      r.minSeq
+        ? `good: ${ctx.id} now has the client's write #${r.minSeq}, so it answers ${value}: the client sees its own write`
+        : `bad: ${ctx.id} answers at once from its copy, which has only writes up to #${this.applied}: "${value}". It never asks the leader, so the client's newer write is invisible: a stale read`,
+    );
     ctx.send(r.from, "ReadResult", { key: r.key, value: this.kv[r.key] ?? null, asOf: this.applied });
   }
 }
@@ -148,10 +188,17 @@ export function followersMatchLeader(nodes: Record<NodeId, SimNode>): string | n
     const f = node as Replica;
     if (f === leader) continue;
     const same = f.log.length <= leader.log.length && f.log.every((e, i) => JSON.stringify(e) === JSON.stringify(leader.log[i]));
-    if (!same) return `${id}'s log is not a prefix of the leader's: the copies have diverged`;
+    if (!same) return `${id}'s log is no longer an exact copy of the start of the leader's log: the copies have diverged`;
   }
   return null;
 }
+
+// "#1-#3", or "#2" for one entry.
+const span = (es: Entry[]) => (es.length === 1 ? `#${es[0].seq}` : `#${es[0].seq}-#${es.at(-1)!.seq}`);
+const showKv = (kv: Record<string, string>) =>
+  Object.entries(kv)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(" ");
 
 // --- helpers for the scenarios ---
 
@@ -162,8 +209,14 @@ class ShipOnce extends Replica {
     const batch = this.log.filter((e) => e.seq > this.shipped);
     if (batch.length) {
       for (const peer of ctx.peers) ctx.send(peer, "Replicate", { entries: batch });
-      ctx.say(`leader ships #${batch[0].seq}..#${batch.at(-1)!.seq} once and never again`);
+      ctx.say(`The leader sends ${span(batch)} to every follower, once. Whether or not it arrives, it will never be sent again`);
       this.shipped = this.applied;
+    } else {
+      const behind = ctx.peers.filter((p) => (this.acked[p] ?? 0) < this.applied);
+      if (behind.length)
+        ctx.say(
+          `bad: The leader has heard ${behind.map((p) => `${p} confirm only up to #${this.acked[p] ?? 0}`).join(" and ")}, of ${this.applied} writes, but it never resends. A copy that missed a write stays behind for good, and reads there miss data`,
+        );
     }
     ctx.setTimer("Flush", FLUSH_EVERY);
   }
@@ -172,12 +225,24 @@ class ShipOnce extends Replica {
 // Broken on purpose: applies entries the moment they arrive, in whatever order that is.
 class ApplyOnArrival extends Replica {
   onReplicate(ctx: Ctx, body: { entries: Entry[] }, from: NodeId) {
+    const was = this.applied;
+    const before = { ...this.kv };
     for (const e of body.entries) {
       this.log.push(e);
       this.kv[e.key] = e.value;
       this.applied = Math.max(this.applied, e.seq);
     }
-    ctx.say(`${ctx.id} applies ${body.entries.map((e) => `#${e.seq} ${e.key}=${e.value}`).join(", ")} as they arrive`);
+    const list = body.entries.map((e) => `#${e.seq} ${e.key}=${e.value}`).join(", ");
+    const rolledBack = body.entries.filter((e) => e.seq <= was && before[e.key] !== this.kv[e.key]).map((e) => `${e.key} goes back to ${this.kv[e.key]}`);
+    if (rolledBack.length) {
+      ctx.say(
+        `bad: An old, delayed batch (${list}) reaches ${ctx.id}, which applies it on arrival: ${[...new Set(rolledBack)].join(", ")}, older than the leader's data. Readers of ${ctx.id} now get old data, and nothing will fix it`,
+      );
+    } else if (body.entries.some((e) => e.seq <= was)) {
+      ctx.say(`bad: ${ctx.id} applies ${list} on arrival, though it already had them. Its log now lists them twice and no longer matches the leader's`);
+    } else {
+      ctx.say(`${ctx.id} applies ${list} the moment they arrive, without checking the order`);
+    }
     ctx.send(from, "ReplicateAck", { applied: this.applied });
   }
 }
@@ -185,6 +250,9 @@ class ApplyOnArrival extends Replica {
 // Broken on purpose: keeps everything in memory, so a restart starts from nothing.
 class InMemory extends Replica {
   static durable: string[] = [];
+  protected olderAckNote(from: NodeId, got: number, before: number) {
+    return `bad: ${from} says it has nothing (#${got}), but the leader already marked ${from} as having #1-#${before} and never moves backwards. So it will never resend #1-#${before}, and ${from} stays empty`;
+  }
 }
 
 const cluster = (make = (role: "leader" | "follower") => new Replica(role)) => ({
