@@ -329,6 +329,8 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   const scene = useMemo(() => (after ? buildScene(after, step, problem.hints) : null), [after, step, problem.hints]);
   // A building block's own words for the picture: the view's caption, else the latest @caption.
   const ownCaption = scene?.panels.some((p) => "caption" in p) ?? false;
+  // A block whose picture explains itself drops the code-level extras (call stack, line narration).
+  const selfExplained = systems && (ownCaption || Object.keys(problem.hints.caption).length > 0);
   const caption = useMemo(() => (systems && !ownCaption ? captionAt(steps, shownK, problem.hints) : null), [systems, ownCaption, steps, shownK, problem.hints]);
   const narration = step ? narrationAt(shownK) : null;
   const explanation = step && !systems ? explainAt(shownK) : null;
@@ -585,7 +587,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             )}
             <ChapterStrip chapters={chapters} current={runIndex} onPick={setRunIndex} />
             {explanation && <ExplainCard ex={explanation} />}
-            <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} caption={caption} />
+            <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} caption={caption ?? (selfExplained && !ownCaption && run ? { tone: "info", text: `Setting up: ${run.label.replace(/^broken: /, "")}.` } : null)} plain={selfExplained} />
           </div>
         )}
       </section>
@@ -593,7 +595,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       <div className="dock">
         {systems && (
           <NarrationBar
-            narration={ownCaption || caption ? null : narration}
+            narration={selfExplained ? null : narration}
             why={step ? problem.why[step.line] : undefined}
             hasNotes={hasNotes}
           />

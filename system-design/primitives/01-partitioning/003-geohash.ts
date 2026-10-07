@@ -51,7 +51,7 @@ export type Place = { name: string; lat: number; lon: number; hash: string };
 /** The geohash of a location: `precision` characters, each narrowing the cell. */
 function encode(lat: number, lon: number, precision: number): string {
   // @why The whole world to start with; every bit halves it.
-  // @caption To find the geohash of {typeof name === "string" ? name : "your location"}, start with the whole world. Each step asks "which half is it in?", writes 0 or 1, and keeps only that half.
+  // @caption To find the geohash of {(typeof name === "string" && name) || "your location"}, start with the whole world. Each step asks "which half is it in?", writes 0 or 1, and keeps only that half.
   const box: Cell = { x0: -180, y0: -90, x1: 180, y1: 90 };
   // For drawing only: the cell after each character.
   const trail: Cell[] = [];
@@ -65,22 +65,22 @@ function encode(lat: number, lon: number, precision: number): string {
       const mid = (box.x0 + box.x1) / 2;
       if (lon >= mid) {
         ch = ch * 2 + 1;
-        // @caption {typeof name === "string" ? name : "your location"} is east of longitude {mid}, so write a 1 and keep the east half.
+        // @caption {(typeof name === "string" && name) || "your location"} is east of longitude {mid}, so write a 1 and keep the east half.
         box.x0 = mid; // @mark east
       } else {
         ch = ch * 2;
-        // @caption {typeof name === "string" ? name : "your location"} is west of longitude {mid}, so write a 0 and keep the west half.
+        // @caption {(typeof name === "string" && name) || "your location"} is west of longitude {mid}, so write a 0 and keep the west half.
         box.x1 = mid; // @mark west
       }
     } else {
       const mid = (box.y0 + box.y1) / 2;
       if (lat >= mid) {
         ch = ch * 2 + 1;
-        // @caption {typeof name === "string" ? name : "your location"} is north of latitude {mid}, so write a 1 and keep the north half.
+        // @caption {(typeof name === "string" && name) || "your location"} is north of latitude {mid}, so write a 1 and keep the north half.
         box.y0 = mid;
       } else {
         ch = ch * 2;
-        // @caption {typeof name === "string" ? name : "your location"} is south of latitude {mid}, so write a 0 and keep the south half.
+        // @caption {(typeof name === "string" && name) || "your location"} is south of latitude {mid}, so write a 0 and keep the south half.
         box.y1 = mid;
       }
     }

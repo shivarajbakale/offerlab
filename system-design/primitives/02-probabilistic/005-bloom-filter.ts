@@ -44,7 +44,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class BloomFilter {
-  // @viz bits:bits,touched,verdict,newBits,title=Bloom_filter,unit=bit,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost,cleared values:m,k,i,p,h1,h2
+  // @viz bits:bits,touched,verdict,newBits,title=Bloom_filter,unit=bit,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost,cleared,m,k,i,p,h1,h2
   m: number;
   k: number;
   // @why One bit per position instead of the items themselves: memory is m bits no matter how long the items are.

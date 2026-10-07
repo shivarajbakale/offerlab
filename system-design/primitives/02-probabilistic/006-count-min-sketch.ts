@@ -41,7 +41,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class CountMinSketch {
-  // @viz bits:rows,touched,verdict,title=Count-min_sketch,unit=counter,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost values:depth,width,topK,r,c,n,best
+  // @viz bits:rows,touched,verdict,title=Count-min_sketch,unit=counter,ask=ask,answer=answer,cost=cost hide:item,verdict,ask,answer,cost,depth,width,r,c,n,best values:topK
   depth: number;
   width: number;
   topK: number;

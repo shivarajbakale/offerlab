@@ -151,6 +151,7 @@ export function Visual({
   story,
   step,
   caption,
+  plain = false,
 }: {
   scene: Scene;
   callTree: CallTree;
@@ -159,8 +160,10 @@ export function Visual({
   step?: StepLens;
   /** A plain-words note for the whole picture (building blocks without a captioned view). */
   caption?: Caption | null;
+  /** Leave out the call stack and recursion tree: the picture and its caption tell the story. */
+  plain?: boolean;
 }) {
-  const showTree = callTree.recursive && callTree.nodes.length >= 3;
+  const showTree = !plain && callTree.recursive && callTree.nodes.length >= 3;
   const win = story?.story.win;
   const range = story?.story.range;
   const showWindow = win && win.len <= 24 && !win.restarts;
@@ -262,9 +265,9 @@ export function Visual({
           )}
         </div>
       )}
-      {(scene.frames.length > 1 || showTree) && (
+      {((!plain && scene.frames.length > 1) || showTree) && (
         <div className="side-by-side">
-          {scene.frames.length > 1 && (
+          {!plain && scene.frames.length > 1 && (
             <div className="panel" style={{ maxHeight: 360, overflowY: "auto" }}>
               <div className="panel-title">
                 <b>call stack</b>

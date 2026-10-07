@@ -44,7 +44,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export class HyperLogLog {
-  // @viz bits:registers,touched,verdict,title=HyperLogLog,unit=register,ask=ask,answer=answer,cost=cost,costLabel=How_far_off hide:item,verdict,ask,answer,cost values:b,m,j,rank,h,rest,sum,zeros,raw,alpha
+  // @viz bits:registers,touched,verdict,title=HyperLogLog,unit=register,ask=ask,answer=answer,cost=cost,costLabel=How_far_off hide:item,verdict,ask,answer,cost,b,m,j,rank,h,rest,sum,zeros,raw,alpha
   b: number;
   m: number;
   // @why m small numbers instead of the items: memory is the same for a thousand items or a billion.
