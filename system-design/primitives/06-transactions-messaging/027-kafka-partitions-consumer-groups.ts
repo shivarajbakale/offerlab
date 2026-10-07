@@ -98,7 +98,12 @@ export class Broker extends SimNode {
   joinPending = false;
 
   state() {
+    const summary = this.waiting.length
+      ? `reshuffling (gen ${this.generation}) · waiting: ${this.waiting.join(", ")}`
+      : `${this.owner.map((o, p) => `p${p}→${o ?? "-"}`).join(" ")} · bookmarks ${this.committed.join("/")}`;
     return {
+      role: "broker",
+      summary,
       logs: this.logs.map((l) => l.map(show)),
       committed: [...this.committed],
       members: [...this.members],
@@ -117,12 +122,17 @@ export class Broker extends SimNode {
     return partitionFor(key);
   }
 
+  // The caption for a new record; the broken broker words it differently.
+  protected describeAppend(key: string, rec: Rec, p: number): string {
+    return `a producer sends ${show(rec)}. The key "${key}" always hashes to p${p}, so the broker appends it to the end of p${p} at offset ${rec.offset}`;
+  }
+
   onProduce(ctx: Ctx, body: { key: string; n: number }, from: NodeId) {
     const p = this.choosePartition(body.key);
     const rec = { offset: this.logs[p].length, key: body.key, n: body.n };
     // @why Append only. Nothing is removed when it is read, so many groups can read the same log, and a group can re-read it.
     this.logs[p].push(rec);
-    ctx.say(`broker appends ${show(rec)} to p${p} at offset ${rec.offset}`);
+    ctx.say(this.describeAppend(body.key, rec, p));
     ctx.send(from, "Produced", { partition: p, offset: rec.offset });
     const ready = this.parked.filter((f) => f.partition === p);
     this.parked = this.parked.filter((f) => f.partition !== p);
@@ -133,7 +143,7 @@ export class Broker extends SimNode {
     this.lastSeen[from] = ctx.now;
     if (this.members.includes(from)) return;
     this.members = [...this.members, from].sort();
-    ctx.say(`${from} joins the group; the broker waits ${JOIN_WAIT} ticks for others before rebalancing`);
+    ctx.say(`${from} asks to join the consumer group. The broker waits ${JOIN_WAIT} ticks for others to arrive, so one reshuffle covers them all`);
     // @why Consumers often start together. Waiting a moment lets one rebalance cover all of them instead of one per join.
     if (!this.joinPending) ctx.setTimer("StartRebalance", JOIN_WAIT);
     this.joinPending = true;
@@ -148,6 +158,7 @@ export class Broker extends SimNode {
     // @why A live consumer that was dropped from the group (it went quiet for too long) joins again instead of idling forever.
     if (!this.members.includes(from)) return this.onJoinGroup(ctx, {}, from);
     this.lastSeen[from] = ctx.now;
+    ctx.say(`${from}'s heartbeat arrives, so the broker knows ${from} is alive. ${this.ownersText()}`);
   }
 
   // @why Silence for a whole session timeout is the only sign of a dead consumer. Its partitions would sit unread forever otherwise.
@@ -155,8 +166,13 @@ export class Broker extends SimNode {
     const dead = this.members.filter((m) => ctx.now - this.lastSeen[m] > SESSION_TIMEOUT);
     if (dead.length) {
       this.members = this.members.filter((m) => !dead.includes(m));
-      this.rebalance(ctx, `${dead.join(", ")} sent no heartbeat for ${SESSION_TIMEOUT} ticks, so it is removed`);
-    }
+      this.rebalance(ctx, `${dead.join(", ")} sent no heartbeat for ${SESSION_TIMEOUT} ticks, so the broker treats it as dead and removes it`);
+    } else
+      ctx.say(
+        this.members.length
+          ? this.quietText(ctx)
+          : "the broker checks for silent members: nobody has joined the group yet",
+      );
     ctx.setTimer("SessionCheck", SESSION_CHECK_EVERY);
   }
 
@@ -168,14 +184,14 @@ export class Broker extends SimNode {
     this.parked = [];
     // @why A member whose rejoin never arrives must not hold up the whole group forever.
     ctx.setTimer("RebalanceTimeout", SESSION_TIMEOUT);
-    ctx.say(`${reason}: rebalance to generation ${this.generation}, every member must stop and hand in its offsets`);
+    ctx.say(`${reason}. Rebalance (generation ${this.generation}): every member must stop reading and hand in how far it got, before partitions are dealt out again`);
     for (const m of this.members) ctx.send(m, "Revoke", { generation: this.generation });
     if (!this.members.length) this.owner = this.owner.map(() => null);
   }
 
   onRebalanceTimeout(ctx: Ctx) {
     if (!this.waiting.length) return;
-    ctx.say(`${this.waiting.join(", ")} did not rejoin in time, so the broker goes on without it`);
+    ctx.say(`${this.waiting.join(", ")} did not hand in its offsets in time, so the broker goes on without it`);
     this.members = this.members.filter((m) => !this.waiting.includes(m));
     this.waiting = [];
     if (this.members.length) this.assign(ctx);
@@ -189,18 +205,39 @@ export class Broker extends SimNode {
     if (!this.waiting.length) {
       ctx.cancelTimer("RebalanceTimeout");
       this.assign(ctx);
-    }
+    } else ctx.say(`${from} has stopped and handed in its offsets; the broker still waits for ${this.waiting.join(", ")}`);
   }
 
   // @why Round-robin over the sorted members: partition i goes to member i mod n. With more members than partitions, the extras get nothing.
   private assign(ctx: Ctx) {
+    const before = [...this.owner];
     this.owner = this.owner.map((_, p) => this.members[p % this.members.length]);
     const got = this.members.map((m) => `${m}: ${list(this.partitionsOf(m))}`);
-    ctx.say(`everyone has rejoined, so the broker deals out the partitions: ${got.join("; ")}`);
+    const orphaned = before.flatMap((o, p) => (o && !this.members.includes(o) ? [p] : []));
+    ctx.say(
+      `the broker deals out the partitions, one owner each: ${got.join("; ")}` +
+        (orphaned.length
+          ? `. The dead member's partitions (${list(orphaned)}) restart from the last committed bookmark (${orphaned.map((p) => `p${p} at ${this.committed[p]}`).join(", ")}): anything it finished after that commit will be processed again, and anything it committed but never finished is skipped`
+          : ""),
+    );
     for (const m of this.members) {
       const parts = this.partitionsOf(m).map((p) => ({ partition: p, offset: this.committed[p] }));
       ctx.send(m, "Assign", { generation: this.generation, partitions: parts });
     }
+  }
+
+  // The session check's caption: who has gone quiet, if anyone.
+  private quietText(ctx: Ctx): string {
+    const quiet = this.members.filter((m) => ctx.now - this.lastSeen[m] > HEARTBEAT_EVERY + 1);
+    if (!quiet.length) return `the broker checks for members silent for over ${SESSION_TIMEOUT} ticks: everyone is sending heartbeats. ${this.ownersText()}`;
+    return `${quiet.map((m) => `${m} has been silent for ${ctx.now - this.lastSeen[m]} ticks`).join(", ")}. The broker waits until ${SESSION_TIMEOUT} before calling it dead, since it may just be slow. ${this.ownersText()}`;
+  }
+
+  // Who reads what right now, for the captions.
+  protected ownersText(): string {
+    if (this.waiting.length) return `Reshuffle in progress: waiting for ${this.waiting.join(", ")}.`;
+    if (!this.owner.some(Boolean)) return "No partitions are handed out yet.";
+    return `Owners: ${this.owner.map((o, p) => `p${p} → ${o ?? "nobody"}`).join(", ")}.`;
   }
 
   private partitionsOf(m: NodeId) {
@@ -218,19 +255,24 @@ export class Broker extends SimNode {
       this.committed[Number(p)] = offset;
       moved.push(`p${p} → ${offset}`);
     }
-    if (moved.length) ctx.say(`broker records ${from}'s committed offsets: ${moved.join(", ")}`);
+    if (moved.length) ctx.say(`the broker saves ${from}'s bookmark: ${moved.join(", ")}. A future owner of these partitions starts from here`);
   }
 
   // @why Reads never change the log; the consumer says where to read from, and the broker just returns what is there.
   onFetch(ctx: Ctx, body: { generation: number; partition: number; offset: number }, from: NodeId) {
-    if (body.generation !== this.generation || this.waiting.length || this.owner[body.partition] !== from) return;
+    if (body.generation !== this.generation || this.waiting.length || this.owner[body.partition] !== from)
+      return ctx.say(`the broker ignores ${from}'s request for p${body.partition}: it was sent before the latest reshuffle`);
     // @why Nothing new yet: hold the fetch and answer it when a record arrives, instead of making the consumer ask over and over.
-    if (body.offset >= this.logs[body.partition].length) return void this.parked.push({ ...body, from });
+    if (body.offset >= this.logs[body.partition].length) {
+      ctx.say(`p${body.partition} has nothing after offset ${body.offset - 1} yet, so the broker holds ${from}'s request until a new message arrives`);
+      return void this.parked.push({ ...body, from });
+    }
     this.answerFetch(ctx, { ...body, from });
   }
 
   private answerFetch(ctx: Ctx, f: ParkedFetch) {
     const records = this.logs[f.partition].slice(f.offset, f.offset + BATCH);
+    ctx.say(`the broker sends ${f.from} ${records.map(show).join(", ")} from p${f.partition}, starting at offset ${f.offset}. Reading removes nothing from the log`);
     ctx.send(f.from, "Records", { generation: f.generation, partition: f.partition, records });
   }
 }
@@ -264,7 +306,10 @@ export class Consumer extends SimNode {
   }
 
   state() {
+    const summary = `${this.partitions.length ? `reads ${list(this.partitions)}` : "idle: no partition"}${this.buffer.length ? ` · next: ${this.buffer.map(show).join(" ")}` : ""}`;
     return {
+      role: "consumer",
+      summary,
       partitions: [...this.partitions],
       buffered: this.buffer.map(show),
       done: this.done.map(show),
@@ -277,6 +322,7 @@ export class Consumer extends SimNode {
   }
 
   onJoin(ctx: Ctx) {
+    ctx.say(`${ctx.id} starts and asks the broker to join the consumer group`);
     ctx.send(BROKER, "JoinGroup", {});
     ctx.setTimer("SendHeartbeat", HEARTBEAT_EVERY);
     ctx.setTimer("Poll", POLL_EVERY);
@@ -285,6 +331,7 @@ export class Consumer extends SimNode {
 
   // @why Without heartbeats the broker cannot tell a live consumer that has nothing to do from a dead one.
   onSendHeartbeat(ctx: Ctx) {
+    ctx.say(`${ctx.id} sends its regular heartbeat ("I'm alive"). ${this.progressText()}`);
     ctx.send(BROKER, "Heartbeat", {});
     ctx.setTimer("SendHeartbeat", HEARTBEAT_EVERY);
   }
@@ -295,9 +342,11 @@ export class Consumer extends SimNode {
     if (body.generation <= this.generation) return;
     this.generation = body.generation;
     const offsets = this.ownedOffsets();
-    if (this.partitions.length) {
-      ctx.say(`${ctx.id} gives up ${list(this.partitions)}, drops ${this.buffer.length} unprocessed record(s) and hands in offsets ${JSON.stringify(offsets)}`);
-    }
+    ctx.say(
+      this.partitions.length
+        ? `${ctx.id} stops reading ${list(this.partitions)}, throws away ${this.buffer.length} fetched but unprocessed message(s), and hands in how far it really got: ${Object.entries(offsets).map(([p, o]) => `p${p} at ${o}`).join(", ")}`
+        : `${ctx.id} has no partitions yet; it confirms it is ready for the reshuffle`,
+    );
     this.partitions = [];
     this.buffer = [];
     this.fetching = {};
@@ -317,44 +366,57 @@ export class Consumer extends SimNode {
     }
     ctx.say(
       this.partitions.length
-        ? `${ctx.id} now reads ${body.partitions.map((x) => `p${x.partition} from offset ${x.offset}`).join(", ")}`
+        ? `${ctx.id} now owns ${body.partitions.map((x) => `p${x.partition} from offset ${x.offset}`).join(", ")}. Nobody else in the group reads ${body.partitions.length > 1 ? "them" : "it"}`
         : `${ctx.id} gets no partition: there are more consumers than partitions, so it sits idle`,
     );
   }
 
   onPoll(ctx: Ctx) {
+    const asked: string[] = [];
     for (const p of this.partitions) {
       // @why Fetch more only once this partition's earlier records are processed, so its records are handled strictly in offset order.
       if (this.fetching[p] || this.buffer.some((r) => r.partition === p)) continue;
       this.fetching[p] = true;
+      asked.push(`p${p} from offset ${this.position[p]}`);
       ctx.send(BROKER, "Fetch", { generation: this.generation, partition: p, offset: this.position[p] });
     }
+    ctx.say(
+      !this.partitions.length
+        ? `${ctx.id} has no partition to read, so it has nothing to ask for`
+        : asked.length
+          ? `${ctx.id} asks the broker for new messages: ${asked.join(", ")}`
+          : `${ctx.id} asks for nothing new: it is still working through what it fetched, or still waiting for an answer. ${this.progressText()}`,
+    );
     ctx.setTimer("Poll", POLL_EVERY);
   }
 
   onRecords(ctx: Ctx, body: { generation: number; partition: number; records: Rec[] }) {
     // @why Records for a partition this consumer no longer owns belong to the new owner now.
-    if (body.generation !== this.generation || !this.partitions.includes(body.partition)) return;
+    if (body.generation !== this.generation || !this.partitions.includes(body.partition))
+      return ctx.say(`${ctx.id} drops messages from p${body.partition}: it no longer owns that partition`);
     this.fetching[body.partition] = false;
     if (!body.records.length) return;
     for (const r of body.records) this.buffer.push({ ...r, partition: body.partition });
     this.position[body.partition] = body.records.at(-1)!.offset + 1;
-    this.afterFetch(ctx, body.partition, body.records);
+    const said = this.afterFetch(ctx, body.partition, body.records);
+    if (!said) ctx.say(`${ctx.id} receives ${body.records.map(show).join(", ")} from p${body.partition} and queues them, to process one at a time in order`);
     if (!this.busy) {
       this.busy = true;
       ctx.setTimer("ProcessNext", WORK_EVERY);
     }
   }
 
-  // @why Hook for the broken subclass; the real consumer commits nothing when it fetches.
-  protected afterFetch(_ctx: Ctx, _partition: number, _records: Rec[]) {}
+  // @why Hook for the broken subclass; the real consumer commits nothing when it fetches. Returns true if it captioned the fetch itself.
+  protected afterFetch(_ctx: Ctx, _partition: number, _records: Rec[]): boolean {
+    return false;
+  }
 
   // @why Processing one record takes WORK_EVERY ticks; this fires when the current record is finished.
   onProcessNext(ctx: Ctx) {
     const r = this.buffer.shift()!;
     this.done.push({ key: r.key, n: r.n, partition: r.partition, offset: r.offset, t: ctx.now });
     this.processed[r.partition] = r.offset + 1;
-    ctx.say(`${ctx.id} has processed ${show(r)} from p${r.partition} offset ${r.offset}`);
+    ctx.say(`${ctx.id} finishes processing ${show(r)} (p${r.partition}, offset ${r.offset}), for example updating ${r.key}'s account. Not committed yet`);
     this.busy = this.buffer.length > 0;
     if (this.busy) ctx.setTimer("ProcessNext", WORK_EVERY);
   }
@@ -365,10 +427,17 @@ export class Consumer extends SimNode {
     const changed = Object.fromEntries(Object.entries(offsets).filter(([p, o]) => this.committedSent[Number(p)] !== o));
     if (Object.keys(changed).length) {
       Object.assign(this.committedSent, changed);
-      ctx.say(`${ctx.id} commits processed offsets ${JSON.stringify(changed)}`);
+      ctx.say(`${ctx.id} commits its bookmark, only as far as it has processed: ${Object.entries(changed).map(([p, o]) => `p${p} at ${o}`).join(", ")}`);
       ctx.send(BROKER, "Commit", { generation: this.generation, offsets: changed });
-    }
+    } else
+      ctx.say(this.partitions.length ? `${ctx.id} has processed nothing new since its last commit, so it commits nothing` : `${ctx.id} owns no partition, so it has nothing to commit`);
     ctx.setTimer("AutoCommit", AUTO_COMMIT_EVERY);
+  }
+
+  // What this consumer owns and how far it has got, for the captions.
+  protected progressText(): string {
+    if (!this.partitions.length) return `It owns no partition right now.`;
+    return `It owns ${this.partitions.map((p) => `p${p} (next to process: offset ${this.processed[p]})`).join(", ")}${this.buffer.length ? `, with ${this.buffer.map(show).join(", ")} still queued` : ""}.`;
   }
 
   private ownedOffsets(): Offsets {
@@ -404,11 +473,21 @@ class CommitFirst extends Consumer {
   protected afterFetch(ctx: Ctx, partition: number, records: Rec[]) {
     const offset = records.at(-1)!.offset + 1;
     this.committedSent[partition] = offset;
-    ctx.say(`${ctx.id} fetched ${records.map(show).join(", ")} from p${partition} and commits offset ${offset} before processing them`);
+    ctx.say(`bad: ${ctx.id} receives ${records.map(show).join(", ")} from p${partition} and commits offset ${offset} at once, before processing any of them. If it crashes now, they count as done but never were`);
     ctx.send(BROKER, "Commit", { generation: this.generation, offsets: { [partition]: offset } });
+    return true;
   }
   // Its offsets were already committed at fetch time, so there is nothing left to commit later.
   onAutoCommit(_ctx: Ctx) {}
+  onAssign(ctx: Ctx, body: { generation: number; partitions: { partition: number; offset: number }[] }) {
+    // Partitions taken over from another member, part-way through.
+    const late = body.generation === this.generation ? body.partitions.filter((x) => x.offset > 0 && this.committedSent[x.partition] === undefined) : [];
+    if (late.length)
+      ctx.say(
+        `bad: ${ctx.id} takes over ${late.map((x) => `p${x.partition} at offset ${x.offset}`).join(", ")}. The old owner committed that far as soon as it fetched, so any of those messages it never finished are skipped for good`,
+      );
+    super.onAssign(ctx, body);
+  }
   // On a rebalance it hands in what it fetched, as if it were done.
   onRevoke(ctx: Ctx, body: { generation: number }) {
     for (const p of this.partitions) this.processed[p] = this.position[p];
@@ -422,6 +501,9 @@ class RoundRobinBroker extends Broker {
   protected choosePartition(_key: string): number {
     return this.next++ % PARTITIONS;
   }
+  protected describeAppend(key: string, rec: Rec, p: number): string {
+    return `bad: a producer sends ${show(rec)}. The broker ignores the key "${key}" and appends it to p${p}, simply the next partition in turn, so ${key}'s messages end up in different partitions read by different consumers`;
+  }
 }
 
 // Broken on purpose: never checks for silent members, so a crashed consumer keeps its partitions.
@@ -432,7 +514,7 @@ class NoSessionTimeout extends Broker {
       if (ctx.now - this.lastSeen[m] <= SESSION_TIMEOUT || this.reported.includes(m)) continue;
       this.reported.push(m);
       const parts = this.owner.flatMap((o, p) => (o === m ? [p] : []));
-      ctx.say(`${m} has sent no heartbeat for ${SESSION_TIMEOUT} ticks, but this broker never removes anyone, so ${list(parts)} stay with ${m} and go unread`);
+      ctx.say(`bad: ${m} has sent no heartbeat for ${SESSION_TIMEOUT} ticks, but this broker never removes anyone. ${list(parts)} stay with the dead ${m}: new messages pile up there and nobody will ever process them`);
     }
     ctx.setTimer("SessionCheck", SESSION_CHECK_EVERY);
   }
@@ -442,11 +524,17 @@ class NoSessionTimeout extends Broker {
 class NoGenerations extends Broker {
   onCommit(ctx: Ctx, body: { generation: number; offsets: Offsets }, from: NodeId) {
     const moved: string[] = [];
+    let back = false;
     for (const [p, offset] of Object.entries(body.offsets)) {
       moved.push(`p${p} ${this.committed[Number(p)]} → ${offset}`);
+      if (offset < this.committed[Number(p)]) back = true;
       this.committed[Number(p)] = offset;
     }
-    ctx.say(`broker records ${from}'s commit from generation ${body.generation} without checking it (now generation ${this.generation}): ${moved.join(", ")}`);
+    ctx.say(
+      back
+        ? `bad: a late commit from ${from}, sent in generation ${body.generation}, arrives now (generation ${this.generation}). The broker accepts it without checking and moves the bookmark backwards: ${moved.join(", ")}. Messages already processed will be processed again`
+        : `the broker saves ${from}'s commit without checking its generation (${body.generation}, now ${this.generation}): ${moved.join(", ")}`,
+    );
   }
 }
 

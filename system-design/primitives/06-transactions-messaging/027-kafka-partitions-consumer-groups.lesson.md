@@ -8,6 +8,14 @@
 - **Not the right tool when:** A plain work queue where any worker takes any job and order doesn't matter; a queue such as Amazon SQS or RabbitMQ is simpler. Also when a single key is too busy for one consumer, since one key always lives in one partition.
 - **Where you'll meet it:** Apache Kafka's documentation on partitions, offsets and consumer groups; Amazon Kinesis Data Streams, whose shards and partition keys play the same role; Kleppmann's DDIA, chapter 11. Event pipelines in interviews such as "Design a news feed" or "Design a metrics pipeline".
 
+## In plain words
+
+A busy app produces a constant stream of events: alice clicked buy, bob changed his address, alice paid. Several services want to react to them, and one reader can't keep up, so the work has to be shared between several readers. Two things must not break while sharing: one user's events must still be handled in the order they happened (alice's "paid" after her "clicked buy"), and when a reader crashes, its events must not be lost or quietly skipped.
+
+Think of a bank with several tellers and a numbered ticket line per surname letter. Every customer whose name starts with A always joins line A, so their visits are served in order; each line has exactly one teller at a time; and each teller writes down the last ticket number they finished. If a teller goes home sick, the manager hands their line to another teller, who carries on from the last number written down. Kafka is that: the lines are partitions, the tellers are consumers in a group, the manager is the broker, and the written-down number is the committed offset. Unlike a queue, the tickets are never thrown away, so the line can be read again later.
+
+In the picture on the right, the broker sits with the consumers (c1, c2, ...) and the producer (client) on a circle. Dots are messages: `Produce` (a new event), `Fetch` and `Records` (a consumer reading), `Commit` (saving its bookmark), `Heartbeat` ("I'm alive"), and the reshuffle messages `JoinGroup`, `Revoke`, `Rejoin` and `Assign`; a crashed consumer reads "down". Under each node a short label says where it stands: the broker shows who owns each partition and the bookmarks (such as "p0→c1 p1→c2 p2→c3 · bookmarks 3/1/2"), and each consumer shows what it reads and what is next in its queue. The table underneath shows the broker's three partition `logs` (p0, p1, p2, each a list like `alice#1`), the `committed` bookmark per partition, the group `members`, which consumer is the `owner` of each partition, and the `generation` (how many reshuffles so far). Each consumer row shows the `partitions` it owns, messages `buffered` but not yet processed, the ones it has `done`, and how far it has `processed`. The box at the top says what just happened, in red when order breaks or messages are lost or repeated.
+
 ## Words we'll use
 
 - **Message** — one event, such as "alice paid 5". Here each message has a **key** (alice) and a number (alice#1, alice#2, …) that shows the order it was sent in.
@@ -45,7 +53,7 @@ Several consumers share the work. Each key's messages are processed in the order
 "Split the stream into 3 logs and deal the messages out in turn, one log per consumer. Three consumers work in parallel, so it's three times as fast."
 
 It is faster, but alice's messages now sit in different logs, read by different consumers, each working at its own speed. Nothing makes alice#3 wait for alice#2. Here alice#2 is first in line in p2, but c3's first batch reaches it at t=16, three ticks after c2's. So c2 finishes alice#3 at t=17, and c3 finishes alice#2 only at t=18.
-[▶ Broken: dealing messages out in turn, so alice#3 is processed before alice#2](play:broken: no key@t=17)
+[▶ Broken: dealing messages out in turn, so alice#3 is processed before alice#2](play:broken: no key@t=19)
 
 ## Building it up
 
@@ -53,24 +61,24 @@ It is faster, but alice's messages now sit in different logs, read by different 
 A log fixes all three. Nothing is deleted when it is read; each reader just remembers an offset. So a group can go back and read again, any number of groups can read the same log at their own pace without copying it, and a message handed out again comes back at its own offset, in its original place. Here the broker records that the group has finished p0 up to offset 3, and p0 still holds alice#1 to alice#4. Another group, or this one after a bug fix, could start again at offset 0.
 [▶ p0 is processed up to offset 3, and still holds every message](play:ordering@t=27)
 When c1 crashes, c2 takes p0 over and reads it from the bookmark in log order, alice#1 first.
-[▶ c2 takes over p0 and reads it from offset 0](play:rebalance on crash@t=35)
+[▶ c2 takes over p0 and reads it from offset 0](play:rebalance on crash@t=34)
 
 **2. Split the topic into partitions, and pick the partition by hashing the key.** One log read by one consumer has a speed limit. Several partitions can be read in parallel. The key's hash picks the partition, so every alice message goes to p0, every bob message to p1, and every dave message to p2. Inside one partition, messages keep the order they arrived in.
 [▶ The broker appends alice#1 to p0 and bob#1 to p1](play:ordering@t=1)
 Order holds only inside a partition, not across the topic. Dealing messages out in turn, without looking at the key, spreads one key over several partitions, and the order check described under "Why it works now" catches it.
-[▶ Broken: alice#2 is processed after alice#3](play:broken: no key@t=18)
+[▶ Broken: alice#2 is processed after alice#3](play:broken: no key@t=19)
 
 **3. Form a consumer group, and give each partition exactly one owner.** The broker deals the partitions out in turn over the members, sorted by name: with n members, partition i goes to member number i mod n. One owner per partition means one partition's messages are processed one at a time, in offset order, so alice's messages come out in the order they were sent.
-[▶ c1 gets p0, c2 gets p1, c3 gets p2](play:ordering@t=8)
+[▶ c1 gets p0, c2 gets p1, c3 gets p2](play:ordering@t=9)
 A partition can't be split between two consumers, so a group never has more busy members than partitions. A fourth consumer gets nothing.
-[▶ c4 joins, and sits idle](play:idle@t=9)
+[▶ c4 joins, and sits idle](play:idle@t=11)
 
 **4. Commit the offset after processing, not before.** The committed offset is where the next owner starts. So when you commit decides what a crash costs.
 Commit before processing, and a crash skips messages: the bookmark says "done" for messages nobody processed. Here c1 fetches alice#1 to alice#3, commits offset 3 at once, processes only alice#1, and crashes.
 [▶ Broken: c1 commits before processing](play:broken: commit before@t=15)
-[▶ c2 resumes p0 at offset 3 and p2 at offset 2: alice#2, alice#3, dave#1 and dave#2 are lost for good](play:broken: commit before@t=33)
+[▶ c2 resumes p0 at offset 3 and p2 at offset 2: alice#2, alice#3, dave#1 and dave#2 are lost for good](play:broken: commit before@t=32)
 Commit after processing, and a crash repeats messages instead. Here c1 processes dave#1 at t=17 and crashes at t=18, before its next commit at t=24. The bookmark for p2 still says 0, so c2 processes dave#1 again later. That is at-least-once: nothing is lost, but the consumer must cope with duplicates.
-[▶ c1 processes dave#1, then crashes before committing](play:rebalance on crash@t=17)
+[▶ c1 processes dave#1, then crashes before committing](play:rebalance on crash@t=18)
 [▶ c2 processes dave#1 a second time](play:rebalance on crash@t=48)
 
 **5. Rebalance when the group changes.** Two events change the group. First, a consumer can die. A broker that never checks for silence leaves a dead consumer's partitions with it. Here c1 crashes at t=18 holding p0 and p2, and nothing in them is processed again.
@@ -78,7 +86,7 @@ Commit after processing, and a crash repeats messages instead. Here c1 processes
 So a consumer that sends no heartbeat for a session timeout is removed, and its partitions are dealt out to the others.
 [▶ c1 sent no heartbeat for 10 ticks, so it is removed](play:rebalance on crash@t=28)
 Second, a new consumer joining should get a share of the work. Either way, the broker starts a rebalance. Every member stops, drops messages it fetched but hasn't processed, and hands in how far it really got. Only when everyone has answered does the broker deal the partitions out again, each from its committed offset. So a partition's new owner starts only after its old owner has stopped reading it.
-[▶ c3 joins a running group](play:scale out@t=21)
+[▶ c3 joins a running group](play:scale out@t=20)
 [▶ c1 and c2 stop and hand in their offsets](play:scale out@t=26)
 [▶ c3 takes over p2 from offset 2](play:scale out@t=31)
 
@@ -94,7 +102,7 @@ With generations, the broker sees that the commit belongs to generation 1, ignor
 
 - One key always hashes to one partition, a partition has one owner at a time, and the owner processes in offset order. So one key's messages are processed in the order they were sent.
 - The log keeps everything, and the next owner starts at the committed offset. The offset is committed only after processing, so a crash can repeat messages but never skip one.
-- The visualizer checks after every event that no message is processed for the first time before an earlier message with the same key. Repeats after a crash are allowed. It holds while c1 works through alice [▶ see it hold](play:ordering@t=28), and breaks when the key is ignored [▶ see it break](play:broken: no key@t=18).
+- The visualizer checks after every event that no message is processed for the first time before an earlier message with the same key. Repeats after a crash are allowed. It holds while c1 works through alice [▶ see it hold](play:ordering@t=28), and breaks when the key is ignored [▶ see it break](play:broken: no key@t=19).
 
 ## What it costs
 
@@ -119,13 +127,23 @@ With generations, the broker sees that the commit belongs to generation 1, ignor
 - **Q:** Three consumers read alice's messages. Why do they still come out in order?
   A: alice always hashes to p0, and p0 has exactly one owner, c1, which processes it one message at a time in offset order. [▶ See it](play:ordering@t=15)
 - **Q:** A group has 4 consumers and the topic has 3 partitions. What does the fourth do?
-  A: Nothing. Each partition has one owner, so there are only 3 shares of work to hand out. c4 sits idle until another member leaves or dies. [▶ See it](play:idle@t=9)
+  A: Nothing. Each partition has one owner, so there are only 3 shares of work to hand out. c4 sits idle until another member leaves or dies. [▶ See it](play:idle@t=11)
 - **Q:** A consumer processes a message and crashes before committing. What happens to that message?
   A: The next owner starts at the old committed offset, so it processes the message again. That is at-least-once delivery. [▶ See it](play:rebalance on crash@t=48)
 - **Q:** What goes wrong if a consumer commits as soon as it fetches?
-  A: If it crashes before processing, the bookmark already points past those messages, so the next owner skips them. They are lost for good, which is at-most-once. [▶ See it](play:broken: commit before@t=33)
+  A: If it crashes before processing, the bookmark already points past those messages, so the next owner skips them. They are lost for good, which is at-most-once. [▶ See it](play:broken: commit before@t=32)
 - **Q:** Why must the producer set a key, instead of just spreading messages evenly?
-  A: Without a key, one user's messages land in different partitions, read by different consumers at different speeds, and nothing keeps them in order. [▶ See it](play:broken: no key@t=18)
+  A: Without a key, one user's messages land in different partitions, read by different consumers at different speeds, and nothing keeps them in order. [▶ See it](play:broken: no key@t=19)
+
+## When to use which
+
+- **Direct calls (HTTP or RPC)** — when the caller needs an answer right now and there is one receiver: "is this card valid?", "what is the price?". Simplest, but if the receiver is down or slow, the caller fails or waits, and a burst of traffic hits the receiver directly.
+- **A queue (Amazon SQS, RabbitMQ)** — when jobs just need doing, by any worker, in any order: resize this image, send this email. Each message goes to one worker and is deleted once done, and adding workers is trivial. It can't replay old messages, and order is weak when several workers share it.
+- **A log (Kafka, Kinesis; this lesson)** — when several services need the same stream at their own pace, order per key matters (per account, per order, per device), or you may need to replay history after a bug fix. Example: every order event read by billing, shipping and analytics, each as its own consumer group.
+- **Exactly-once vs at-least-once** — a consumer that commits after processing gets at-least-once: a crash repeats a few messages, so make processing safe to repeat with ids, as in the [idempotent consumer](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer). Committing before processing gives at-most-once: a crash skips messages, which is only fine for data you can afford to lose, such as metrics. Kafka's "exactly-once" only covers reading from and writing back to Kafka itself.
+- **[Transactional outbox](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer)** — use it on the producing side when an event must be published if and only if a database change happened (the order saved and "OrderPlaced" in Kafka).
+- **[Saga](#/sd-06-transactions-messaging/025-saga-with-compensation)** — when one business action spans services and must be undone on failure; its steps often travel over Kafka topics.
+- **In an interview:** say "Kafka topic keyed by user id, so per-user order holds; one consumer group per downstream service; commit after processing and dedupe by event id", and mention that the partition count caps how many consumers can work in parallel.
 
 ## Deep dive
 

@@ -8,6 +8,14 @@
 - **Not the right tool when:** The services belong to other teams or companies, or a dead coordinator stalling everyone's locks is unacceptable; use a [saga](#/sd-06-transactions-messaging/025-saga-with-compensation). To save data and publish an event together, use a [transactional outbox](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer).
 - **Where you'll meet it:** The XA standard and Java's JTA; PostgreSQL's `PREPARE TRANSACTION` and `COMMIT PREPARED`; Google Spanner, which runs two-phase commit across Paxos groups. Kleppmann's DDIA, chapter 9. It is the standard follow-up to "how do you keep three services consistent?"
 
+## In plain words
+
+A customer orders the last lamp in the shop. Three separate programs must each do their bit: inventory takes the lamp out of stock, payments charges the card, and orders records the order. Each keeps its own database, so no single "save" button covers all three. If the card is declined after the lamp has already left stock, the shop has given the lamp away. We need all three to happen, or none.
+
+Think of a wedding. The officiant asks each person "do you?" first, and only when both have said yes does the officiant declare them married. Nobody is half married. Two-phase commit works the same way: a coordinator first asks every service "can you do your part?" (phase 1, prepare and vote), and only when everyone has promised does it say "do it" (phase 2, commit). One "no" and it says "cancel" instead.
+
+In the picture on the right, the coordinator, the three services and the customer (client) sit on a circle. Each moving dot is a message, labelled `Prepare`, `Vote`, `Commit`, `Abort` or `Status`; a ✗ marks a lost message, and a crashed node reads "down". Under each node a short label says its job and where it stands, such as "prepared: voted yes · locked for T1". The table underneath shows each service's `status` (idle, prepared, committed, aborted), `lockedBy` (which order holds its lock) and `available` (lamps, money or order slots left), with changed cells highlighted. The box at the top says what just happened, in green when things went right and in red when the order has been damaged.
+
 ## Words we'll use
 
 - **Service** — a program that owns its own database. Here there are three: **inventory** (items in stock), **payments** (money on the customer's card) and **orders** (the order records).
@@ -112,6 +120,15 @@ Those locks block other work. Another order for the same item is turned away whi
   A: `Commit` is only ever sent after "commit" is on disk. No decision on disk means nobody can have received a commit, so everyone can still roll back. [▶ See it](play:restart before deciding@t=20)
 - **Q:** Why lock the unit at prepare time instead of at commit time?
   A: A yes vote is a promise to be able to commit. Without a lock, another request can take the unit between the vote and the commit, and the promise can't be kept. [▶ See it](play:broken: no locks@t=4)
+
+## When to use which
+
+- **One database transaction** — when all the data lives in one database. This always beats anything on this page: if you can put orders, stock and payments in one database, do.
+- **Two-phase commit (this lesson)** — when a few databases you control must change together right now, all or nothing, and they support a prepare step. Example: moving money between two bank-account shards in the same company, or a cross-shard write in Spanner. You pay with locks held for two round trips and a stall if the coordinator dies.
+- **[Saga with compensation](#/sd-06-transactions-messaging/025-saga-with-compensation)** — when the steps belong to different services or companies (a card processor, a shipping partner), take seconds or minutes, or must never be stalled by someone else's coordinator. Each step commits on its own and a failure is undone by a "refund" step. Example: an online order that reserves stock, charges the card and books a courier.
+- **[Transactional outbox](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer)** — when the only "second system" is a message you must publish after saving to your own database, such as "OrderPlaced" for the email and shipping services. No coordinator, no locks across services.
+- **Consensus underneath ([Raft](#/sd-05-replication/021-raft-log-replication))** — when the coordinator itself must not be a single point of failure. Spanner runs 2PC with each participant and the coordinator replicated by Paxos, so a crash does not block anyone.
+- **In an interview:** say "2PC gives atomicity but blocks if the coordinator dies, so across microservices I'd use a saga, plus an outbox to publish events reliably".
 
 ## Deep dive
 

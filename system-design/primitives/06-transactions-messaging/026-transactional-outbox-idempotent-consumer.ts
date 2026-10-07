@@ -64,11 +64,12 @@ export class OrderService extends SimNode {
   waiting: Record<string, NodeId> = {};
 
   state() {
-    return { waiting: Object.keys(this.waiting) };
+    return { role: "order service + relay", summary: `relay polls every ${POLL_EVERY} ticks`, waiting: Object.keys(this.waiting) };
   }
 
   // @why The relay's poll timer. Without it, rows would sit in the outbox forever.
   onStart(ctx: Ctx) {
+    if (ctx.now > 0) ctx.say("orders restarts with an empty memory. The relay starts polling again; anything still unsent is waiting in the outbox on disk");
     ctx.setTimer("Poll", POLL_EVERY);
   }
 
@@ -76,7 +77,7 @@ export class OrderService extends SimNode {
     this.waiting[body.orderId] = from;
     // @why The event is plain data riding in the same insert as the order. Its id is what the consumer will dedupe on.
     const event: OrderEvent = { id: `${body.orderId}:placed`, orderId: body.orderId, amount: body.amount };
-    ctx.say(`orders asks the db to save ${body.orderId} and its outbox row in one transaction`);
+    ctx.say(`a customer places order ${body.orderId} ($${body.amount}). orders asks its db to save the order and a note "tell billing about ${body.orderId}" (an outbox row) in one transaction`);
     ctx.send(DB, "Insert", { orderId: body.orderId, amount: body.amount, event });
   }
 
@@ -84,26 +85,27 @@ export class OrderService extends SimNode {
   onInserted(ctx: Ctx, body: { orderId: string }) {
     const client = this.waiting[body.orderId];
     delete this.waiting[body.orderId];
+    if (client) ctx.say(`the db has saved ${body.orderId}, so orders tells the customer "order placed". Billing hasn't heard yet; the outbox row will get it there`);
     if (client) ctx.send(client, "OrderPlaced", { orderId: body.orderId });
   }
 
   // @why Each poll asks for every unsent row, so a row whose publish failed is simply tried again next time.
   onPoll(ctx: Ctx) {
-    ctx.say("relay polls the outbox for unsent rows");
+    ctx.say(`every ${POLL_EVERY} ticks the relay (a small loop inside orders) asks the db for outbox rows not yet sent`);
     ctx.send(DB, "ReadOutbox");
     ctx.setTimer("Poll", POLL_EVERY);
   }
 
   onOutboxRows(ctx: Ctx, body: { rows: OutboxRow[] }) {
-    if (!body.rows.length) return;
-    ctx.say(`relay publishes ${body.rows.map((r) => r.id).join(", ")} to the broker`);
+    if (!body.rows.length) return ctx.say("the relay finds no unsent rows, so there is nothing to publish until the next poll");
+    ctx.say(`the relay publishes ${body.rows.map((r) => r.id).join(", ")} to the broker. The row stays "unsent" until the broker confirms, so if this is lost it is simply tried again next poll`);
     // @why The row stays unsent for now. It is marked only when the broker confirms it has the event.
     for (const { sent: _sent, ...event } of body.rows) ctx.send(BROKER, "Publish", event);
   }
 
   // @why Marking after the ack means a crash can only cause a second publish, never a lost one.
   onPublishAck(ctx: Ctx, body: { id: string }) {
-    ctx.say(`broker has ${body.id}, so the relay marks its row sent`);
+    ctx.say(`the broker confirms it has ${body.id}, so only now does the relay ask the db to mark its row sent`);
     ctx.send(DB, "MarkSent", { id: body.id });
   }
 }
@@ -117,24 +119,33 @@ export class OrderDb extends SimNode {
   outbox: OutboxRow[] = [];
 
   state() {
-    return { orders: { ...this.orders }, outbox: this.outbox.map((r) => `${r.id} ${r.sent ? "sent" : "unsent"}`) };
+    const ids = Object.keys(this.orders);
+    const summary = `orders: ${ids.join(", ") || "none"} · outbox: ${this.outbox.map((r) => `${r.id.split(":")[0]} ${r.sent ? "sent" : "unsent"}`).join(", ") || "empty"}`;
+    return { role: "database", summary, orders: { ...this.orders }, outbox: this.outbox.map((r) => `${r.id} ${r.sent ? "sent" : "unsent"}`) };
   }
 
   // @why The order and its event commit together. No crash can leave one without the other.
   onInsert(ctx: Ctx, body: { orderId: string; amount: number; event?: OrderEvent }, from: NodeId) {
     this.orders[body.orderId] = body.amount;
     if (body.event) this.outbox.push({ ...body.event, sent: false });
-    ctx.say(body.event ? `db commits ${body.orderId} and outbox row ${body.event.id} together` : `db commits ${body.orderId}`);
+    ctx.say(
+      body.event
+        ? `good: the db commits order ${body.orderId} and outbox row ${body.event.id} together. A crash now can't keep one without the other`
+        : `bad: the db commits order ${body.orderId}, but nothing on disk says it still needs publishing. Only orders' memory knows`,
+    );
     ctx.send(from, "Inserted", { orderId: body.orderId });
   }
 
   onReadOutbox(ctx: Ctx, _body: unknown, from: NodeId) {
-    ctx.send(from, "OutboxRows", { rows: this.outbox.filter((r) => !r.sent) });
+    const rows = this.outbox.filter((r) => !r.sent);
+    ctx.say(rows.length ? `the db hands the relay ${rows.length} unsent row${rows.length > 1 ? "s" : ""}: ${rows.map((r) => r.id).join(", ")}. It stays unsent for now` : "the outbox has no unsent rows");
+    ctx.send(from, "OutboxRows", { rows });
   }
 
-  onMarkSent(_ctx: Ctx, body: { id: string }) {
+  onMarkSent(ctx: Ctx, body: { id: string }) {
     const row = this.outbox.find((r) => r.id === body.id);
     if (row) row.sent = true;
+    ctx.say(`good: the db marks ${body.id} sent. The relay will not publish it again`);
   }
 }
 
@@ -146,11 +157,14 @@ export class Broker extends SimNode {
   nextSeq = 1;
 
   state() {
-    return { log: this.log.map((e) => `#${e.seq} ${e.id} ${e.acked ? "consumed" : "pending"}`) };
+    const pending = this.log.filter((e) => !e.acked).length;
+    const summary = `${this.log.length} stored · ${pending} unconfirmed`;
+    return { role: "message broker", summary, log: this.log.map((e) => `#${e.seq} ${e.id} ${e.acked ? "consumed" : "pending"}`) };
   }
 
   // @why After a restart, anything still unconfirmed needs its redelivery timer again.
   onStart(ctx: Ctx) {
+    if (ctx.now > 0) ctx.say("the broker is back up and accepting events again");
     if (this.log.some((e) => !e.acked)) ctx.setTimer("Redeliver", REDELIVER_AFTER);
   }
 
@@ -158,7 +172,9 @@ export class Broker extends SimNode {
     // @why The broker does not check for repeats: a second publish of the same event becomes a second entry.
     const entry: LogEntry = { ...event, seq: this.nextSeq++, acked: false, sentAt: ctx.now };
     this.log.push(entry);
-    ctx.say(`broker stores ${event.id} as #${entry.seq}, delivers it to billing and acks the relay`);
+    ctx.say(
+      `the broker stores ${event.id} as message #${entry.seq}${entry.seq > 1 && this.log.some((e) => e.id === event.id && e.seq !== entry.seq) ? " (a second copy: the broker doesn't check for repeats)" : ""}, delivers it to billing, and confirms back to ${from}`,
+    );
     ctx.send(CONSUMER, "Deliver", { seq: entry.seq, id: entry.id, orderId: entry.orderId, amount: entry.amount });
     // @why The ack is the relay's only proof that the event is safe here.
     ctx.send(from, "PublishAck", { id: event.id });
@@ -168,18 +184,20 @@ export class Broker extends SimNode {
 
   // @why A delivery or its confirmation can be lost, so anything unconfirmed for a while is sent again: at least once.
   onRedeliver(ctx: Ctx) {
+    if (!this.log.some((e) => !e.acked)) ctx.say("the broker checks for messages billing never confirmed: there are none, so nothing is resent");
     for (const e of this.log) {
       if (e.acked || ctx.now - e.sentAt < REDELIVER_AFTER) continue;
       e.sentAt = ctx.now;
-      ctx.say(`broker has no confirmation for #${e.seq}, so it delivers it again`);
+      ctx.say(`billing never confirmed #${e.seq}, so the broker delivers it again: "at least once" means repeats are possible`);
       ctx.send(CONSUMER, "Deliver", { seq: e.seq, id: e.id, orderId: e.orderId, amount: e.amount });
     }
     if (this.log.some((e) => !e.acked)) ctx.setTimer("Redeliver", REDELIVER_AFTER);
   }
 
-  onConsumed(_ctx: Ctx, body: { seq: number }) {
+  onConsumed(ctx: Ctx, body: { seq: number }) {
     const e = this.log.find((x) => x.seq === body.seq);
     if (e) e.acked = true;
+    ctx.say(`billing confirms message #${body.seq}, so the broker stops trying to deliver it`);
   }
 }
 
@@ -194,18 +212,19 @@ export class Billing extends SimNode {
   skipped = 0;
 
   state() {
-    return { processed: [...this.processed], charged: [...this.charged], skipped: this.skipped };
+    const summary = `charged: ${this.charged.join(", ") || "nobody"}${this.skipped ? ` · skipped ${this.skipped} repeat` : ""}`;
+    return { role: "consumer", summary, processed: [...this.processed], charged: [...this.charged], skipped: this.skipped };
   }
 
   onDeliver(ctx: Ctx, body: { seq: number } & OrderEvent, from: NodeId) {
     if (this.processed.includes(body.id)) {
       this.skipped++;
-      ctx.say(`billing has already processed ${body.id}, so it skips #${body.seq}`);
+      ctx.say(`good: billing has already processed ${body.id} (it is in its processed list), so it skips message #${body.seq}: the customer is charged only once`);
     } else {
       // @why The charge and the record of its id commit in one local transaction, so neither can happen without the other.
       this.charged.push(body.orderId);
       this.processed.push(body.id);
-      ctx.say(`billing charges ${body.orderId} $${body.amount} and records ${body.id} as processed`);
+      ctx.say(`billing charges ${body.orderId} $${body.amount} and, in the same transaction, writes ${body.id} into its processed list`);
     }
     // @why Confirm either way. A skipped duplicate still needs confirming, or the broker would keep redelivering it.
     ctx.send(from, "Consumed", { seq: body.seq });
@@ -232,11 +251,14 @@ export function billedOncePerSavedOrder(nodes: Record<NodeId, SimNode>): string 
 class DualWriteService extends OrderService {
   amounts: Record<string, number> = {};
   // No relay: nothing is ever written down that still needs publishing.
-  onStart(_ctx: Ctx) {}
+  onStart(ctx: Ctx) {
+    if (ctx.now > 0)
+      ctx.say("bad: orders restarts. o1 is saved in the db, but the plan to publish it was only in memory, so it is gone. Billing never hears of o1: the shop ships an order nobody is ever charged for");
+  }
   onPlaceOrder(ctx: Ctx, body: { orderId: string; amount: number }, from: NodeId) {
     this.waiting[body.orderId] = from;
     this.amounts[body.orderId] = body.amount;
-    ctx.say(`orders saves ${body.orderId} first, and will publish once the db says it is saved`);
+    ctx.say(`orders saves ${body.orderId} first, and plans to publish it once the db says it is saved. That plan lives only in memory`);
     ctx.send(DB, "Insert", { orderId: body.orderId, amount: body.amount });
   }
   onInserted(ctx: Ctx, body: { orderId: string }) {
@@ -253,7 +275,7 @@ class PublishFirstService extends OrderService {
   onPlaceOrder(ctx: Ctx, body: { orderId: string; amount: number }, from: NodeId) {
     this.waiting[body.orderId] = from;
     this.amounts[body.orderId] = body.amount;
-    ctx.say(`orders publishes ${body.orderId} first, and will save it once the broker has it`);
+    ctx.say(`orders publishes ${body.orderId} to the broker first, and plans to save it only once the broker has it`);
     ctx.send(BROKER, "Publish", { id: `${body.orderId}:placed`, orderId: body.orderId, amount: body.amount });
   }
   onPublishAck(ctx: Ctx, body: { id: string }) {
@@ -268,7 +290,8 @@ class MarkOnRead extends OrderDb {
   onReadOutbox(ctx: Ctx, _body: unknown, from: NodeId) {
     const rows = this.outbox.filter((r) => !r.sent);
     for (const r of rows) r.sent = true;
-    if (rows.length) ctx.say(`db hands ${rows.map((r) => r.id).join(", ")} to the relay and marks it sent right away`);
+    if (rows.length) ctx.say(`bad: the db hands ${rows.map((r) => r.id).join(", ")} to the relay and marks it sent right away, before the broker has it`);
+    else if (this.outbox.length) ctx.say(`bad: the relay finds nothing to publish, because the outbox says ${this.outbox.map((r) => r.id).join(", ")} was sent. It never reached the broker: billing will never charge o1, and nothing will ever retry it`);
     ctx.send(from, "OutboxRows", { rows });
   }
 }
@@ -276,8 +299,13 @@ class MarkOnRead extends OrderDb {
 // Broken on purpose: applies every delivery, with no record of what it has already processed.
 class NoDedupeBilling extends Billing {
   onDeliver(ctx: Ctx, body: { seq: number } & OrderEvent, from: NodeId) {
+    const again = this.charged.includes(body.orderId);
     this.charged.push(body.orderId);
-    ctx.say(`billing charges ${body.orderId} $${body.amount} without checking whether it already has`);
+    ctx.say(
+      again
+        ? `bad: ${body.id} arrives a second time, and billing charges the card again because it keeps no list of what it processed. The customer pays $${body.amount * 2} for one $${body.amount} order`
+        : `billing charges ${body.orderId} $${body.amount}, but keeps no record of which events it has processed`,
+    );
     ctx.send(from, "Consumed", { seq: body.seq });
   }
 }

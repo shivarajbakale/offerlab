@@ -8,6 +8,14 @@
 - **Not the right tool when:** The data lives in one database; a plain transaction is simpler. If others must never see a halfway state and every participant can hold locks, consider [two-phase commit](#/sd-06-transactions-messaging/024-two-phase-commit).
 - **Where you'll meet it:** Garcia-Molina and Salem's "Sagas" paper (1987) and Chris Richardson's "Microservices Patterns". Workflow engines such as Temporal and AWS Step Functions are often used as the orchestrator. Interview: "Design a hotel booking system" or "Design an e-commerce checkout".
 
+## In plain words
+
+Placing an order in an online shop is really three jobs done by three separate programs: inventory sets a book aside, payments charges the card, shipping hands the parcel to a courier. Each has its own database, and the card processor or courier may not even belong to you, so you can't lock all three and commit them in one go. Instead you do them one at a time, and each one is final as soon as it is done. If a later job fails, you run "undo" jobs for the earlier ones: put the book back, refund the card.
+
+Think of booking a trip yourself: you book the flight, then the hotel, then the car. If no car is available, you don't pretend the flight never happened; you cancel the hotel, then cancel the flight, and get refunds. A saga is that, done by a program that writes down every step it finishes so it never loses track, even if it crashes halfway.
+
+In the picture on the right, the orchestrator ("orch", the program that runs the steps) sits with the three services and the customer (client) on a circle. Dots are requests (`Reserve`, `Charge`, `Ship`, and the undo requests `Release` and `Refund`) and their replies (`StepResult`, `Compensated`); a ✗ is a lost message, and a crashed node reads "down". Under each node a short label says where it stands, such as "o1 running: Charge" or "card: $70 · charged o1 $30". The table underneath shows the orchestrator's `sagas` (each order and the request it is waiting on) and its `log` on disk, inventory's `stock` and `held` books, payments' card `balance` and `charged` amounts, shipping's `shipped` parcels, and each service's `seen` list of requests it has already applied. The box at the top says what just happened; it turns red when the customer has been harmed.
+
 ## Words we'll use
 
 - **Service** — a separate program with its own database, usually owned by its own team. Here there are three: **inventory** (books on the shelf), **payments** (the customer's balance) and **shipping** (parcels sent).
@@ -112,6 +120,16 @@ A service that applies every request it receives charges the customer twice.
   A: The request carries the key `o1/Charge`. Payments recorded that key when it charged, so it repeats its first answer and changes nothing. Without the key, the customer pays 60. [▶ See it](play:broken: non-idempotent@t=17)
 - **Q:** A saga gives up isolation. What can another customer see?
   A: Halfway states. A book held by an order that is about to be cancelled looks sold, so a second order is turned away, and then the book comes back. [▶ See it](play:no isolation@t=6)
+
+## When to use which
+
+- **One database transaction** — when all the data fits in one database. Simplest and fully atomic; no saga needed.
+- **[Two-phase commit](#/sd-06-transactions-messaging/024-two-phase-commit)** — when a few databases you control must change at the same instant and nobody may ever see a halfway state, such as moving money between two shards of one bank ledger. It holds locks and stalls if its coordinator dies.
+- **Saga with compensation (this lesson)** — when the steps belong to different services or outside companies, can take seconds to days, and a brief halfway state is fine. Example: checkout that reserves stock, charges a card through a payment provider and books a courier; a travel booking of flight, hotel and car.
+- **Orchestration vs choreography** — use an orchestrator (as here) when you want one place to read and monitor the whole flow. Use choreography, where each service reacts to the previous one's event, when there are only two or three steps and teams want no central component.
+- **[Transactional outbox](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer)** — use it inside a saga: each service that commits a step and must announce it ("BookReserved") saves the event in the same local transaction, so a step is never done without its message being sent.
+- **Idempotency keys** — always, with any of these. Retries are how sagas survive lost messages, so every service must recognise a repeated request (here `o1/Charge`) and not do it twice. Without them the customer is charged twice.
+- **In an interview:** say "orchestrated saga: each step a local transaction, a durable log of progress, compensations newest first, retries with idempotency keys", and name the cost: no isolation, so other requests can see a held-but-cancelled book.
 
 ## Deep dive
 

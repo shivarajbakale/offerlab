@@ -8,6 +8,14 @@
 - **Not the right tool when:** Losing an occasional event is harmless, as with analytics or cache warming; publish directly. When one action must change several services and be undone on failure, you need a [saga](#/sd-06-transactions-messaging/025-saga-with-compensation), which often sends its messages through an outbox.
 - **Where you'll meet it:** Chris Richardson's microservices.io pages "Transactional outbox" and "Idempotent consumer"; Debezium's outbox event router, which reads the outbox through change data capture; Stripe's `Idempotency-Key` header, which lets a consumer safely retry its call to an outside payment API. Interview: "Design a payment system".
 
+## In plain words
+
+When a customer places an order, the order service saves it in its own database, and then billing (and email, and shipping) must hear about it. Those other services listen to a message broker, a post office for events. The trouble is that "save to the database" and "post to the broker" are two separate actions, and a crash can land between them: the order is saved but billing never hears (the shop never charges), or billing hears about an order that was never saved (the customer is charged for nothing).
+
+Think of a shop assistant who writes each sale in the ledger and, on the same line, writes "tell the warehouse". Later a runner reads the ledger, carries every unticked note to the warehouse, and ticks it only when the warehouse signs for it. If the runner trips on the way, the note is still unticked and goes again next round. The warehouse keeps a list of note numbers it has already handled, so a second copy of the same note is simply ignored. That is the outbox (the notes column), the relay (the runner) and the idempotent consumer (the warehouse's list).
+
+In the picture on the right, five boxes sit on a circle: the customer (client), `orders` (the order service, which also runs the relay), its `db`, the `broker`, and `billing`. Dots are messages such as `Insert`, `ReadOutbox`, `Publish`, `Deliver` and the confirmations `PublishAck` and `Consumed`; a ✗ is a lost message and a crashed node reads "down". Under each node a short label says where it stands, such as "outbox: o1 unsent" or "charged: o1 · skipped 1 repeat". The table underneath shows the db's `orders` and `outbox` rows (each "sent" or "unsent"), the broker's `log` of stored messages, and billing's `charged` orders, `processed` event ids and `skipped` duplicates. The box at the top says what just happened, in red when a customer has been charged twice or an order has been lost.
+
 ## Words we'll use
 
 - **Service** — a program that owns one job, here the **order service**, which takes orders, and **billing**, which charges for them.
@@ -103,6 +111,16 @@ Without that list, the second copy is charged too.
   A: The other order loses events: a crash between "mark sent" and "publish" leaves a row marked sent that the broker never got. A duplicate can be detected and skipped; a lost event can't be recovered. [▶ See it](play:broken: mark before publish@t=6)
 - **Q:** The broker delivers o1's event twice. How does billing charge only once?
   A: Its processed-id list already has `o1:placed` from the first delivery, written in the same transaction as the first charge, so it skips the second and just acks. [▶ See it](play:relay crash@t=21)
+
+## When to use which
+
+- **Publish directly, no outbox** — when losing or doubling an occasional event is harmless: page-view analytics, cache warm-up, "user is typing" signals. Simplest and fastest.
+- **Transactional outbox (this lesson)** — when a service changes its own data and must announce it, and a lost event is a real bug: order placed → billing, payment received → shipping. Example: the order and its "OrderPlaced" row commit together, a relay publishes the row.
+- **[Two-phase commit](#/sd-06-transactions-messaging/024-two-phase-commit)** — when you truly need the database write and the broker write to commit at the same instant and both support XA. Rarely worth it: it locks both and stalls if the coordinator dies. The outbox gets the same "never lost" result with one local transaction.
+- **[Saga](#/sd-06-transactions-messaging/025-saga-with-compensation)** — when one action must change several services and be undone if a later step fails. Sagas usually send their step messages through an outbox, so each step's commit and its message can't drift apart.
+- **Exactly-once vs at-least-once plus idempotency** — the network can't promise "exactly once": a sender that never got a confirmation must send again, so you get "at least once". What you can build is at-least-once delivery plus a consumer that remembers ids it has processed (in the same transaction as its effect). The result looks exactly-once to the customer. Kafka's "exactly-once" covers writes inside Kafka only, not a charge in your database.
+- **Change data capture instead of polling** — when poll delay or database load matters, read the outbox inserts from the database's own change log (Debezium does this). Same pattern, faster relay.
+- **In an interview:** say "write the event to an outbox table in the same transaction, a relay publishes it at least once, and consumers dedupe by event id", and point out that this is how you avoid charging a customer twice.
 
 ## Deep dive
 

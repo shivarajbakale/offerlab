@@ -67,6 +67,14 @@ const STEPS = [
   // @why The last step needs no compensation: once it succeeds there is nothing left that can fail.
   { name: "ship", service: "shipping", request: "Ship", compensate: null },
 ];
+// What each request means in the story the captions tell.
+const DOES: Record<string, string> = {
+  Reserve: "set the book aside",
+  Charge: "charge the card",
+  Ship: "ship the parcel",
+  Release: "put the book back on the shelf",
+  Refund: "refund the card",
+};
 
 // @why One coordinator decides what happens next for every order, so the whole saga lives in one place you can read.
 export class Orchestrator extends SimNode {
@@ -82,7 +90,8 @@ export class Orchestrator extends SimNode {
       const next = this.next(id, s);
       sagas[id] = next ? `${s.status}: ${next.type}` : s.status;
     }
-    return { sagas, log: this.log.map((e) => [e.saga, e.step, e.what, e.reason].filter(Boolean).join(" ")) };
+    const summary = Object.entries(sagas).map(([id, st]) => `${id} ${st}`).join(" · ") || "no orders yet";
+    return { role: "orchestrator", summary, sagas, log: this.log.map((e) => [e.saga, e.step, e.what, e.reason].filter(Boolean).join(" ")) };
   }
 
   // @why Everything the orchestrator knows is rebuilt from the log, so after a restart it knows exactly as much as before.
@@ -107,7 +116,7 @@ export class Orchestrator extends SimNode {
   onStart(ctx: Ctx) {
     const open = [...this.sagas()].filter(([id, s]) => this.next(id, s));
     if (!open.length) return;
-    ctx.say(`orch reads its log: ${open.map(([id, s]) => `${id} still needs ${this.next(id, s)!.type}`).join(", ")}, so it sends that again`);
+    ctx.say(`good: the orchestrator restarts and reads its log from disk: ${open.map(([id, s]) => `${id} still needs "${DOES[this.next(id, s)!.type]}"`).join(", ")}, so it sends that request again`);
     for (const [id, s] of open) this.send(ctx, id, s);
     this.armRetry(ctx);
   }
@@ -117,7 +126,7 @@ export class Orchestrator extends SimNode {
     if (this.status(body.sagaId)) return;
     // @why Logged before the first request goes out, so no service can ever hold something for an order the log doesn't know.
     this.log.push({ saga: body.sagaId, what: "started", order: body.order });
-    ctx.say(`orch logs "${body.sagaId} started" and begins with step 1`);
+    ctx.say(`a customer orders a book for $${body.order.amount} (${body.sagaId}). The orchestrator writes "${body.sagaId} started" in its log on disk, then asks inventory to set the book aside`);
     this.advance(ctx, body.sagaId);
   }
 
@@ -128,13 +137,14 @@ export class Orchestrator extends SimNode {
     // @why The outcome goes in the log before the next request is sent, so a crash right here loses nothing.
     if (body.ok) {
       this.log.push({ saga: body.sagaId, what: "done", step: body.step });
-      ctx.say(`orch logs "${body.sagaId} ${body.step} done"`);
+      const then = this.next(body.sagaId, this.sagas().get(body.sagaId)!);
+      if (then) ctx.say(`${body.sagaId}: "${body.step}" worked. The orchestrator writes that in its log, then asks ${then.to} to ${DOES[then.type]}`);
     } else {
       this.log.push({ saga: body.sagaId, what: "failed", step: body.step, reason: body.reason });
       ctx.say(
         s.done.length
-          ? `${body.step} failed (${body.reason}), so orch logs it and starts undoing what already happened: ${[...s.done].reverse().join(", then ")}`
-          : `${body.step} failed (${body.reason}), so orch logs it`,
+          ? `${body.sagaId}: "${body.step}" failed (${body.reason}). Earlier steps already committed, so the orchestrator logs the failure and undoes them, newest first: ${[...s.done].reverse().map((d) => DOES[STEPS.find((x) => x.name === d)!.compensate!]).join(", then ")}`
+          : `${body.sagaId}: "${body.step}" failed (${body.reason})`,
       );
     }
     this.advance(ctx, body.sagaId);
@@ -144,14 +154,18 @@ export class Orchestrator extends SimNode {
     const s = this.sagas().get(body.sagaId);
     if (!s || s.status !== "compensating" || this.next(body.sagaId, s)?.step !== body.step) return;
     this.log.push({ saga: body.sagaId, what: "compensated", step: body.step });
-    ctx.say(`orch logs "${body.sagaId} ${body.step} compensated"`);
+    const then = this.next(body.sagaId, this.sagas().get(body.sagaId)!);
+    if (then) ctx.say(`${body.sagaId}: "${body.step}" is undone, and the orchestrator writes that in its log, then asks ${then.to} to ${DOES[then.type]}`);
     this.advance(ctx, body.sagaId);
   }
 
   // @why A lost request and a lost reply look the same from here: silence. The only cure is to ask again.
   onRetry(ctx: Ctx) {
     const stale = [...this.sagas()].filter(([id, s]) => this.next(id, s) && ctx.now - (this.waitingSince[id] ?? 0) >= RETRY_EVERY);
-    if (stale.length) ctx.say(`no reply for ${RETRY_EVERY} ticks, so orch resends ${stale.map(([id, s]) => `${this.next(id, s)!.type} for ${id}`).join(", ")}`);
+    if (stale.length)
+      ctx.say(
+        `no reply for ${RETRY_EVERY} ticks. A lost request and a lost reply look the same, so the orchestrator sends ${stale.map(([id, s]) => `${this.next(id, s)!.type} for ${id}`).join(", ")} again, with the same order id`,
+      );
     for (const [id, s] of stale) this.send(ctx, id, s);
     this.armRetry(ctx);
   }
@@ -162,7 +176,13 @@ export class Orchestrator extends SimNode {
     const next = this.next(saga, s);
     if (next) this.send(ctx, saga, s);
     else {
-      ctx.say(s.status === "running" ? "every step is done" : "nothing is left to undo");
+      ctx.say(
+        s.status === "running"
+          ? `good: the last step worked, so every step of ${saga} is done: book set aside, card charged, parcel shipped`
+          : s.done.length
+            ? `good: every finished step of ${saga} has been undone, newest first: the customer keeps their money and the book is back on sale`
+            : `${saga} is cancelled before anything was taken, so there is nothing to undo`,
+      );
       this.finish(ctx, saga, s.status === "running" ? "completed" : "cancelled");
     }
     this.armRetry(ctx);
@@ -171,7 +191,7 @@ export class Orchestrator extends SimNode {
   protected finish(ctx: Ctx, saga: string, outcome: "completed" | "cancelled") {
     this.log.push({ saga, what: outcome });
     delete this.waitingSince[saga];
-    ctx.say(`orch logs "${saga} ${outcome}" and tells the client`);
+    ctx.say(`the orchestrator logs "${saga} ${outcome}" and tells the customer`);
     ctx.send(CLIENT, "OrderResult", { sagaId: saga, outcome });
     this.armRetry(ctx);
   }
@@ -213,7 +233,8 @@ export abstract class Service extends SimNode {
   // @why A resend of a request already applied gets the same answer again and changes nothing; that is what makes retrying safe.
   protected once(ctx: Ctx, action: string, req: Request, from: NodeId, replyType: string, apply: () => Reply) {
     const key = `${req.sagaId}/${action}`;
-    if (key in this.seen) ctx.say(`${ctx.id} has already applied ${key}, so it repeats its answer and changes nothing`);
+    if (key in this.seen)
+      ctx.say(`good: ${ctx.id} has already done ${key} (it remembers every request it applied), so it repeats its answer and changes nothing${action === "Charge" ? ": the card is not charged twice" : ""}`);
     else this.seen[key] = apply();
     ctx.send(from, replyType, { sagaId: req.sagaId, step: req.step, ...this.seen[key] });
   }
@@ -226,6 +247,8 @@ export class Inventory extends Service {
   stock: Record<string, number>;
   // @why What each order has set aside, so releasing gives back exactly that order's share.
   held: Record<string, { item: string; qty: number }> = {};
+  // Orders turned away for lack of stock; only used to word the captions.
+  refused: string[] = [];
 
   constructor(stock: Record<string, number> = { book: 2 }) {
     super();
@@ -234,7 +257,9 @@ export class Inventory extends Service {
   }
 
   state() {
-    return { stock: { ...this.stock }, held: Object.fromEntries(Object.entries(this.held).map(([k, h]) => [k, `${h.qty} ${h.item}`])), seen: Object.keys(this.seen) };
+    const held = Object.keys(this.held);
+    const summary = `on shelf: ${Object.entries(this.stock).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(", ")}${held.length ? ` · held for ${held.join(", ")}` : ""}`;
+    return { role: "service", summary, stock: { ...this.stock }, held: Object.fromEntries(Object.entries(this.held).map(([k, h]) => [k, `${h.qty} ${h.item}`])), seen: Object.keys(this.seen) };
   }
 
   // @why A local transaction: it commits here and now, without waiting for payments or shipping.
@@ -250,7 +275,12 @@ export class Inventory extends Service {
         this.stock[h.item] += h.qty;
         delete this.held[req.sagaId];
       }
-      ctx.say(`inventory puts back the ${h?.qty ?? 0} ${req.order.item} that ${req.sagaId} held: ${this.stock[req.order.item]} on the shelf`);
+      const lost = this.refused.filter((id) => id !== req.sagaId);
+      ctx.say(
+        lost.length
+          ? `bad: inventory puts back the ${req.order.item} that ${req.sagaId} held: ${this.stock[req.order.item]} on the shelf. But ${lost.join(", ")} was already turned away for this very book: a sale lost to a halfway state`
+          : `inventory puts back the ${h?.qty ?? 0} ${req.order.item} that ${req.sagaId} held: ${this.stock[req.order.item]} on the shelf again`,
+      );
       return { ok: true };
     });
   }
@@ -258,12 +288,13 @@ export class Inventory extends Service {
   protected reserve(ctx: Ctx, req: Request): Reply {
     const { item, qty } = req.order;
     if ((this.stock[item] ?? 0) < qty) {
-      ctx.say(`inventory has no ${item} left for ${req.sagaId}: step fails`);
+      this.refused.push(req.sagaId);
+      ctx.say(`inventory has no ${item} left on the shelf for ${req.sagaId}, so ${req.sagaId} fails at step 1${Object.keys(this.held).length ? `. (The only one is held by ${Object.keys(this.held).join(", ")}, an order that may still be cancelled)` : ""}`);
       return { ok: false, reason: "out of stock" };
     }
     this.stock[item] -= qty;
     this.held[req.sagaId] = { item, qty };
-    ctx.say(`inventory sets ${qty} ${item} aside for ${req.sagaId} and commits: ${this.stock[item]} left`);
+    ctx.say(`inventory sets ${qty} ${item} aside for ${req.sagaId} and commits at once: ${this.stock[item]} left on the shelf. No lock waits on the other steps`);
     return { ok: true };
   }
 }
@@ -280,7 +311,9 @@ export class Payments extends Service {
   }
 
   state() {
-    return { balance: this.balance, charged: { ...this.charged }, seen: Object.keys(this.seen) };
+    const charged = Object.entries(this.charged);
+    const summary = `card: $${this.balance}${charged.length ? ` · charged ${charged.map(([k, n]) => `${k} $${n}`).join(", ")}` : ""}`;
+    return { role: "service", summary, balance: this.balance, charged: { ...this.charged }, seen: Object.keys(this.seen) };
   }
 
   onCharge(ctx: Ctx, req: Request, from: NodeId) {
@@ -293,7 +326,7 @@ export class Payments extends Service {
       const amount = this.charged[req.sagaId] ?? 0;
       this.balance += amount;
       delete this.charged[req.sagaId];
-      ctx.say(`payments refunds ${amount} for ${req.sagaId}: balance ${this.balance}`);
+      ctx.say(`payments refunds $${amount} for ${req.sagaId}: $${this.balance} on the card again`);
       return { ok: true };
     });
   }
@@ -301,12 +334,12 @@ export class Payments extends Service {
   protected charge(ctx: Ctx, req: Request): Reply {
     const { amount } = req.order;
     if (this.balance < amount) {
-      ctx.say(`payments declines ${amount} for ${req.sagaId}: the balance is only ${this.balance}`);
+      ctx.say(`payments declines the $${amount} charge for ${req.sagaId}: the card only has $${this.balance}`);
       return { ok: false, reason: "card declined" };
     }
     this.balance -= amount;
     this.charged[req.sagaId] = (this.charged[req.sagaId] ?? 0) + amount;
-    ctx.say(`payments charges ${amount} for ${req.sagaId} and commits: balance ${this.balance}`);
+    ctx.say(`payments charges $${amount} for ${req.sagaId} and commits at once: $${this.balance} left on the card`);
     return { ok: true };
   }
 }
@@ -316,13 +349,14 @@ export class Shipping extends Service {
   shipped: string[] = [];
 
   state() {
-    return { shipped: [...this.shipped], seen: Object.keys(this.seen) };
+    const summary = this.shipped.length ? `shipped: ${this.shipped.join(", ")}` : "nothing shipped";
+    return { role: "service", summary, shipped: [...this.shipped], seen: Object.keys(this.seen) };
   }
 
   onShip(ctx: Ctx, req: Request, from: NodeId) {
     this.once(ctx, "Ship", req, from, "StepResult", () => {
       this.shipped.push(req.sagaId);
-      ctx.say(`shipping sends the parcel for ${req.sagaId}`);
+      ctx.say(`shipping hands ${req.sagaId}'s parcel to the courier. This can't be undone, which is why it is the last step`);
       return { ok: true };
     });
   }
@@ -370,7 +404,7 @@ class NoCompensation extends Orchestrator {
   onStepResult(ctx: Ctx, body: { sagaId: string; step: string } & Reply) {
     if (body.ok || this.status(body.sagaId) !== "running") return super.onStepResult(ctx, body);
     this.log.push({ saga: body.sagaId, what: "failed", step: body.step, reason: body.reason });
-    ctx.say(`${body.step} failed (${body.reason}), so orch gives up and tells the client the order is cancelled`);
+    ctx.say(`bad: "${body.step}" failed (${body.reason}), and the orchestrator just gives up. It tells the customer "cancelled" but never asks inventory to put the book back, so that book is stuck off the shelf for good and nobody can buy it`);
     this.finish(ctx, body.sagaId, "cancelled");
   }
 }
@@ -378,19 +412,25 @@ class NoCompensation extends Orchestrator {
 // Broken on purpose: keeps its log only in memory, so a restart forgets every saga in progress.
 class LogInMemory extends Orchestrator {
   static durable: string[] = [];
+  onStart(ctx: Ctx) {
+    if (ctx.now > 0) return ctx.say("bad: the orchestrator restarts with an empty log: it has forgotten o1. The book stays set aside and the customer's $30 stays taken, but nothing will ever ship the parcel or refund the money");
+    super.onStart(ctx);
+  }
 }
 
 // Broken on purpose: sends each request once and never resends it.
 class NoRetry extends Orchestrator {
   onRetry(ctx: Ctx) {
-    ctx.say("orch is still waiting for an answer, but it never asks again");
+    ctx.say("bad: the orchestrator has heard nothing back about the charge, but it never asks again. The order is stuck forever: the book is held, the card is charged $30, and nothing ships");
   }
 }
 
 // Broken on purpose: charges every Charge request it receives, even one it has already applied.
 class NotIdempotentPayments extends Payments {
   onCharge(ctx: Ctx, req: Request, from: NodeId) {
+    const before = this.charged[req.sagaId];
     ctx.send(from, "StepResult", { sagaId: req.sagaId, step: req.step, ...this.charge(ctx, req) });
+    if (before) ctx.say(`bad: payments does not remember it already charged ${req.sagaId}, so the resent request charges the card again: the customer pays $${this.charged[req.sagaId]} for a $${req.order.amount} book`);
   }
 }
 
@@ -405,7 +445,7 @@ class SnapshotUndoInventory extends Inventory {
     this.once(ctx, "Release", req, from, "Compensated", () => {
       this.stock[req.order.item] = this.before[req.sagaId];
       delete this.held[req.sagaId];
-      ctx.say(`inventory undoes ${req.sagaId} by putting the count back to ${this.before[req.sagaId]}, what it was before ${req.sagaId}`);
+      ctx.say(`bad: inventory "undoes" ${req.sagaId} by setting the count back to ${this.before[req.sagaId]}, what it was before ${req.sagaId}. But another order took a book since then: its reservation is wiped out, and the shop now promises 3 books when it has 2`);
       return { ok: true };
     });
   }

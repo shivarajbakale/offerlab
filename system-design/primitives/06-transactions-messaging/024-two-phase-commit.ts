@@ -46,6 +46,10 @@ const ASK_EVERY = 10;
 
 type Outcome = "commit" | "abort";
 type Status = "idle" | "prepared" | "committed" | "aborted";
+// What each service sets aside for the order, in the story the captions tell.
+const COMMITTED: Record<string, string> = { inventory: "the lamp leaves stock", payments: "the card is charged $40", orders: "the order is recorded" };
+const UNIT: Record<string, string> = { inventory: "the last lamp", payments: "the $40 on the card", orders: "an order slot" };
+const unit = (id: string) => UNIT[id] ?? "its unit";
 
 // @why One node runs the transaction: it asks for votes, makes the one decision, and tells everyone.
 export class Coordinator extends SimNode {
@@ -58,19 +62,21 @@ export class Coordinator extends SimNode {
   decision: Outcome | null = null;
 
   state() {
-    return { tx: this.tx, votes: { ...this.votes }, decision: this.decision };
+    const yes = Object.values(this.votes).filter(Boolean).length;
+    const summary = !this.tx ? "no transaction yet" : this.decision ? `${this.tx}: decided ${this.decision} · log on disk: ${this.decision}` : `${this.tx}: collecting votes · ${yes} yes so far`;
+    return { role: "coordinator", summary, tx: this.tx, votes: { ...this.votes }, decision: this.decision };
   }
 
   // @why A restart is where the log earns its keep: a logged decision is sent again; a transaction with none is aborted.
   onStart(ctx: Ctx) {
     if (this.decision) {
-      ctx.say(`coordinator restarts, reads "${this.decision}" for ${this.tx} from its log, and sends it again`);
+      ctx.say(`good: the coordinator restarts, reads "${this.decision}" for ${this.tx} from its log on disk, and sends it to everyone again, so nobody stays stuck`);
       this.announce(ctx);
     } else if (this.tx) {
-      ctx.say(`coordinator restarts: ${this.tx} began but has no decision, and the votes were in memory, so it aborts`);
+      ctx.say(`the coordinator restarts: its log shows ${this.tx} began but has no decision, and the votes were only in memory. Nobody can have committed, so abort is safe`);
       this.decide(ctx, "abort");
     } else if (ctx.now > 0) {
-      ctx.say("coordinator restarts and finds nothing in its log");
+      ctx.say("the coordinator restarts and finds nothing in its log");
     }
   }
 
@@ -78,7 +84,7 @@ export class Coordinator extends SimNode {
     // @why A repeated Begin must not start a second round of votes for the same transaction.
     if (this.tx) return;
     this.tx = body.tx;
-    ctx.say(`coordinator starts ${body.tx} and asks inventory, payments and orders to prepare`);
+    ctx.say(`a customer orders the last lamp (${body.tx}). Phase 1: the coordinator asks inventory, payments and orders "can you do your part?". Nothing is final yet`);
     // @why Phase one: nobody does anything final yet. Everyone is only asked whether they can, and to promise.
     for (const peer of ctx.peers) ctx.send(peer, "Prepare", { tx: body.tx });
     // @why A participant that never answers must not hold the others up forever. Before deciding, abort is always safe.
@@ -87,23 +93,26 @@ export class Coordinator extends SimNode {
 
   onVote(ctx: Ctx, body: { tx: string; yes: boolean }, from: NodeId) {
     // @why Late votes, and votes after the decision, change nothing: the decision is final.
-    if (body.tx !== this.tx || this.decision) return;
+    if (body.tx !== this.tx) return;
+    if (this.decision) return ctx.say(`the vote from ${from} arrives after the decision ("${this.decision}"), so it changes nothing`);
     this.votes[from] = body.yes;
     // @why One no is enough: that participant can't do its part, so nobody may do theirs.
     if (!body.yes) {
-      ctx.say(`${from} votes no, so ${this.tx} must abort`);
+      ctx.say(`${from} votes no. One no is enough: ${this.tx} must abort`);
       return this.decide(ctx, "abort");
     }
     // @why Commit only when every participant has promised. Silence is not a yes.
     if (ctx.peers.every((p) => this.votes[p] === true)) {
-      ctx.say(`every participant voted yes, so ${this.tx} commits`);
-      this.decide(ctx, "commit");
+      ctx.say(`every participant voted yes, so ${this.tx} can commit`);
+      return this.decide(ctx, "commit");
     }
+    const yes = ctx.peers.filter((p) => this.votes[p] === true).length;
+    ctx.say(`${from} votes yes (${yes} of ${ctx.peers.length} so far). The coordinator waits for every vote: silence is not a yes`);
   }
 
   onVoteTimeout(ctx: Ctx) {
     if (this.decision) return;
-    ctx.say(`not every vote came back in time, so the coordinator aborts ${this.tx}`);
+    ctx.say(`not every vote came back in time, so the coordinator aborts ${this.tx}. Before deciding, abort is always safe`);
     this.decide(ctx, "abort");
   }
 
@@ -113,7 +122,7 @@ export class Coordinator extends SimNode {
     // @why Still counting votes: there is no answer yet, and guessing would be wrong.
     if (body.tx === this.tx) return;
     // @why No record at all means no commit was ever logged, so abort is the only answer that can be true (presumed abort).
-    ctx.say(`coordinator has no record of ${body.tx}, so it presumes abort`);
+    ctx.say(`the coordinator has no record of ${body.tx}, so it presumes abort ("no record" should mean commit was never sent) and tells ${from} to roll back`);
     this.send(ctx, from, body.tx, "abort");
   }
 
@@ -121,7 +130,7 @@ export class Coordinator extends SimNode {
     // @why Phase two starts here. Writing the decision to disk before telling anyone is the instant the transaction commits or aborts.
     this.decision = outcome;
     ctx.cancelTimer("VoteTimeout");
-    ctx.say(`coordinator writes "${outcome}" for ${this.tx} to its log on disk, then tells everyone`);
+    ctx.say(`Phase 2: the coordinator writes "${outcome}" for ${this.tx} to its log on disk. That write is the moment ${this.tx} ${outcome === "commit" ? "commits" : "aborts"}. Then it tells every service and the customer`);
     this.announce(ctx);
     ctx.send(CLIENT, "Outcome", { tx: this.tx, outcome });
   }
@@ -152,7 +161,9 @@ export class Participant extends SimNode {
   }
 
   state() {
-    return { status: this.status, lockedBy: this.lockedBy, available: this.available };
+    const words: Record<Status, string> = { idle: "idle", prepared: "prepared: voted yes", committed: "committed", aborted: "rolled back" };
+    const summary = `${words[this.status]} · ${this.lockedBy ? `locked for ${this.lockedBy}` : `${this.available} available`}`;
+    return { role: "participant", summary, status: this.status, lockedBy: this.lockedBy, available: this.available };
   }
 
   // @why After a restart, a prepared participant is still bound by its promise, so it goes back to asking for the decision.
@@ -167,13 +178,13 @@ export class Participant extends SimNode {
     if (this.available < 1) {
       // @why A participant that votes no knows the outcome already: abort. It may roll back on its own.
       this.status = "aborted";
-      ctx.say(`${ctx.id} can't do its part of ${body.tx}, so it votes no and rolls back`);
+      ctx.say(`${ctx.id} can't do its part (${ctx.id === "payments" ? "the card is declined" : `no ${unit(ctx.id).replace(/^(the|an) /, "")}`}), so it votes no and rolls back at once`);
       return ctx.send(from, "Vote", { tx: body.tx, yes: false });
     }
     // @why The lock is what makes yes a promise it can keep: nothing else can take the unit before the decision.
     this.lockedBy = body.tx;
     this.status = "prepared";
-    ctx.say(`${ctx.id} locks its unit, writes "prepared" to disk and votes yes`);
+    ctx.say(`${ctx.id} locks ${unit(ctx.id)} so nobody else can take it, writes "prepared" to disk, and votes yes: a promise it can still do its part`);
     ctx.send(from, "Vote", { tx: body.tx, yes: true });
     ctx.setTimer("AskCoordinator", ASK_EVERY);
   }
@@ -181,33 +192,39 @@ export class Participant extends SimNode {
   // @why Having voted yes, it can't decide alone: the others might have voted no, or the coordinator might have logged commit.
   onAskCoordinator(ctx: Ctx) {
     if (this.status !== "prepared") return;
-    ctx.say(`${ctx.id} is still prepared for ${this.tx}, holds its lock, and asks the coordinator what was decided`);
+    ctx.say(`${ctx.id} voted yes, so it may not decide alone. It keeps ${unit(ctx.id)} locked and asks the coordinator "what was decided for ${this.tx}?"`);
     ctx.send("coordinator", "Status", { tx: this.tx });
     ctx.setTimer("AskCoordinator", ASK_EVERY);
   }
 
   onCommit(ctx: Ctx, body: { tx: string }) {
     // @why Commit can arrive twice (resent after a restart); doing the work twice would take two units.
+    if (body.tx === this.tx && this.status === "committed") return ctx.say(`${ctx.id} already committed ${body.tx}, so this repeated Commit changes nothing`);
     if (body.tx !== this.tx || this.status !== "prepared") return;
-    ctx.say(`${ctx.id} commits ${body.tx} and releases its lock`);
     this.finish(ctx, "committed");
+    ctx.say(
+      this.available < 0
+        ? `bad: ${ctx.id} commits ${body.tx} and hands over a lamp it no longer has. The same lamp was sold to two customers: one of them paid and will never get it`
+        : `good: ${ctx.id} commits ${body.tx}: ${COMMITTED[ctx.id] ?? "its part is done"}, and the lock is released`,
+    );
   }
 
   onAbort(ctx: Ctx, body: { tx: string }) {
+    if (body.tx === this.tx && this.status === "aborted") return ctx.say(`${ctx.id} already rolled back ${body.tx} when it voted no, so this Abort changes nothing`);
     if (body.tx !== this.tx || this.status === "committed" || this.status === "aborted") return;
-    ctx.say(`${ctx.id} rolls back ${body.tx} and releases its lock`);
+    ctx.say(`${ctx.id} rolls back ${body.tx} and unlocks ${unit(ctx.id)}`);
     this.finish(ctx, "aborted");
   }
 
   // @why Another order wants the same unit. While a transaction holds the lock, the answer is "busy", however long that takes.
   onTake(ctx: Ctx, _body: unknown, from: NodeId) {
     if (this.lockedBy) {
-      ctx.say(`another order wants ${ctx.id}'s unit, but ${this.lockedBy} holds the lock: busy`);
+      ctx.say(`bad: another customer wants ${unit(ctx.id)}, but ${this.lockedBy} still holds the lock, so they are told "busy". A stuck transaction is now blocking real sales`);
       return ctx.send(from, "Busy", { lockedBy: this.lockedBy });
     }
     if (this.available < 1) return ctx.send(from, "SoldOut", {});
     this.available--;
-    ctx.say(`another order takes ${ctx.id}'s unit`);
+    ctx.say(this.status === "prepared" ? `bad: another customer buys ${unit(ctx.id)}. ${ctx.id} already promised it to ${this.tx}, but nothing was locked to stop this` : `another customer takes ${unit(ctx.id)}`);
     ctx.send(from, "Taken", {});
   }
 
@@ -240,7 +257,7 @@ class SendCommitOnly extends Coordinator {
   onBegin(ctx: Ctx, body: { tx: string }) {
     this.tx = body.tx;
     this.decision = "commit";
-    ctx.say(`coordinator skips the vote and tells everyone to commit ${body.tx}`);
+    ctx.say(`bad: the coordinator skips the vote. It tells every service to commit ${body.tx} at once, and tells the customer "done", without asking if anyone can`);
     this.announce(ctx);
     ctx.send(CLIENT, "Outcome", { tx: body.tx, outcome: "commit" });
   }
@@ -253,9 +270,9 @@ class CommitWithoutPrepare extends Participant {
     this.tx = body.tx;
     if (this.available < 1) {
       this.status = "aborted";
-      return ctx.say(`${ctx.id} is told to commit but can't do its part, and the others have already done theirs`);
+      return ctx.say(`bad: payments is told to commit, but the card is declined. The lamp is gone and the order recorded, yet nobody paid, and nothing can be undone`);
     }
-    ctx.say(`${ctx.id} is told to commit and does its part`);
+    ctx.say(`bad: ${ctx.id} is told to commit and does its part at once (${COMMITTED[ctx.id] ?? "done"}), before anyone has checked that the card can pay`);
     this.finish(ctx, "committed");
   }
 }
@@ -265,7 +282,7 @@ class NoLock extends Participant {
   onPrepare(ctx: Ctx, body: { tx: string }, from: NodeId) {
     this.tx = body.tx;
     this.status = "prepared";
-    ctx.say(`${ctx.id} has a unit, so it votes yes, but locks nothing`);
+    ctx.say(`bad: ${ctx.id} has ${unit(ctx.id)}, so it votes yes, but locks nothing. Its promise is empty: anyone can still take it`);
     ctx.send(from, "Vote", { tx: body.tx, yes: true });
   }
 }
@@ -273,6 +290,10 @@ class NoLock extends Participant {
 // Broken on purpose: keeps its decision only in memory, so a restart forgets it.
 class ForgetfulCoordinator extends Coordinator {
   static durable: string[] = [];
+  onStart(ctx: Ctx) {
+    if (ctx.now > 0 && !this.tx) return ctx.say(`bad: the coordinator restarts with an empty log. Its "commit" for T1 was only in memory, so it is gone`);
+    super.onStart(ctx);
+  }
 }
 
 // Broken on purpose: after two unanswered questions, it stops waiting and commits on its own.
@@ -281,7 +302,7 @@ class Impatient extends Participant {
   onAskCoordinator(ctx: Ctx) {
     if (this.status !== "prepared") return;
     if (this.asked >= 2) {
-      ctx.say(`${ctx.id} has waited long enough: it voted yes, so it guesses commit and commits on its own`);
+      ctx.say(`bad: ${ctx.id} gives up waiting and guesses "commit" on its own. The lamp ships, but the order was cancelled and the card never charged: the shop gave the lamp away`);
       return this.finish(ctx, "committed");
     }
     this.asked++;
