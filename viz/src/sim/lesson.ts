@@ -148,6 +148,32 @@ export function stepAt(run: SimRun, t = 0): number {
   return run.steps.findIndex((s) => s.t >= t);
 }
 
+const words = (text: string) => new Set(text.toLowerCase().match(/[a-z0-9#]+/g)?.filter((w) => w.length > 2 || /\d/.test(w)) ?? []);
+
+/**
+ * Where a link to time `t` lands. Routine steps (heartbeats, polls) often run first in a tick, so
+ * among the tick's steps it picks the one whose note shares the most words with the link's own
+ * text (`about`); with no text, or no overlap, the tick's first step.
+ */
+export function landingStep(run: SimRun, t = 0, about = ""): number {
+  const first = stepAt(run, t);
+  if (first < 0 || !about) return first;
+  const want = words(about);
+  let best = first;
+  let bestScore = 0;
+  for (let i = first; i < run.steps.length && run.steps[i].t === run.steps[first].t; i++) {
+    const s = run.steps[i];
+    const said = words(`${s.note ?? ""} ${s.violation ?? ""} ${s.kind} ${s.node ?? ""} ${s.msg?.type ?? ""}`);
+    let score = 0;
+    for (const w of want) if (said.has(w)) score++;
+    if (score > bestScore) {
+      best = i;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /** Where a play link lands in a run: a step index, or a message saying why it cannot. */
 export type Locate = (run: { label: string; steps: unknown[] }, link: PlayLink) => number | string;
 
@@ -155,7 +181,7 @@ export const simLocate: Locate = (run, link) => {
   if (link.req !== undefined) return `play link "${link.scenario}": &req= is for architectures`;
   if (link.at !== undefined) return `play link "${link.scenario}": @at= is for tracer primitives; use @t=`;
   if (Number.isNaN(link.t)) return `play link "${link.scenario}": @t= is not a number`;
-  const i = stepAt(run as SimRun, link.t);
+  const i = landingStep(run as SimRun, link.t, link.text);
   return i >= 0 ? i : `play link "${link.scenario}@t=${link.t}": no step at or after t=${link.t}`;
 };
 

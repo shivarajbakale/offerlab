@@ -12,7 +12,7 @@ import { MessageLog } from "../components/views/MessageLog.tsx";
 import type { Problem } from "../parseProblem.ts";
 import { usePlayer } from "../player/usePlayer.ts";
 import { handlerRange } from "./handlers.ts";
-import { findRun, parseLesson, scenarioOptionLabel, stepAt, storyChapters, testNames, type PlayLink } from "./lesson.ts";
+import { findRun, parseLesson, landingStep, scenarioOptionLabel, storyChapters, testNames, type PlayLink } from "./lesson.ts";
 import { simCaption } from "./narrate.ts";
 import { ChapterStrip } from "../components/ChapterStrip.tsx";
 import { Callout } from "../components/views/Callout.tsx";
@@ -41,7 +41,7 @@ export function SimProblemView({ problem }: { problem: Problem }) {
   const run = trace?.runs[runIndex];
   const [tab, setTab] = useState<"learn" | "code">(problem.lesson ? "learn" : "code");
   // A play link picks a scenario and a moment; the jump happens once that scenario's steps are loaded.
-  const [jump, setJump] = useState<{ run: number; t?: number } | null>(null);
+  const [jump, setJump] = useState<{ run: number; t?: number; about?: string } | null>(null);
   const onPlay = useCallback(
     (link: PlayLink) => {
       const r = trace ? findRun(trace.runs, link.scenario) : -1;
@@ -49,7 +49,7 @@ export function SimProblemView({ problem }: { problem: Problem }) {
       // A lesson link describes the scenario as written, so it always plays without injected faults.
       setChaos({ run: -1, faults: [] });
       setRunIndex(r);
-      setJump({ run: r, t: link.t });
+      setJump({ run: r, t: link.t, about: link.text });
     },
     [trace],
   );
@@ -72,7 +72,7 @@ export function SimProblemView({ problem }: { problem: Problem }) {
     if (!jump || done.current === jump || jump.run !== runIndex || !run) return;
     done.current = jump;
     player.pause();
-    player.setIndex(Math.max(0, stepAt(run, jump.t)));
+    player.setIndex(Math.max(0, landingStep(run, jump.t, jump.about)));
   }, [jump, runIndex, run, player]);
 
   const addFault = useCallback(
