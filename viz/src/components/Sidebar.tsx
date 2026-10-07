@@ -46,8 +46,10 @@ export function Sidebar({
     <aside className={`sidebar ${drawerOpen ? "open" : ""}`} aria-label="Topics">
       <div className="sidebar-head">
         <div className="brand">
-          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
-          Offerlab
+          <button className="brand-home" onClick={() => onSelect("welcome")} aria-label="Offerlab home">
+            <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+            Offerlab
+          </button>
           {onClose && (
             <button className="drawer-close" aria-label="Close menu" onClick={onClose}>
               ×

@@ -11,7 +11,8 @@ import { SimProblemView } from "./sim/SimProblemView.tsx";
 import { TrafficProblemView } from "./traffic/TrafficProblemView.tsx";
 import { DrillView } from "./drills/DrillView.tsx";
 import { OverviewView } from "./components/OverviewView.tsx";
-import { overviewId, overviewTab } from "./sidebarTabs.ts";
+import { LandingView } from "./landing/LandingView.tsx";
+import { overviewTab } from "./sidebarTabs.ts";
 import { findRun, markLocate, parseLesson, scenarioOptionLabel, type PlayLink } from "./sim/lesson.ts";
 import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
@@ -25,7 +26,9 @@ const EMPTY_STEPS: Step[] = [];
 /** Narrations are computed lazily per step and cached per run. */
 const narrationCache = new WeakMap<Step[], Map<number, Narration>>();
 
-const isPage = (id: string) => problems.some((p) => p.id === id) || overviewTab(id) !== null;
+/** The landing page: the front door a first visit opens on. */
+const WELCOME = "welcome";
+const isPage = (id: string) => id === WELCOME || problems.some((p) => p.id === id) || overviewTab(id) !== null;
 
 function idFromHash(): string | null {
   const id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
@@ -44,9 +47,11 @@ function lastPage(): string | null {
 }
 
 function useProblemId(): [string, (id: string) => void] {
-  // A link wins, then the last page; a first visit opens the Algorithms overview.
-  const [id, setId] = useState(() => idFromHash() ?? lastPage() ?? overviewId("algorithms"));
+  // A link wins, then the last page; a first visit opens the landing page.
+  const [id, setId] = useState(() => idFromHash() ?? lastPage() ?? WELCOME);
   useEffect(() => {
+    // The landing page is not remembered, so a return visit goes back to the last lesson.
+    if (id === WELCOME) return;
     try {
       localStorage.setItem(LAST_KEY, id);
     } catch {
@@ -88,6 +93,7 @@ export default function App() {
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [navOpen]);
+  if (problemId === WELCOME) return <LandingView onOpen={select} />;
   return (
     <div className="app">
       <div className="topbar">
@@ -96,10 +102,10 @@ export default function App() {
             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        <div className="brand">
+        <button className="brand brand-home" onClick={() => select(WELCOME)} aria-label="Offerlab home">
           <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           Offerlab
-        </div>
+        </button>
       </div>
       <Sidebar activeId={problemId} onSelect={select} open={navOpen} onClose={closeNav} />
       {navOpen && <div className="scrim" onClick={closeNav} />}
