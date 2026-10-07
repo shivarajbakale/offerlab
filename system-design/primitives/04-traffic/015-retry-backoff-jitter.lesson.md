@@ -8,6 +8,14 @@
 - **Not the right tool when:** The error is permanent, such as a bad request or a permission error, so every retry fails the same way. The operation is not safe to repeat; make it so first, as in the [idempotent consumer](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer). A dependency that keeps failing needs a [circuit breaker](#/sd-04-traffic/016-circuit-breaker).
 - **Where you'll meet it:** Marc Brooker's "Exponential Backoff And Jitter" on the AWS Architecture Blog; the AWS SDKs, which retry with exponential backoff and jitter; gRPC retry policies; and HTTP `Retry-After` headers on 429 and 503 responses. Retry storms are a common cause of metastable failures in large outages.
 
+## In plain words
+
+Requests sent over a network sometimes fail for reasons that pass on their own: the server is restarting, or briefly too busy. Trying again a little later usually works, so clients retry. The danger is that a retry is one more request. When many clients fail at the same moment and all retry at once, the retries alone can keep the server overloaded, so nobody gets through even after the original problem is gone.
+
+Think of a shop whose door jams for a minute. If everyone outside keeps shoving the door at the same moment, it stays jammed. If each person steps back, waits a little longer after every failed push, and picks their own moment to try again, people trickle in and the door works. Waiting longer each time is backoff; picking your own random moment is jitter.
+
+In the picture on the right, the clients are on the left, one chip each, showing what happened to their last attempt and when they will try next. The middle box names the retry rule they all follow. The server on the right shows how many requests reached it this tick against the number it can handle, and turns red when it is overloaded or still restarting. Below, the timeline shows every attempt over time, one row per client, with the load per tick. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Request** — a message from a client asking a server to do some work. It either succeeds or fails.
@@ -100,6 +108,16 @@ After the second failure there are four ticks to choose from, and the crowd thin
   A: Yes, especially early on when the backoff is small. At t=1, 6 clients collide. The range doubles each time, so collisions quickly become rare. [▶ See it](play:full jitter@at=overload#2)
 - **Q:** The server is down for 100 ticks. What does a client with a cap of 4 attempts do?
   A: It tries at t=0, 2, 6 and 14, then gives up and reports the failure instead of adding load forever. [▶ See it](play:retry cap@at=giveUp#1)
+
+## When to use which
+
+- **Retry with exponential backoff and jitter** — the default for any call over a network that can fail briefly. Example: a mobile app calling an API, or a service calling a cloud storage API that sometimes answers 503 "try again".
+- **Backoff without jitter** — only when one client is retrying alone, such as a single batch job polling a server. With many clients that can fail together, always add jitter.
+- **Retry immediately, once** — acceptable for a single dropped connection to a healthy server. Never as a loop.
+- **Don't retry** — when the error won't change (400 bad request, 403 permission denied), or when the operation is not safe to repeat, like "charge my card", unless it carries an idempotency key ([idempotent consumer](#/sd-06-transactions-messaging/026-transactional-outbox-idempotent-consumer)).
+- **[Circuit breaker](#/sd-04-traffic/016-circuit-breaker)** — when the dependency stays down for long. Stop calling it and fail fast instead of spending every caller's attempts on it. Use it together with retries.
+- **[Rate limiter](#/sd-04-traffic/012-token-and-leaky-bucket) on the server** — the server's own protection against clients that retry too eagerly. It answers 429 with `Retry-After`, and well-behaved clients wait that long.
+- **In an interview:** when you add retries, say "exponential backoff with jitter, a cap on attempts, only for idempotent requests, at one layer", and mention a retry budget or a circuit breaker for long outages.
 
 ## Deep dive
 

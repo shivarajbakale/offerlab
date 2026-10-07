@@ -46,7 +46,7 @@ type Point = { t: number; v: number };
 type Band = { from: number; to: number | null; state: string };
 
 export class FixedWindow {
-  // @viz timeline:history,counted,windows,limit
+  // @viz gate:history,title=Fixed_window,level=count,max=limit,unit=request,state=windows,only=windowStart gate:history,title=Sliding_log,level=log,max=limit,unit=request,only=log gate:history,title=Sliding_counter,level=counted,max=limit,unit=request,state=windows,only=prevCount timeline:history,counted,windows,limit hide:limit,size,windowStart,count,currStart,currCount,prevCount,weight,estimate,start,t,counted,windows
   // @why Most requests allowed in one window.
   limit: number;
   // @why Window length in seconds. Windows are aligned to the clock: [0, 1), [1, 2), ...
@@ -69,6 +69,7 @@ export class FixedWindow {
     const start = Math.floor(t / this.size) * this.size;
     if (start !== this.windowStart) {
       // @why A new window starts from zero, whatever happened a moment ago in the old one.
+      // @caption {windowStart < 0 ? "A fixed window allows at most " + limit + " requests per " + size + "s window. Windows follow the clock (0–" + size + "s, " + size + "–" + 2 * size + "s, ...), and one counter counts the requests accepted in the current one. The first request arrives at t=" + t + ", in the window " + start + "–" + (start + size) + "s, so that window's counter starts at 0." : (history.filter((r) => r.ok && r.t > t - size).length >= limit ? "bad: " : "") + "At t=" + t + " a new window, " + start + "–" + (start + size) + "s, begins and the counter goes back to 0. It forgets that " + history.filter((r) => r.ok && r.t > t - size).length + " requests were accepted in the last " + size + "s" + (history.filter((r) => r.ok && r.t > t - size).length >= limit ? ", already the full limit of " + limit + ". So another " + limit + " can pass right away." : ".")}
       this.count = 0; // @mark reset
       this.windowStart = start;
       this.counted.push({ t, v: 0 });
@@ -77,10 +78,12 @@ export class FixedWindow {
     }
     if (this.count < this.limit) {
       this.count++;
+      // @caption {history.filter((r) => r.ok && r.t > t - size).length > limit ? "bad: The request at t=" + t + " is accepted: it is only number " + count + " of " + limit + " in this window. But " + history.filter((r) => r.ok && r.t > t - size).length + " requests have now been accepted since t=" + history.filter((r) => r.ok && r.t > t - size)[0].t + ", within " + size + "s. That is more than the limit of " + limit + ", because the counter only counts calendar windows." : "good: The request at t=" + t + " is accepted: " + count + " of " + limit + " in the window " + windowStart + "–" + (windowStart + size) + "s."}
       this.history.push({ t, ok: true, label: `${this.count} of ${this.limit} in this window` }); // @mark count
       this.counted.push({ t, v: this.count });
       return true;
     }
+    // @caption The request at t={t} is turned away (HTTP 429 "Too Many Requests"): the window {windowStart}–{windowStart + size}s already has {count} of {limit}. It will pass again only when the next window starts, at t={windowStart + size}.
     this.history.push({ t, ok: false, label: `window already has ${this.count}` });
     return false;
   }
@@ -96,20 +99,24 @@ export class SlidingLog {
 
   constructor(limit: number, size: number) {
     this.limit = limit;
+    // @caption A sliding log: at most {limit} requests in any {size}s, counted back from right now. It writes down the time of every accepted request, so it can count exactly. The price is memory: one stored time per accepted request.
     this.size = size;
   }
 
   allow(t: number): boolean {
     // @why Forget requests older than `size` seconds. What is left is exactly the requests in the last `size` seconds.
     while (this.log.length > 0 && this.log[0] <= t - this.size) {
+      // @caption At t={t} the oldest time in the log is more than {size}s ago, so it is dropped: that request no longer counts. {log.length} times are left, all from the last {size}s: [{log.join(", ")}].
       this.log.shift(); // @mark evict
     }
     if (this.log.length < this.limit) {
       this.log.push(t);
+      // @caption good: The request at t={t} is accepted and its time is written in the log: {log.length} of {limit} in the last {size}s. The log holds [{log.join(", ")}].
       this.history.push({ t, ok: true, label: `${this.log.length} in the last ${this.size}s` }); // @mark record
       this.counted.push({ t, v: this.log.length });
       return true;
     }
+    // @caption The request at t={t} is turned away: the log already holds {log.length} requests from the last {size}s ([{log.join(", ")}]). Nothing resets at a boundary. A slot frees up only when the oldest, t={log[0]}, is {size}s old, at t={Math.round((log[0] + size) * 1000) / 1000}.
     this.history.push({ t, ok: false, label: `already ${this.log.length} since t=${this.log[0]}` }); // @mark logReject
     this.counted.push({ t, v: this.log.length });
     return false;
@@ -131,6 +138,7 @@ export class SlidingCounter {
 
   constructor(limit: number, size: number) {
     this.limit = limit;
+    // @caption A sliding counter: at most {limit} requests in any {size}s, using just two counters, this window's and the previous window's. It guesses the count for the last {size}s as previous × (share of the previous window still in the last {size}s) + current.
     this.size = size;
   }
 
@@ -138,6 +146,7 @@ export class SlidingCounter {
     const start = Math.floor(t / this.size) * this.size;
     if (start !== this.currStart) {
       // @why The old current window becomes the previous one, unless a whole window went by with no requests at all.
+      // @caption {currStart < 0 ? "The first request opens the window " + start + "–" + (start + size) + "s. There is no previous window yet, so 'previous' is 0." : "At t=" + t + " a new window, " + start + "–" + (start + size) + "s, begins. Its counter starts at 0, but the previous window's " + prevCount + " accepted requests are kept as 'previous', so the count does not start from scratch."}
       this.prevCount = start - this.currStart === this.size ? this.currCount : 0; // @mark roll
       this.currCount = 0;
       this.currStart = start;
@@ -147,13 +156,16 @@ export class SlidingCounter {
     // @why The share of the previous window that still lies inside the last `size` seconds: 1 at the start of a window, 0 at its end.
     const weight = (this.size - (t - start)) / this.size;
     // @why Assumes the previous window's requests were spread evenly, so `weight` of them are still recent.
+    // @caption {prevCount === 0 ? "At t=" + t + " there is no previous count, so the estimate is just this window's count: " + currCount + ". The request may pass only if that is under " + limit + "." : "At t=" + t + ", " + Math.round(weight * 100) + "% of the previous window still lies inside the last " + size + "s. Estimate = " + prevCount + " previous × " + Math.round(weight * 1000) / 1000 + " + " + currCount + " in this window = " + Math.round(estimate * 1000) / 1000 + ". The request may pass only if that is under " + limit + "."}
     const estimate = this.prevCount * weight + this.currCount; // @mark estimate
     this.counted.push({ t, v: Math.round(estimate * 100) / 100 });
     if (estimate < this.limit) {
       this.currCount++;
+      // @caption {history.filter((r) => r.ok && r.t > t - size).length > limit ? "bad: The request at t=" + t + " is accepted, because the estimate " + Math.round(estimate * 1000) / 1000 + " is under " + limit + ". But " + history.filter((r) => r.ok && r.t > t - size).length + " requests have really been accepted in the last " + size + "s. The guess assumed the previous window's requests were spread evenly, and they were bunched near its end." : "good: The request at t=" + t + " is accepted: the estimate " + Math.round(estimate * 1000) / 1000 + " is under " + limit + ". This window has now accepted " + currCount + "."}
       this.history.push({ t, ok: true, label: `estimate ${Math.round(estimate * 100) / 100} < ${this.limit}` }); // @mark admit
       return true;
     }
+    // @caption good: The request at t={t} is blocked: the estimate {estimate} is not under {limit}. A fixed window would have let it through, since this window's own counter is only {currCount}.
     this.history.push({ t, ok: false, label: `estimate ${Math.round(estimate * 100) / 100} ≥ ${this.limit}` }); // @mark block
     return false;
   }

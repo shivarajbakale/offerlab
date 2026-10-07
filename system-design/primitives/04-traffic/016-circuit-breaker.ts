@@ -48,7 +48,7 @@ type Point = { t: number; v: number };
 type Band = { from: number; to: number | null; state: string };
 
 export class CircuitBreaker {
-  // @viz timeline:history,failureLevel,bands,threshold,lanes,ok=succeeded,bad=failed
+  // @viz gate:history,title=Circuit_breaker,from=Caller,to=Service,state=state,level=failures,max=threshold,unit=failure,failAt=server,gateRows=fast_fail,absent=noBreaker timeline:history,failureLevel,bands,threshold,lanes,ok=succeeded,bad=failed hide:threshold,cooldown,state,failures,openedAt,trialAt,trialOk,waited,history,failureLevel,bands,lanes,noBreaker,r,what,t,next,s,b,s2,withTrial,withBreaker,before,k,downFrom,downUntil,penalty,calls,callsAt,down,from,to
   // @why Consecutive failures that open the breaker. One or two failures may be a blip; this many in a row means the dependency is down.
   threshold: number;
   // @why Ticks to stay open before trying again: time for the dependency to recover with no calls hitting it.
@@ -70,6 +70,7 @@ export class CircuitBreaker {
 
   constructor(threshold: number, cooldown: number) {
     this.threshold = threshold;
+    // @caption A caller depends on a service and calls it twice every tick. A healthy call answers in 20 ms. A call to a service that is down gets no answer: the caller waits for its 1000 ms timeout, holding a thread the whole time, and then the call fails.
     this.cooldown = cooldown;
   }
 
@@ -79,13 +80,16 @@ export class CircuitBreaker {
     if (this.state === "open" && t - this.openedAt >= this.cooldown) this.endCooldown(t);
     // @why Open, or a trial already out: answer "no" at once, without touching the dependency.
     if (this.state === "open" || (this.state === "half-open" && this.trialAt === t)) {
+      // @caption {state === "open" ? "good: The breaker is open, so the call at t=" + t + " fails at once, in 0 ms, without touching the service. The caller can show cached data or an error right away, and the service gets no traffic. The breaker will try again at t=" + (openedAt + cooldown) + "." : "good: A trial call is already out, so the call at t=" + t + " fails fast too. A service that may still be down gets one call, not full traffic."}
       this.history.push({ t, ok: false, row: "fast fail", label: `breaker ${this.state}: rejected in 0 ms` }); // @mark fastFail
       return false;
     }
+    // @caption {state === "half-open" ? "The call at t=" + t + " is the trial: it alone goes through to the service, to find out whether it is back." : "The breaker is closed, so the call at t=" + t + " goes through to the service. The breaker opens if " + threshold + " calls in a row fail."}
     if (this.state === "half-open") this.trialAt = t; // @mark trial
     const r = fn();
     this.waited += r.ms;
     const what = this.state === "half-open" ? "trial call" : "call";
+    // @caption {state === "half-open" ? (r.ok ? "good: The trial call at t=" + t + " succeeds in " + r.ms + " ms: the service is back. At the next tick the breaker will close." : "bad: The trial call at t=" + t + " waits " + r.ms + " ms and times out: the service is still down. At the next tick the breaker opens again for another " + cooldown + " ticks.") : r.ok ? "good: The call at t=" + t + " succeeds in " + r.ms + " ms." + (failures > 0 ? " That resets the count of failures in a row from " + failures + " to 0: the earlier failures were just a blip." : "") : "bad: The call at t=" + t + " waits the full " + r.ms + " ms for the service and times out." + (t === bands[bands.length - 1].from && bands.length > 2 && !bands.some((x) => x.state === "half-open") ? " The breaker let full traffic back in while the service was still restarting. Both calls of this tick hit it, and the incoming connections take the resources it needs to start, so its restart is pushed back again." : "")}
     this.history.push({ t, ok: r.ok, row: "service", label: `${what} ${r.ok ? "succeeds" : "times out"} after ${r.ms} ms` });
     if (this.state === "half-open") {
       this.trialOk = r.ok;
@@ -94,6 +98,7 @@ export class CircuitBreaker {
     if (r.ok) {
       this.failures = 0;
     } else {
+      // @caption {failures >= threshold ? "bad: That is " + failures + " failures in a row, the threshold. The service looks down, not just slow for a moment." : "That is " + failures + (failures === 1 ? " failure" : " failures") + " in a row, under the threshold of " + threshold + ". One or two failures may be a blip, so the breaker stays closed."}
       this.failures++; // @mark fail
       if (this.failures >= this.threshold) this.trip(t);
     }
@@ -105,12 +110,14 @@ export class CircuitBreaker {
   endCooldown(t: number) {
     this.moveTo("half-open", t);
     // @why No trial is out yet: the next call will be it.
+    // @caption At t={t} the {cooldown}-tick cooldown is over. The breaker goes half-open: the next call goes through as a trial, and every other call keeps failing fast until the trial answers.
     this.trialAt = -1; // @mark halfOpen
   }
 
   settleTrial(t: number) {
     if (this.trialOk) {
       this.moveTo("closed", t);
+      // @caption good: The trial succeeded, so at t={t} the breaker closes. Every call goes through to the service again, and the count of failures starts over at 0.
       this.failures = 0; // @mark close
     } else {
       this.trip(t);
@@ -120,6 +127,7 @@ export class CircuitBreaker {
 
   trip(t: number) {
     this.moveTo("open", t);
+    // @caption bad: {trialAt >= 0 && !trialOk ? "The trial failed, so at t=" + t + " the breaker opens again." : "At t=" + t + " the breaker opens."} Until t={t + cooldown}, every call is answered "no" at once, in 0 ms, and the service gets no traffic, so it can recover in peace.
     this.openedAt = t; // @mark open
   }
 
@@ -134,8 +142,12 @@ export class CircuitBreaker {
 
 // Broken on purpose: no breaker at all. Every call goes to the dependency and waits for its answer.
 export class NoBreaker extends CircuitBreaker {
+  // @why For the picture only: there is no breaker, so the picture shows calls going straight to the service.
+  noBreaker = true;
+
   call(t: number, fn: () => Result): boolean {
     const r = fn();
+    // @caption {r.ok ? "good: With no breaker, the call at t=" + t + " goes straight to the service and succeeds in " + r.ms + " ms." : "bad: With no breaker, the call at t=" + t + " goes straight to the service, which is down. The caller waits the full " + r.ms + " ms for nothing: that is timeout number " + (history.filter((x) => !x.ok).length + 1) + ", and callers have waited " + Math.round(waited / 100) / 10 + " s in total, each wait holding a thread."}
     this.waited += r.ms; // @mark direct
     this.history.push({ t, ok: r.ok, row: "service", label: `call ${r.ok ? "succeeds" : "times out"} after ${r.ms} ms` });
     return r.ok;
@@ -146,6 +158,7 @@ export class NoBreaker extends CircuitBreaker {
 export class NoHalfOpenBreaker extends CircuitBreaker {
   endCooldown(t: number) {
     this.moveTo("closed", t);
+    // @caption bad: At t={t} the cooldown is over, and with no half-open state the breaker closes at once. Full traffic, both calls of every tick, goes to a service that may still be restarting. This is time number {bands.filter((x) => x.state === "closed").length - 1} that the breaker has let full traffic back in without testing first.
     this.failures = 0; // @mark straightClosed
   }
 }
@@ -174,6 +187,7 @@ class Service {
     this.calls++;
     this.callsAt[t] = (this.callsAt[t] ?? 0) + 1;
     const down = t >= this.downFrom && t < this.downUntil;
+    // @caption {down && callsAt[t] === 2 && penalty > 0 ? "bad: A second call in the same tick reaches the restarting service. The incoming connections take the resources it needs to start, so its restart is pushed back " + penalty + " ticks, to t=" + downUntil + "." : down ? "The service is down (restarting until t=" + downUntil + "), so this call hangs until the caller's timeout." : "The service is up and answers in 20 ms."}
     if (down && this.callsAt[t] === 2) this.downUntil += this.penalty;
     return down ? { ok: false, ms: TIMEOUT_MS } : { ok: true, ms: OK_MS };
   }

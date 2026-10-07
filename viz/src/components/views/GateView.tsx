@@ -44,7 +44,8 @@ function Meter({ meter }: { meter: NonNullable<GatePanel["meter"]> }) {
 
 export function GateView({ panel }: { panel: GatePanel }) {
   const ev = panel.latest;
-  const over = panel.server?.cap !== undefined && panel.server.load > panel.server.cap;
+  const down = panel.server?.downUntil;
+  const over = down !== undefined || (panel.server?.cap !== undefined && panel.server.load > panel.server.cap);
   return (
     <div className="gate-view">
       <div className="gate-stage">
@@ -52,9 +53,12 @@ export function GateView({ panel }: { panel: GatePanel }) {
           {panel.clients ? (
             <div className="gate-clients">
               {panel.clients.map((c) => (
-                <span key={c.name} className={`gate-client ${c.last?.outcome ?? ""}`} title={c.last?.label}>
-                  {c.name}
-                  {c.last && <i>{ICON[c.last.outcome]}</i>}
+                <span key={c.name} className={`gate-client ${c.last?.outcome ?? ""} ${c.active ? "active" : ""}`} title={c.last?.label}>
+                  <span className="gate-client-name">
+                    {c.name}
+                    {c.last && <i>{ICON[c.last.outcome]}</i>}
+                  </span>
+                  <small>{c.note ?? (c.last ? (c.last.outcome === "passed" ? "served" : WORD[c.last.outcome]) : "waiting to send")}</small>
                 </span>
               ))}
             </div>
@@ -70,11 +74,18 @@ export function GateView({ panel }: { panel: GatePanel }) {
           <span className={`gate-arrow ${ev && ev.outcome !== "passed" && ev.outcome !== "failed" ? ev.outcome : ""}`}>→</span>
         </div>
 
-        <div className={`gate-col gate-box gate-main state-${(panel.state ?? "").replace(/\s+/g, "-")}`}>
-          <b>{panel.title}</b>
-          {panel.state && <span className="gate-state">{panel.state}</span>}
-          {panel.meter && <Meter meter={panel.meter} />}
-        </div>
+        {panel.absent ? (
+          <div className="gate-col gate-box gate-main gate-absent">
+            <b>No {panel.title.toLowerCase()}</b>
+            <span>every request goes straight through</span>
+          </div>
+        ) : (
+          <div className={`gate-col gate-box gate-main state-${(panel.state ?? "").replace(/\s+/g, "-")}`}>
+            <b>{panel.title}</b>
+            {panel.state && <span className="gate-state">{panel.state}</span>}
+            {panel.meter && <Meter meter={panel.meter} />}
+          </div>
+        )}
 
         <div className="gate-wire">
           <span className={`gate-arrow ${ev?.outcome === "passed" ? "passed" : ev?.outcome === "failed" ? "failed" : "idle"}`}>→</span>
@@ -86,6 +97,7 @@ export function GateView({ panel }: { panel: GatePanel }) {
             <span>
               {panel.server.load} request{panel.server.load === 1 ? "" : "s"} this tick
               {panel.server.cap !== undefined && <> · handles {panel.server.cap}</>}
+              {down !== undefined ? <em className="gate-server-note">restarting until t={down}</em> : over && <em className="gate-server-note">overloaded</em>}
             </span>
           ) : (
             <span>does the work</span>

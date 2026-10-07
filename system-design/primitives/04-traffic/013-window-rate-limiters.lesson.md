@@ -8,6 +8,14 @@
 - **Not the right tool when:** You want separate settings for the average rate and the size of a burst; a [token bucket](#/sd-04-traffic/012-token-and-leaky-bucket) gives exactly that. A plain fixed window is enough when the limit is a loose guard against abuse rather than a promise.
 - **Where you'll meet it:** Cloudflare has written about using the sliding counter estimate for rate limiting at scale. Sliding logs are often built on Redis sorted sets keyed by timestamp. "Design a rate limiter" is a common interview question, and choosing between these variants is the core of it.
 
+## In plain words
+
+A server is a computer that does work for others: it answers requests. One misbehaving client can send so many requests that everyone else's slow down, so servers set a limit per client, like "at most 5 requests per second". A request over the limit is turned away. This lesson is about how to count, because "per second" can mean two different things.
+
+Think of a gym that allows 5 guests an hour. A lazy doorman wipes his tally at the top of every hour, so 5 people at 9:59 and 5 more at 10:00 all get in: 10 in two minutes. A careful doorman writes down when each guest arrived and counts the ones from the last 60 minutes, whatever the clock says. A clever doorman keeps only two numbers, last hour's tally and this hour's, and makes a good guess. Those are the fixed window, the sliding log and the sliding counter.
+
+In the picture on the right, the client is on the left, the limiter is in the middle and the server is on the right. The limiter's meter shows what it is counting against the limit: this window's count, the times stored in the log, or the sliding counter's estimate. The fixed window and the sliding counter also show which clock window they are in. The arrows and the line under them show what happened to the latest request: let through to the server, or turned away. Below that, the timeline shows every request over time. The box at the top says what just happened and why.
+
 ## Words we'll use
 
 - **Request** — one message from a client asking the server to do some work.
@@ -59,7 +67,7 @@ The weight is 1, so the estimate is 5 × 1 + 0 = 5, which is not below the limit
 
 **3. The estimate's error.** The guess assumes even spreading, but here the previous window's requests were bunched at its very end. At t=1.02 the weight is 0.98, the estimate is 4.9, and the request is accepted. That makes 6 requests within 0.12 seconds, one over the limit.
 [▶ At t=1.02 the estimate is 4.9, so one extra request gets through](play:sliding counter@at=admit#6)
-The next request's estimate is 4.8 + 1 = 5.8, and the rest of the burst is blocked. Here the error is one request. It comes only from how uneven the previous window was, and it is not always this small: see the deep dive. Later in the window the weight fades: at t=1.5 it is 0.5, the estimate is 5 × 0.5 + 1 = 3.5, and requests pass again.
+The next request's estimate is 4.8 + 1 = 5.8, and the rest of the burst is blocked. Here the error is one request. It comes only from how uneven the previous window was, and it is not always this small: see the deep dive. Later in the window the weight fades: at t=1.5 it is 0.5, the estimate is 5 × 0.5 + 1 = 3.5, and requests pass again. That request makes 7 in the last second, the same bunching error once more.
 [▶ At t=1.5 the estimate is 3.5](play:sliding counter@at=estimate#11)
 
 ## Why it works now
@@ -92,6 +100,16 @@ The next request's estimate is 4.8 + 1 = 5.8, and the rest of the burst is block
   A: 5 × 1 + 0 = 5. That is not below the limit of 5, so it is blocked. [▶ See it](play:sliding counter@at=block#1)
 - **Q:** Why does the sliding counter let one request through at t=1.02, giving 6 in under a second?
   A: Its estimate assumes the previous window's requests were spread evenly, so it counts only 98% of them. They were really all at the end, so the true count was 5, not 4.9. [▶ See it](play:sliding counter@at=admit#6)
+
+## When to use which
+
+- **Fixed window** — when the limit is a loose guard against abuse, not a promise, and memory must be tiny. Example: 1,000 requests per hour per IP address to slow down scrapers; letting 2,000 through across an hour boundary does no harm.
+- **Sliding log** — when the limit is small and must be exact. Example: 5 login attempts per 15 minutes per account, where every extra guess at a password matters. It stores up to 5 times per account, which is cheap at that size.
+- **Sliding counter** — the default for API quotas with many clients. Example: 100 requests per minute per API key across millions of keys: two counters per key, and close to exact on real traffic.
+- **[Token bucket](#/sd-04-traffic/012-token-and-leaky-bucket)** — when you want two separate settings, an average rate and a burst size. Example: "10 per second, with bursts of 50" for a mobile app that fires many requests when a screen opens.
+- **[Leaky bucket](#/sd-04-traffic/012-token-and-leaky-bucket)** — when the server behind the limiter needs requests evenly spaced, such as a database that can't take bursts.
+- **Not a rate limiter at all** — when the trouble is a failing server rather than a greedy client. Clients should [retry with backoff](#/sd-04-traffic/015-retry-backoff-jitter), and callers should put a [circuit breaker](#/sd-04-traffic/016-circuit-breaker) in front of it.
+- **In an interview:** name the fixed window's boundary problem (twice the limit across a boundary), then pick the sliding counter for scale, or the sliding log when the limit is small and must be exact. Keep the counters in a shared store such as Redis, updated atomically.
 
 ## Deep dive
 

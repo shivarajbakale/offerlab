@@ -218,3 +218,33 @@
     row-gap: 6px;
   }
 }
+.gate-absent {
+  border-style: dashed;
+  border-color: var(--line-2);
+  box-shadow: none;
+  background: transparent;
+}
+.gate-client {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.gate-client small {
+  font-size: 10px;
+  font-family: inherit;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.gate-client.active {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  font-weight: 600;
+}
+.gate-client.passed small {
+  color: var(--ok);
+}
+.gate-server-note {
+  display: block;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--bad);
+}

@@ -59,8 +59,10 @@ export class Server {
 
   /** Whether the `n` requests that arrive at tick t succeed. */
   handle(t: number, n: number): boolean {
+    // @caption {t < downUntil ? "bad: At t=" + t + ", " + n + (n === 1 ? " request reaches" : " requests reach") + " the server, but it is still restarting until t=" + downUntil + ", so " + (n === 1 ? "it fails" : "they all fail") + ". Nothing the client does can help before then." : "At t=" + t + ", " + n + (n === 1 ? " request reaches" : " requests reach") + " the server."}
     if (t < this.downUntil) return false; // @mark down
     // @why Overload: the server splits its time among all n requests, none gets enough, and all of them time out.
+    // @caption {n > capacity ? "bad: " + (t === 0 ? n + " clients send a request at the same moment, say all reconnecting after a network blip. Every client follows the same rule: " + (clients[0].policy === "immediate" ? "retry on the very next tick" : clients[0].policy === "exponential" ? "wait 2, 4, 8, ... ticks, doubling after each failure" : "wait a random time, up to a limit that doubles after each failure") + ". " : "") + "At t=" + t + ", " + n + " requests arrive at once, but the server can handle only " + capacity + " per tick. Overloaded, it splits its time among all of them, none finishes in time, and all " + n + " fail." + (t > 0 && clients[0].policy === "immediate" ? " Every one of them is a retry: the load keeping the server down is now nothing but retries." : t > 0 && clients[0].policy === "exponential" && n === clients.length ? " They all failed together and waited exactly as long, so they all came back in the same tick. Backoff alone keeps them in step." : "") : "good: At t=" + t + ", " + n + (n === 1 ? " request arrives" : " requests arrive") + ", no more than the " + capacity + " the server can handle per tick, so " + (n === 1 ? "it is" : "every one is") + " served." + (downUntil > 0 ? " The restart finished at t=" + downUntil + ", so the server is up again." : "")}
     const ok = n <= this.capacity; // @mark overload
     return ok;
   }
@@ -90,6 +92,7 @@ export class Client {
     this.failures++;
     // @why The cap. Without it a client keeps retrying a server that may be down for good, and keeps adding load.
     if (this.failures >= maxAttempts) {
+      // @caption bad: {name} has now failed {failures} times, and {maxAttempts} attempts is its limit. It gives up and reports the error to its user, instead of adding load forever. {clients.every((x) => x.gaveUp) ? (clients.length === 1 ? "The outage outlasted its patience." : "Every client has now given up, and " + (clients.some((x) => x.done) ? "only some were" : "not one was") + " served, though the server could have handled all of them in " + Math.ceil(clients.length / capacity) + " ticks.") : clients.filter((x) => x.gaveUp).length + " of " + clients.length + " clients have given up so far."}
       this.gaveUp = true; // @mark giveUp
       return;
     }
@@ -100,9 +103,11 @@ export class Client {
   backoff(): number {
     if (this.policy === "immediate") return 1;
     // @why Doubles after each failure (2, 4, 8, ...), so the longer the trouble lasts, the less often this client adds to it.
+    // @caption {policy === "exponential" ? name + " has failed " + failures + (failures === 1 ? " time" : " times") + ", so it waits 2^" + failures + " = " + ceiling + " ticks before its next attempt. Each failure doubles the wait." : name + " has failed " + failures + (failures === 1 ? " time" : " times") + ", so its backoff is now " + ceiling + " ticks: it will wait somewhere from 1 to " + ceiling + "."}
     const ceiling = Math.min(MAX_BACKOFF, 2 ** this.failures); // @mark ceiling
     if (this.policy === "exponential") return ceiling;
     // @why Full jitter: a random wait from 1 up to the ceiling, so clients that failed together retry apart.
+    // @caption {name} rolls a random wait from 1 to {ceiling} ticks and gets {wait}, so it will retry at t={t + wait}. Clients that failed together pick different waits and come back at different ticks.
     const wait = 1 + randomBelow(this, ceiling); // @mark jitter
     return wait;
   }
@@ -110,7 +115,7 @@ export class Client {
 }
 
 export class RetrySim {
-  // @viz timeline:history,load,capacity,lanes,ok=served,bad=failed hide:due,c
+  // @viz gate:history,title=Retry_rule,from=Clients,clients=lanes,load=load,cap=capacity,failAt=server,state=clients.0.policy,down=server.downUntil timeline:history,load,capacity,lanes,ok=served,bad=failed hide:due,c,server,clients,maxAttempts,history,load,capacity,lanes,ok,attempt,why,next,t,n,downUntil,name,policy,failures,nextTry,done,gaveUp,seed,ceiling,wait,id,rule,startAt,capacityPerTick
   server: Server;
   clients: Client[];
   // @why Attempts per request, counting the first. After that the client gives up and reports the failure.
@@ -126,6 +131,7 @@ export class RetrySim {
     this.clients = clients;
     this.maxAttempts = maxAttempts;
     this.capacity = server.capacity;
+    // @caption {clients.length === 1 ? "One client and one server that can handle " + capacity + " requests per tick." + (server.downUntil > 0 ? " The server is restarting until t=" + server.downUntil + ", so every request before then fails." : "") : clients.length + " clients send a request at the same moment, say all reconnecting after a network blip. The server can handle " + capacity + " per tick, so " + clients.length + " at once is too many."} {(clients.length === 1 ? "The client's rule: " : "Every client follows the same rule: ") + (clients[0].policy === "immediate" ? "retry on the very next tick" : clients[0].policy === "exponential" ? "wait 2, 4, 8, ... ticks, doubling after each failure" : "wait a random time, up to a limit that doubles after each failure") + ", and give up after " + maxAttempts + " attempts."}
     this.lanes = clients.map((c) => c.name);
   }
 
@@ -138,12 +144,14 @@ export class RetrySim {
       const attempt = c.failures + 1;
       if (ok) {
         c.done = true;
+        // @caption good: {c.name} is served on attempt {attempt}{attempt > 1 ? ": the retry hid the failure from its user" : ""}. {clients.filter((x) => x.done).length === clients.length ? (clients.length === 1 ? "Its user gets an answer, late but without an error." : "All " + clients.length + " clients have now been served.") : clients.filter((x) => x.done).length + " of " + clients.length + " clients served so far."}
         this.history.push({ t, ok: true, row: c.name, label: `attempt ${attempt} succeeds` }); // @mark served
         continue;
       }
       c.failed(t, this.maxAttempts);
       const why = t < this.server.downUntil ? "server down" : `overloaded: ${due.length} requests`;
       const next = c.gaveUp ? "gives up" : `retries at t=${c.nextTry}`;
+      // @caption {c.gaveUp ? "bad: " + c.name + "'s attempt " + attempt + " failed (" + why + "), and it has given up." : "bad: " + c.name + "'s attempt " + attempt + " failed (" + why + "). It will try again at t=" + c.nextTry + (c.nextTry - t === 1 ? ", the very next tick." : ", " + (c.nextTry - t) + " ticks from now.")}
       this.history.push({ t, ok: false, row: c.name, label: `attempt ${attempt} fails (${why}), ${next}` });
     }
   }

@@ -8,6 +8,14 @@
 - **Not the right tool when:** Failures are brief and scattered; [retry with backoff](#/sd-04-traffic/015-retry-backoff-jitter) handles those. When one server among many copies is bad, the [load balancer's](#/sd-04-traffic/014-load-balancing) health checks should take it out of rotation instead.
 - **Where you'll meet it:** Michael Nygard's book "Release It!" describes the pattern. Netflix's Hystrix made it common and is now in maintenance mode; Resilience4j is a widely used Java library in its place. Envoy's outlier detection, used by service meshes such as Istio, ejects failing hosts at the proxy.
 
+## In plain words
+
+Programs on different servers call each other all the time: a shop's checkout calls a payment service, which calls a bank. When one of them goes down, it usually doesn't answer "I'm down". It just doesn't answer, and every caller waits for its timeout, tying up a worker the whole time. Enough waiting callers, and the caller goes down too. A circuit breaker notices that a service keeps failing and stops calling it for a while, answering "no" at once instead.
+
+It is named after the breaker in your home's fuse box. When a circuit is overloaded, the breaker trips and cuts it off, so one faulty appliance can't burn the house down. Here the breaker trips after a few failures in a row, stays off for a cooldown, then lets a single trial call through to see whether the service is back before letting everyone through.
+
+In the picture on the right, the caller is on the left, the breaker is in the middle and the service is on the right. The breaker shows its state (closed lets calls through, open turns them away, half-open lets one trial through) and a meter of failures in a row against the threshold that opens it. The arrows and the line under them show what happened to the latest call: it reached the service and succeeded, it reached the service and timed out, or the breaker turned it away in 0 ms. Below, the timeline shows every call over time, with the breaker's state as coloured bands. The box at the top says what just happened.
+
 ## Words we'll use
 
 - **Service** — a program that answers requests from other programs. Here, one caller depends on one service.
@@ -99,6 +107,16 @@ The restart was due to finish at t=12, but the two calls at t=2, before the brea
   A: The breaker closes at t=15 and every call goes through again. [▶ See it](play:recover@at=close#1)
 - **Q:** Without a breaker, the service is down for 10 ticks and the caller makes 2 calls a tick. How long do callers wait in total?
   A: 20 calls × 1000 ms = 20 seconds, all of it waiting for a service that isn't there. [▶ See it](play:broken: no breaker@at=direct#24)
+
+## When to use which
+
+- **Circuit breaker** — when your service calls another service that can be down for minutes, and you have something better to do with a fast "no": cached data, a default, or a clear error. Example: a product page that calls a recommendations service; when that service is down, the page shows without recommendations instead of hanging.
+- **Timeouts alone** — always needed, since a breaker only counts failures that end. Enough on their own when calls are rare, so a few slow failures can't use up the caller's threads.
+- **[Retry with backoff and jitter](#/sd-04-traffic/015-retry-backoff-jitter)** — when failures are brief and scattered, such as one dropped connection. Use it together with a breaker: retry inside the closed state, and stop retrying while the breaker is open.
+- **[Load balancer health checks](#/sd-04-traffic/014-load-balancing)** — when one copy among many is bad. The balancer takes that server out and sends calls to the healthy ones, so the feature stays on.
+- **[Rate limiter](#/sd-04-traffic/012-token-and-leaky-bucket)** — a different job: it protects a server from a client that sends too much, not a caller from a server that is down.
+- **Bulkheads** — when one slow dependency must not starve the others. Give each dependency its own small pool of threads or connections.
+- **In an interview:** when a design has one service calling another, say "timeouts, retries with backoff, and a circuit breaker with a fallback", and name the three states.
 
 ## Deep dive
 

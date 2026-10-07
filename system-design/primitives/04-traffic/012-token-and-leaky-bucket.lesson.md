@@ -8,6 +8,14 @@
 - **Not the right tool when:** The limit is a quota stated as "N requests per period"; [window rate limiters](#/sd-04-traffic/013-window-rate-limiters) count that directly. If the trouble is a failing dependency rather than a greedy client, a [circuit breaker](#/sd-04-traffic/016-circuit-breaker) is the tool.
 - **Where you'll meet it:** NGINX's `limit_req` module is a leaky bucket that behaves like a token bucket with `burst` and `nodelay`. AWS API Gateway documents its throttling as a token bucket with rate and burst settings. Both buckets come from network traffic shaping. "Design a rate limiter" is a classic interview question.
 
+## In plain words
+
+A server is a computer that does work for others: it answers requests. It can only do so much per second, and many clients share it. If one client sends far too much, because of a bug, a retry loop or a greedy script, everyone else's requests slow down. A rate limiter gives each client a fair allowance, while still letting through the short bursts that normal clients make, like a web page loading ten pictures at once.
+
+Think of an arcade that hands you tokens. Every game costs one token. You get a new token every few seconds, but your cup holds only five, so you can play five games in a row after a break, and then you have to wait for tokens to trickle in. That is a token bucket. A leaky bucket is a queue at a ticket gate that lets one person through every few seconds, however many arrive at once.
+
+In the picture on the right, the client is on the left, the bucket is in the middle and the server is on the right. For the token bucket, the meter shows the tokens in the bucket against its capacity; for the leaky bucket, it shows the requests waiting in line. The arrows and the line under them show what happened to the latest request: let through to the server, waiting in line, or turned away. Below, the timeline shows every request over time with the bucket's level. The box at the top says what just happened and why.
+
 ## Words we'll use
 
 - **Request** — one message from a client asking the server to do some work, such as "load my profile".
@@ -99,6 +107,15 @@ Requests then leave at t=0.5, 1, 1.5 and 2, evenly spaced, though they all arriv
   A: At t=2.5. It must wait `gap` after the one before, so output stays evenly spaced. [▶ See it](play:leaky@at=release#6)
 - **Q:** Without the cap, a client is quiet for a minute at 1 token per second, then sends 40 requests at once. How many pass?
   A: All 40. The client saved up 64 tokens, so nothing stops the burst. [▶ See it](play:broken: refill without a cap@at=take#41)
+
+## When to use which
+
+- **Token bucket** — when clients are bursty and you want two separate settings: the long-run rate and the biggest burst. Example: a public API allowing 10 requests per second with bursts of 50, so an app can load a screen's data at once.
+- **Leaky bucket** — when the server behind the limiter needs requests evenly spaced, and a short wait is better than a rejection. Example: sending jobs to a database or a third-party API that falls over on bursts.
+- **[Window rate limiters](#/sd-04-traffic/013-window-rate-limiters)** — when the limit is stated as "N requests per period", such as a quota of 1,000 calls per hour or 5 login attempts per minute. A sliding counter or log counts that directly.
+- **[Load balancing](#/sd-04-traffic/014-load-balancing)** — when the problem is total traffic across many servers, not one greedy client. Spreading the load helps all clients; a rate limiter only reins in the one sending too much.
+- **[Retry with backoff](#/sd-04-traffic/015-retry-backoff-jitter)** and **[circuit breakers](#/sd-04-traffic/016-circuit-breaker)** — on the client side. A limiter answers 429 "Too Many Requests"; well-behaved clients back off and retry later instead of hammering.
+- **In an interview:** for "design a rate limiter", propose a token bucket per user or API key, kept in a shared store such as Redis and updated atomically, answering 429 with a `Retry-After` header. Mention the leaky bucket when the backend needs smooth traffic.
 
 ## Deep dive
 

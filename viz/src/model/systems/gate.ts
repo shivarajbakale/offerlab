@@ -8,13 +8,21 @@
 // - level=<var>, max=<var|n>  a meter inside the gate (a number, an array's length, or the last
 //                             `v` of an array of points), and its maximum;
 // - unit=token                what one meter slot is ("token" draws "5 tokens");
-// - state=<var>               a word shown as the gate's state (closed, open, half-open, ...);
+// - state=<var>               a word shown as the gate's state (closed, open, half-open, ...), or
+//                             an array of bands whose last `state` is shown (window 1–2);
+// - only=<var>                draw this gate only where that variable exists (when several
+//                             classes in one file share field names such as `history`);
+// - absent=<var>              when that variable is true there is no gate at all: the middle is
+//                             drawn as an empty, dashed "no <title>" box;
 // - failAt=server             failed requests reached the server and failed there (default: the
 //                             gate refused them);
 // - gateRows=a|b              rows that are always the gate's own answer, even with failAt=server;
 // - queueRow=in               the row of requests the gate accepted but is holding in a queue;
 // - load=<points>, cap=<var>  the server's load in the latest tick against what it can handle;
-// - clients=<lanes>           one caller per row name, each with its latest outcome.
+// - down=<var>               the server is down (restarting) before this tick: shown on its box;
+// - clients=<lanes>           one caller per row name, each with its latest outcome, a short note
+//                             (the last comma-separated part of its latest label) and whether it
+//                             sent in the current tick.
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 import type { Builder } from "./types.ts";
@@ -37,12 +45,14 @@ export type GatePanel = {
   from: string;
   to: string;
   state?: string;
+  /** There is no gate: requests go straight to the server. */
+  absent?: boolean;
   meter?: { level: number; max?: number; unit: string };
-  server?: { load: number; cap?: number };
+  server?: { load: number; cap?: number; downUntil?: number };
   /** The decision just made, if this step made one, else the latest. */
   latest?: GateEvent & { fresh: boolean };
   counts: { passed: number; failed: number; refused: number; queued: number };
-  clients?: { name: string; last?: GateEvent }[];
+  clients?: { name: string; last?: GateEvent; note?: string; active?: boolean }[];
   now: number;
 };
 
@@ -63,6 +73,7 @@ export const buildGate: Builder<GatePanel> = (ctx) => {
     const [k, v = ""] = a.split("=");
     opt[k] = v;
   }
+  if (opt.only && ctx.find(opt.only) === undefined) return null;
   const hv = ctx.find(historyArg);
   const raw = ctx.js(hv);
   if (!Array.isArray(raw)) return null;
@@ -99,23 +110,30 @@ export const buildGate: Builder<GatePanel> = (ctx) => {
   const max = numberOf(opt.max);
   const load = numberOf(opt.load);
   const cap = numberOf(opt.cap);
-  const state = opt.state ? ctx.js(ctx.find(opt.state)) : undefined;
+  const downUntil = numberOf(opt.down);
+  const stateRaw = opt.state ? ctx.js(ctx.find(opt.state)) : undefined;
+  const lastBand = Array.isArray(stateRaw) ? (stateRaw.at(-1) as { state?: unknown } | undefined) : undefined;
+  const state = typeof stateRaw === "string" ? stateRaw : typeof lastBand?.state === "string" ? lastBand.state : undefined;
+  const absent = opt.absent ? ctx.js(ctx.find(opt.absent)) === true : false;
   const last = events.at(-1);
   const counts = { passed: 0, failed: 0, refused: 0, queued: 0 };
   for (const e of events) counts[outcomeOf(e)]++;
 
+  const tLocal = ctx.js(ctx.find("t"));
+  const now = typeof tLocal === "number" ? tLocal : (last?.t ?? 0);
   let clients: GatePanel["clients"];
   if (opt.clients) {
     const lanes = ctx.js(ctx.find(opt.clients));
     if (Array.isArray(lanes)) {
       clients = lanes.map(String).map((name) => {
         const mine = events.filter((e) => e.row === name).at(-1);
-        return { name, ...(mine ? { last: toEvent(mine) } : {}) };
+        if (!mine) return { name };
+        const ev = toEvent(mine);
+        const note = ev.label.includes(", ") ? ev.label.split(", ").at(-1) : undefined;
+        return { name, last: ev, ...(note ? { note } : {}), active: mine.t === now };
       });
     }
   }
-  const tLocal = ctx.js(ctx.find("t"));
-
   return {
     panel: {
       kind: "gate",
@@ -124,13 +142,14 @@ export const buildGate: Builder<GatePanel> = (ctx) => {
       title: spaced(opt.title) ?? "Gate",
       from: spaced(opt.from) ?? "Client",
       to: spaced(opt.to) ?? "Server",
-      ...(typeof state === "string" ? { state } : {}),
+      ...(state !== undefined ? { state } : {}),
+      ...(absent ? { absent } : {}),
       ...(level !== undefined ? { meter: { level: round(level), ...(max !== undefined ? { max } : {}), unit: spaced(opt.unit) ?? "" } } : {}),
-      ...(load !== undefined ? { server: { load, ...(cap !== undefined ? { cap } : {}) } } : {}),
+      ...(load !== undefined ? { server: { load, ...(cap !== undefined ? { cap } : {}), ...(downUntil !== undefined && now < downUntil ? { downUntil } : {}) } } : {}),
       ...(last ? { latest: { ...toEvent(last), fresh: events.length > prevLen } } : {}),
       counts,
       ...(clients ? { clients } : {}),
-      now: typeof tLocal === "number" ? tLocal : (last?.t ?? 0),
+      now,
     },
     uses: [...ids(ctx.step, hv)],
   };
