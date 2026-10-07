@@ -10,6 +10,13 @@
 // `<row>@<var>` draws a marker on that row after the first `<var>` blocks (a WAL's durable point).
 // `hot=<var>` names the blocks the current operation is checking: a list (or one value) of
 // block ids, of row names for whole-row blocks, or of the records themselves.
+// Optional, to draw where each row lives (underscores stand for spaces):
+//   memory=<row>|<row>   rows held in memory: fast, wiped by a crash;
+//   buffer=<row>         rows written but still in the operating system's buffer, not yet on disk;
+//   disk=<row>|<row>     rows on disk, which survive a crash (a levels array names all its rows);
+//   title.<row>=Text     a plain-words name shown for the row instead of the variable name.
+// With places given, the view groups rows into memory, buffer and disk bands, and a marked row
+// draws its blocks after the mark as "still in the buffer".
 
 import type { HeapId, Step, Value } from "../../tracer/types.ts";
 import type { Builder, SystemsCtx } from "./types.ts";
@@ -23,7 +30,13 @@ export type LevelsBlock = {
   items: string[];
   hot: boolean;
   changed: boolean;
+  /** Position (1-based) in the hot list: the order the current read checked this block. */
+  hotOrder?: number;
+  /** After the row's mark: written, but not yet on disk, so a crash loses it. */
+  pending?: boolean;
 };
+
+export type LevelsPlace = "memory" | "buffer" | "disk";
 
 export type LevelsPanel = {
   kind: "levels";
@@ -31,6 +44,10 @@ export type LevelsPanel = {
   name: string;
   rows: {
     name: string;
+    /** Where the row lives, when the hint says. */
+    place?: LevelsPlace;
+    /** A plain-words name for the row. */
+    title?: string;
     /** Draw a marker after this many blocks (a WAL's durable point). */
     mark?: number;
     markLabel?: string;
@@ -101,17 +118,24 @@ function rowsOf(name: string, value: unknown, heapId: HeapId | undefined): { nam
 }
 
 type Arg = { name: string; markVar?: string };
-function parseArgs(args: string[]): { rows: Arg[]; hot?: string } {
+type Opts = { place: Map<string, LevelsPlace>; title: Map<string, string> };
+function parseArgs(args: string[]): { rows: Arg[]; hot?: string; opts: Opts } {
   const rows: Arg[] = [];
   let hot: string | undefined;
+  const opts: Opts = { place: new Map(), title: new Map() };
   for (const a of args) {
-    if (a.startsWith("hot=")) hot = a.slice(4);
+    const eq = a.indexOf("=");
+    const key = eq > 0 ? a.slice(0, eq) : "";
+    const val = a.slice(eq + 1);
+    if (key === "hot") hot = val;
+    else if (key === "memory" || key === "buffer" || key === "disk") for (const r of val.split("|")) opts.place.set(r, key);
+    else if (key.startsWith("title.")) opts.title.set(key.slice(6), val.replace(/_/g, " "));
     else {
       const [name, markVar] = a.split("@");
       rows.push({ name, markVar });
     }
   }
-  return { rows, hot };
+  return { rows, hot, opts };
 }
 
 /** Every heap id reachable from `v`, so the generic scene does not draw them again. */
@@ -129,12 +153,15 @@ function reachable(step: Step, v: Value | undefined, out: Set<HeapId>) {
   }
 }
 
+/** A row before hot/changed are known, with the hint argument it came from. */
+type BuiltRow = { name: string; from: string; mark?: number; markLabel?: string; blocks: RawBlock[] };
+
 function build(
   find: (n: string) => Value | undefined,
   js: (v: Value | undefined) => unknown,
   rows: Arg[],
-): { name: string; mark?: number; markLabel?: string; blocks: RawBlock[] }[] | null {
-  const out: { name: string; mark?: number; markLabel?: string; blocks: RawBlock[] }[] = [];
+): BuiltRow[] | null {
+  const out: BuiltRow[] = [];
   let any = false;
   for (const arg of rows) {
     const v = find(arg.name);
@@ -144,13 +171,13 @@ function build(
       const m = js(find(arg.markVar));
       if (typeof m === "number") Object.assign(made[0], { mark: m, markLabel: arg.markVar });
     }
-    out.push(...made);
+    out.push(...made.map((m) => ({ ...m, from: arg.name })));
   }
   return any ? out : null;
 }
 
 export const buildLevels: Builder<LevelsPanel> = (ctx: SystemsCtx) => {
-  const { rows: args, hot } = parseArgs(ctx.args);
+  const { rows: args, hot, opts } = parseArgs(ctx.args);
   const now = build(ctx.find, ctx.js, args);
   if (!now) return null;
   const before = ctx.prev ? build(ctx.findPrev, ctx.jsPrev, args) : null;
@@ -160,20 +187,31 @@ export const buildLevels: Builder<LevelsPanel> = (ctx: SystemsCtx) => {
   const hotVal = hot ? ctx.find(hot) : undefined;
   const hotJs = ctx.js(hotVal);
   const hotList = hotJs instanceof Set ? [...hotJs] : Array.isArray(hotJs) ? hotJs : hotJs === undefined ? [] : [hotJs];
-  const hotIds = new Set(hotList.map((x) => (isRecord(x) ? `@${String(x.__id)}` : String(x))));
+  const hotKeys = hotList.map((x) => (isRecord(x) ? `@${String(x.__id)}` : String(x)));
+  const hotIds = new Set(hotKeys);
 
-  const rows: Row[] = now.map((r) => ({
-    name: r.name,
-    ...(r.mark !== undefined ? { mark: r.mark, markLabel: r.markLabel } : {}),
-    blocks: r.blocks.map(({ heapId, ...b }) => {
-      const was = prevItems.get(`${r.name}/${b.id}`);
-      return {
-        ...b,
-        hot: hotIds.has(b.id) || (heapId !== undefined && hotIds.has(`@${heapId}`)),
-        changed: before !== null && was !== JSON.stringify(b.items),
-      };
-    }),
-  }));
+  const rows: Row[] = now.map((r) => {
+    // A row made from a levels array (L0, L1, ...) takes the place given for the array.
+    const place = opts.place.get(r.name) ?? opts.place.get(r.from);
+    const title = opts.title.get(r.name);
+    return {
+      name: r.name,
+      ...(place ? { place } : {}),
+      ...(title ? { title } : {}),
+      ...(r.mark !== undefined ? { mark: r.mark, markLabel: r.markLabel } : {}),
+      blocks: r.blocks.map(({ heapId, ...b }, i) => {
+        const was = prevItems.get(`${r.name}/${b.id}`);
+        const at = hotKeys.findIndex((h) => h === b.id || (heapId !== undefined && h === `@${heapId}`));
+        return {
+          ...b,
+          hot: hotIds.has(b.id) || (heapId !== undefined && hotIds.has(`@${heapId}`)),
+          changed: before !== null && was !== JSON.stringify(b.items),
+          ...(at >= 0 && hotKeys.length > 1 ? { hotOrder: at + 1 } : {}),
+          ...(place && r.mark !== undefined && i >= r.mark ? { pending: true } : {}),
+        };
+      }),
+    };
+  });
 
   const uses = new Set<HeapId>();
   for (const a of args) reachable(ctx.step, ctx.find(a.name), uses);

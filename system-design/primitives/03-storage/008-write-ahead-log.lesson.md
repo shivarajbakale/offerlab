@@ -8,6 +8,14 @@
 - **Not the right tool when:** Losing the last few writes is fine, such as in a cache that can be refilled from the source; then skip the log or the wait for the disk. If data is only ever written as whole new files, writing each file and then recording it may be enough.
 - **Where you'll meet it:** PostgreSQL's WAL, MySQL InnoDB's redo log and SQLite's WAL mode; the log behind the in-memory table in LevelDB and RocksDB; etcd's WAL; the ARIES recovery paper (1992); and interview questions such as "Design a key-value store".
 
+## In plain words
+
+A database wants to keep its data in memory, because memory is fast. But memory is wiped the moment the power goes out. So if the database says "saved" while the data is only in memory, a crash can quietly take that write back. A write-ahead log fixes this with one rule: before changing anything, first write down what you are about to do, at the end of a file on disk, and wait until it is really there.
+
+Think of a shopkeeper who keeps the day's sales in their head but also writes each sale in a notebook before handing over the receipt. If they faint and forget everything, they read the notebook from the top and know exactly where things stood. The notebook only works if each sale is written down *before* the receipt is given, and the ink has dried.
+
+In the picture on the right there are three bands. **Memory** (orange edge) holds the data the store serves reads from; a crash empties it. **OS buffer** (dashed) holds a snapshot that has been written but not yet forced to disk. **Disk** (teal edge) holds the log file and the last snapshot; it survives a crash. In the log, records left of the green line are on disk, and records right of it are dashed: still in the buffer, so a crash loses them. The box at the top says what just happened, including the crash and the restart.
+
 ## Words we'll use
 
 - **Memory** — where a running program keeps its data (RAM). Fast, but wiped when the machine crashes.
@@ -117,6 +125,15 @@ A crash in that moment loses both x and y.
   A: Two. The first six are in the snapshot, and the log was cut after it became durable. [▶ See it](play:checkpoint@at=replay#8)
 - **Q:** Why must the snapshot be forced to disk before the log is cut?
   A: Until it is, the log is the only durable copy of those writes. Cut it first, and a crash in between loses them. [▶ See it](play:broken: truncate before@at=restore)
+
+## When to use which
+
+- **Write-ahead log** — whenever data lives in memory, or is changed in place on disk, and an acknowledged write must never be lost. Example: a key-value store that answers "saved" to clients, or a database changing pages of a [B+ tree](#/sd-03-storage/010-b-plus-tree) in place.
+- **No log at all** — when losing the last few writes after a crash is fine, because the data can be rebuilt from somewhere else. Example: a cache in front of a database; after a restart it just fills up again.
+- **Write the whole new file, then switch to it** — when data is only ever written as complete new files and never edited. Example: the sorted tables of an [LSM tree](#/sd-03-storage/009-lsm-tree) are written once and never changed; only its in-memory table needs a log in front of it.
+- **fsync every write vs. group commit** — fsync each write when writes are few and each must be safe on its own. Batch many writes into one fsync (group commit) when there are thousands per second: each write waits a little longer, but the disk does far fewer flushes.
+- **Ship the log to other machines** — when one machine's disk is not enough, because the whole machine can be lost. The same log, sent to followers and replayed there, is how [leader-follower replication](#/sd-05-replication/017-leader-follower-replication) and [Raft log replication](#/sd-05-replication/021-raft-log-replication) keep copies.
+- **In an interview:** when asked "what happens if the server crashes mid-write?", say: append the change to a log, fsync, then apply it and reply; on restart, load the last snapshot and replay the log; checkpoint so the log stays short.
 
 ## Deep dive
 

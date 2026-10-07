@@ -6,6 +6,8 @@
 // Pages held by locals but not reachable from the root (a page just split off, not yet linked
 // into its parent) are drawn apart as `detached`. Every page, and every array of pages (such as
 // a stack of parents), is reported in `uses`, so none of them is drawn again as a list or trie.
+// Option `reads=<var>`: a count of page reads (disk reads) so far, shown above the tree. Each hot
+// page also carries the positions at which the path read it, so the view can number the reads.
 
 import type { HeapId, HeapObj, Step, Value } from "../../tracer/types.ts";
 import { label } from "../heap.ts";
@@ -25,6 +27,8 @@ export type PageBox = {
   next?: number;
   /** Locals of the current call that point at this page, such as `leaf` or `parent`. */
   names: string[];
+  /** 1-based positions in the current path at which this page was read. */
+  reads?: number[];
 };
 
 export type PagesPanel = {
@@ -34,6 +38,8 @@ export type PagesPanel = {
   levels: PageBox[][];
   /** Pages not reachable from the root: just created by a split, or cut loose from their parent. */
   detached?: PageBox[];
+  /** The `reads=` counter: page reads so far. */
+  reads?: number;
 };
 
 type Obj = Extract<HeapObj, { kind: "object" }>;
@@ -63,12 +69,17 @@ export const buildPages: Builder<PagesPanel> = (ctx) => {
   if (!pageObj(step, rootVal)) return null;
   const uses = new Set<HeapId>();
 
-  const pathVal = ctx.args[1] ? ctx.find(ctx.args[1]) : undefined;
+  const pathArg = ctx.args[1] && !ctx.args[1].includes("=") ? ctx.args[1] : undefined;
+  const readsArg = ctx.args.find((a) => a.startsWith("reads="))?.slice(6);
+  const pathVal = pathArg ? ctx.find(pathArg) : undefined;
   const hot = new Set<string>();
-  for (const x of pathVal?.t === "r" ? items(step, pathVal) : pathVal ? [pathVal] : []) {
+  const order = new Map<string, number[]>();
+  (pathVal?.t === "r" ? items(step, pathVal) : pathVal ? [pathVal] : []).forEach((x, i) => {
     const page = pageObj(step, x);
-    hot.add(page ? String(prim(page.fields.id)) : String(prim(x)));
-  }
+    const key = page ? String(prim(page.fields.id)) : String(prim(x));
+    hot.add(key);
+    order.set(key, [...(order.get(key) ?? []), i + 1]);
+  });
   if (pathVal?.t === "r" && step.heap[pathVal.id]?.kind === "array") uses.add(pathVal.id);
 
   // Locals of the innermost call that point at pages, to tag them.
@@ -102,6 +113,8 @@ export const buildPages: Builder<PagesPanel> = (ctx) => {
     if (leaf && "values" in o.fields) box.values = items(step, o.fields.values).map((x) => label(step, x));
     if (!leaf) box.children = kids.map((c) => Number(prim(pageObj(step, c)!.fields.id) ?? (c as { id: HeapId }).id));
     if (leaf && next) box.next = Number(prim(next.fields.id));
+    const at = order.get(String(id));
+    if (at) box.reads = at;
     return box;
   };
 
@@ -134,5 +147,7 @@ export const buildPages: Builder<PagesPanel> = (ctx) => {
   }
   const panel: PagesPanel = { kind: "pages", key: `pages:${ctx.args[0]}`, name: ctx.args[0], levels };
   if (detached.length) panel.detached = detached;
+  const reads = readsArg ? prim(ctx.find(readsArg)) : undefined;
+  if (typeof reads === "number") panel.reads = reads;
   return { panel, uses: [...uses] };
 };

@@ -21,6 +21,7 @@ import { SpatialView } from "./views/SpatialView.tsx";
 import { RangeView, SearchSpaceView, WindowHistoryView } from "./views/StoryViews.tsx";
 import { MapView, ObjectView, SetView } from "./views/TableViews.tsx";
 import { TimelineView } from "./views/TimelineView.tsx";
+import { MerkleView } from "./views/MerkleView.tsx";
 import { TreeView, type TreeLens } from "./views/TreeView.tsx";
 import { TrieView } from "./views/TrieView.tsx";
 
@@ -42,9 +43,10 @@ const KIND_LABEL: Record<Panel["kind"], string> = {
   timeline: "timeline",
   balancer: "servers",
   gate: "request path",
+  merkle: "replicas",
 };
 
-const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer", "gate"]);
+const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer", "gate", "merkle"]);
 
 function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
   const kind =
@@ -137,6 +139,8 @@ function renderPanel(p: Panel, story?: StoryView, step?: StepLens) {
       return <BalancerView panel={p} />;
     case "gate":
       return <GateView panel={p} />;
+    case "merkle":
+      return <MerkleView panel={p} />;
   }
 }
 

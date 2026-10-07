@@ -47,7 +47,7 @@ import assert from "node:assert/strict";
 export type Page = { id: number; keys: number[]; children?: Page[]; values?: string[]; next: Page | null };
 
 export class BPlusTree {
-  // @viz pages:root,path hide:v,parents values:lo,hi,from
+  // @viz pages:root,path,reads=pageReads hide:v,parents,path,pageReads,height,nextId,maxKeys,order,i,mid,j,bound values:lo,hi,from
   // @why The only page a search can start from. Every other page is reached by following child pointers down from it.
   root: Page;
   // @why The pages the last operation read, top to bottom: the cost the view highlights.
@@ -76,11 +76,13 @@ export class BPlusTree {
     this.path = [];
     let page = this.root;
     while (page.children) {
+      // @caption Disk read {pageReads + 1}: page p{page.id}, {path.length === 1 ? "the root, where every search starts" : "an inner page"}. Its keys [{page.keys.join(", ")}] are signposts: they say which child page to read next to find {k}.
       this.path.push(page.id); // @mark read-inner
       this.pageReads++;
       parents.push(page);
       page = page.children[this.childIndex(page, k)];
     }
+    // @caption Disk read {pageReads + 1}: leaf p{page.id}, {page.keys.length ? "holding [" + page.keys.join(", ") + "]" : "still empty"}. {path.length === 1 ? "The tree is a single page so far: the root is also the leaf." : "That is " + path.length + " page reads from the root down to a leaf: one per level."}
     this.path.push(page.id); // @mark read-leaf
     this.pageReads++;
     return page;
@@ -90,6 +92,7 @@ export class BPlusTree {
     const leaf = this.descend(k);
     // @why Searching inside a page costs no disk read: the whole page is already in memory.
     const i = leaf.keys.indexOf(k);
+    // @caption {i >= 0 ? "good: Found " + k + "=" + leaf.values[i] + " in leaf p" + leaf.id + ", after " + pageReads + " disk reads: exactly one per level, because every leaf is the same depth down. Searching inside a page is free: it is already in memory." : k + " is not in leaf p" + leaf.id + ", the only place it could be: not found, after " + pageReads + " disk reads."}
     return i >= 0 ? leaf.values![i] : undefined; // @mark found
   }
 
@@ -103,10 +106,12 @@ export class BPlusTree {
       return;
     }
     leaf.keys.splice(i, 0, k);
+    // @caption {k} goes into leaf p{leaf.id} in key order: [{leaf.keys.join(", ")}]. {leaf.keys.length > maxKeys ? "That is " + leaf.keys.length + " keys, one more than a page holds (" + maxKeys + " here, hundreds in a real database), so the page must split." : "A page holds up to " + maxKeys + " keys, so it fits: done."}
     leaf.values!.splice(i, 0, v); // @mark leaf-insert
     if (leaf.keys.length <= this.maxKeys) return;
     let right = this.splitLeaf(leaf);
     // @why A copy of the right half's first key goes up as the separator: searches for it or anything larger go right.
+    // @caption A copy of {sep}, the new page's first key, goes up to the parent as a signpost: searches for {sep} or bigger go to the new page.
     let sep = right.keys[0];
     let left = leaf;
     while (true) {
@@ -114,17 +119,20 @@ export class BPlusTree {
       // @why The root itself split, so a new root goes on top. This is the only way the tree gets taller, and it adds a level above every leaf at once.
       if (!parent) {
         this.root = { id: this.nextId++, keys: [sep], children: [left, right], next: null };
+        // @caption good: There is no parent to take {sep}, so a new root p{root.id} goes on top, holding just [{root.keys.join(", ")}]. This is the only way the tree gets taller, and it adds a level above every leaf at once: every leaf is now {height} levels down.
         this.height++; // @mark new-root
         return;
       }
       const j = this.childIndex(parent, sep);
       parent.keys.splice(j, 0, sep);
+      // @caption {sep} goes up into parent p{parent.id}, which now holds [{parent.keys.join(", ")}], with a pointer to the new page p{right.id}. {parent.keys.length > maxKeys ? "That is one key too many, so the parent must split too." : "It fits, so the insert is done."}
       parent.children!.splice(j + 1, 0, right); // @mark push-up
       if (parent.keys.length <= this.maxKeys) return;
       // @why An inner page that overflows splits too. Its middle key moves up (not copied): inner keys only guide searches.
       const mid = Math.floor(parent.keys.length / 2);
       sep = parent.keys[mid];
       right = { id: this.nextId++, keys: parent.keys.slice(mid + 1), children: parent.children!.slice(mid + 1), next: null };
+      // @caption The full inner page splits: p{parent.id} keeps [{parent.keys.join(", ")}], a new page p{right.id} takes [{right.keys.join(", ")}], and the middle key {sep} moves up a level. It is moved, not copied: inner keys only guide searches, the values live in the leaves.
       parent.keys = parent.keys.slice(0, mid); // @mark split-inner
       parent.children = parent.children!.slice(0, mid + 1);
       left = parent;
@@ -135,9 +143,11 @@ export class BPlusTree {
   splitLeaf(leaf: Page): Page {
     const mid = Math.ceil(leaf.keys.length / 2);
     const right: Page = { id: this.nextId++, keys: leaf.keys.slice(mid), values: leaf.values!.slice(mid), next: leaf.next };
+    // @caption The full leaf splits in two: p{leaf.id} keeps [{leaf.keys.join(", ")}], and a new page p{right.id} takes [{right.keys.join(", ")}]. Both are now half full, so the next few inserts here need no split. The new page is not linked into the tree yet.
     leaf.keys = leaf.keys.slice(0, mid); // @mark split-leaf
     leaf.values = leaf.values!.slice(0, mid);
     // @why Leaves stay chained in key order, so a range scan can walk from one leaf to the next without going back up.
+    // @caption The leaves stay chained in key order: p{leaf.id} → p{right.id}. A range scan can walk along this chain without going back up the tree.
     leaf.next = right;
     return right;
   }
@@ -147,11 +157,13 @@ export class BPlusTree {
     let page: Page | null = this.descend(lo);
     while (page) {
       for (let i = 0; i < page.keys.length; i++) {
+        // @caption {page.keys[i] > hi ? "good: " + page.keys[i] + " is past " + hi + ", so the scan stops with [" + out.join(", ") + "]. Disk reads: " + pageReads + ", that is " + height + " to reach the first leaf, then one per extra leaf." : page.keys[i] >= lo ? page.keys[i] + " is in the range " + lo + " to " + hi + ": keep it." : "The scan reads leaf p" + page.id + ", where " + lo + " would be. " + page.keys[i] + " is below " + lo + ": skip it."}
         if (page.keys[i] > hi) return out; // @mark range-end
         if (page.keys[i] >= lo) out.push(page.keys[i]);
       }
       page = page.next;
       if (page) {
+        // @caption End of this leaf. Follow its link straight to the next leaf, p{page.id}: disk read {pageReads + 1}. No need to go back up to the root.
         this.path.push(page.id); // @mark next-leaf
         this.pageReads++;
       }
@@ -176,6 +188,7 @@ export class NoLeafLinksTree extends BPlusTree {
     let from = lo;
     while (true) {
       // Back to the root. On the way down, the smallest key above `from` in an inner page is where the next leaf starts.
+      // @caption {path.length === 0 ? "The scan starts at the root, to find the leaf where " + from + " would be." : "bad: This leaf has no link to the next one, so the scan goes back to the root and descends again, to find the leaf holding keys from " + from + " on. Another " + height + " disk reads (" + pageReads + " so far)."}
       let page = this.root; // @mark re-descend
       let bound: number | null = null;
       while (page.children) {
@@ -188,6 +201,7 @@ export class NoLeafLinksTree extends BPlusTree {
       this.path.push(page.id);
       this.pageReads++;
       for (let i = 0; i < page.keys.length; i++) {
+        // @caption {page.keys[i] > hi ? "bad: " + page.keys[i] + " is past " + hi + ", so the scan stops with [" + out.join(", ") + "]. But it took " + pageReads + " disk reads: a full trip from the root, " + height + " reads, for each of the " + pageReads / height + " leaves." : page.keys[i] >= from ? "Leaf p" + page.id + ": " + page.keys[i] + " is in the range: keep it." : "Leaf p" + page.id + ": " + page.keys[i] + " is below " + from + ": skip it."}
         if (page.keys[i] > hi) return out;
         if (page.keys[i] >= from) out.push(page.keys[i]);
       }
@@ -207,6 +221,7 @@ export class BinaryTreeIndex {
   get(k: number): boolean {
     let node = this.root;
     while (node) {
+      // @caption {k === node.value ? "bad: Found " + k + ", but only after " + pageReads + " disk reads, one per key. Each page holds a single key, and keys that arrived in order made the tree one long chain. A B+ tree over the same 12 keys is only 3 pages deep." : "Disk read " + pageReads + ": a page holding just one key, " + node.value + ". " + k + (k < node.value ? " is smaller, so go left" : " is bigger, so go right") + ", to another page."}
       this.pageReads++; // @mark bst-read
       if (k === node.value) return true;
       node = k < node.value ? node.left : node.right;

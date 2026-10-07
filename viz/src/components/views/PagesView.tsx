@@ -1,6 +1,8 @@
 // A B+ tree, level by level: each page is a box of keys, leaves sit on the bottom row with
 // their values under the keys, and arrows between leaves show the leaf links. Pages the
-// current operation has read are hot; pages whose contents changed flash.
+// current operation has read are hot and labelled with their place in the read order; pages
+// whose contents changed flash. Each row is named (root, inner, leaves), and a legend says that
+// one box is one disk read, with the read count so far when the hint gives one.
 
 import { motion } from "framer-motion";
 import type { PageBox, PagesPanel } from "../../model/systems/pages.ts";
@@ -15,6 +17,8 @@ const GAP_X = 14;
 const GAP_Y = 54;
 const TOP = 6;
 const DETACHED_GAP = 40;
+/** Room on the left for the row names. */
+const GUTTER = 62;
 const spring = { type: "spring", stiffness: 220, damping: 28 } as const;
 
 type Placed = { box: PageBox; x: number; y: number; w: number };
@@ -68,13 +72,13 @@ function detachedTrees(detached: PageBox[]): PageBox[][][] {
 /** The tree on top, then any detached subtrees side by side in a strip below. */
 function layout(levels: PageBox[][], detached: PageBox[]) {
   const placed = new Map<number, Placed>();
-  const main = placeTree(levels, 0, TOP, placed);
+  const main = placeTree(levels, GUTTER, TOP, placed);
   let width = main.right;
   let height = main.bottom + 4;
   let stripY: number | undefined;
   if (detached.length) {
     stripY = main.bottom + DETACHED_GAP;
-    let x = 0;
+    let x = GUTTER;
     let bottom = stripY;
     for (const tree of detachedTrees(detached)) {
       const t = placeTree(tree, x, stripY, placed);
@@ -107,6 +111,7 @@ function Page({ p }: { p: Placed }) {
       ))}
       <text x={w / 2} y={-6} className="pg-id">
         p{box.id}
+        {box.reads && <tspan className="pg-read"> read {box.reads.join(",")}</tspan>}
         {box.names.map((n) => (
           <tspan key={n} className="pg-name" fill={colorOf(n)}>
             {" "}
@@ -118,9 +123,33 @@ function Page({ p }: { p: Placed }) {
   );
 }
 
+/** The name of tree row r of n. */
+function rowName(r: number, n: number): string {
+  if (n === 1) return "root = leaf";
+  if (r === 0) return "root";
+  return r === n - 1 ? "leaves" : "inner";
+}
+
 export function PagesView({ panel }: { panel: PagesPanel }) {
+  return (
+    <div className="pg-wrap">
+      <div className="pg-legend">
+        <span>Each box is one page on disk: opening it costs one disk read. Leaves hold the values; arrows link each leaf to the next.</span>
+        {panel.reads !== undefined && (
+          <span className="pg-count">
+            disk reads: <b>{panel.reads}</b>
+          </span>
+        )}
+      </div>
+      <PagesSvg panel={panel} />
+    </div>
+  );
+}
+
+function PagesSvg({ panel }: { panel: PagesPanel }) {
   const { placed, width, height, stripY } = layout(panel.levels, panel.detached ?? []);
   const all = [...placed.values()];
+  const n = panel.levels.length;
   return (
     <div className="svg-wrap pg">
       <svg width={width + 8} height={height + 14} viewBox={`-4 -14 ${width + 8} ${height + 14}`}>
@@ -163,8 +192,13 @@ export function PagesView({ panel }: { panel: PagesPanel }) {
               />
             );
           })}
+        {panel.levels.map((_, r) => (
+          <text key={`row${r}`} x={0} y={TOP + r * (H + GAP_Y) + H / 2} className="pg-row">
+            {rowName(r, n)}
+          </text>
+        ))}
         {stripY !== undefined && (
-          <text x={0} y={stripY - 22} className="pg-strip">
+          <text x={GUTTER} y={stripY - 22} className="pg-strip">
             not linked into the tree yet
           </text>
         )}

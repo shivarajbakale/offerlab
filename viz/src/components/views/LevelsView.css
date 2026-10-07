@@ -124,3 +124,84 @@
   font-style: italic;
   padding-top: 7px;
 }
+.lv-order {
+  display: inline-grid;
+  font-family: var(--sans);
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--panel);
+  font-size: 10px;
+  font-weight: 700;
+}
+.lv-block.pending {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.85;
+}
+.lv-mark.placed span {
+  line-height: 1.25;
+}
+.lv-mark.placed b {
+  font-weight: 700;
+}
+/* Banded layout: memory over buffer over disk. */
+.lv.banded {
+  gap: 10px;
+}
+.lv-band {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px 10px;
+}
+.lv-band.memory {
+  border-left: 4px solid var(--p1);
+}
+.lv-band.buffer {
+  border-style: dashed;
+  border-left: 4px dashed var(--warn);
+}
+.lv-band.disk {
+  background: var(--panel-2);
+  border-left: 4px solid var(--key);
+}
+.lv-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  font-family: var(--sans);
+}
+.lv-band-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lv-band-note {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.lv-band .lv-row {
+  border-top: 0;
+  padding-top: 0;
+}
+.lv-band .lv-name {
+  white-space: normal;
+  line-height: 1.3;
+}
+@media (max-width: 560px) {
+  .lv-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .lv-name {
+    padding-top: 0;
+  }
+}

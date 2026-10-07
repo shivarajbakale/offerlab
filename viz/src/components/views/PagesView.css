@@ -63,3 +63,36 @@
   fill: var(--muted);
   font-style: italic;
 }
+.pg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.pg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pg-count {
+  font-family: var(--mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.pg-count b {
+  color: var(--accent);
+}
+.pg-row {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--muted);
+  dominant-baseline: central;
+}
+.pg-read {
+  fill: var(--accent);
+  font-weight: 700;
+}

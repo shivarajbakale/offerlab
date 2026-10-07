@@ -59,7 +59,8 @@ function checksum(seq: number, k: string, v: string): number {
 }
 
 export class WalStore {
-  // @viz levels:memory,log@durable,snapshot,snapshotInBuffer,hot=rec
+  // @viz levels:memory,log@durable,snapshotInBuffer,snapshot,hot=rec,memory=memory,buffer=snapshotInBuffer,disk=log|snapshot,title.memory=The_data_(key_→_value),title.log=Write-ahead_log_file,title.snapshotInBuffer=Snapshot_being_written,title.snapshot=Snapshot_file_(last_checkpoint)
+  // @viz hide:durable,nextSeq,replayed,seq,h,s,i,tornTail,half,rec,k,v
   // @why Memory is fast but wiped by a crash. It is only a copy of what the log and snapshot say.
   memory = new Map<string, string>();
   // @why The log file. Records before `durable` are on disk; the rest are still in the OS buffer and die with the machine.
@@ -78,7 +79,9 @@ export class WalStore {
     this.append(k, v); // @mark append
     // @why The write is on disk only after the fsync. Acknowledging before this line is promising something a crash can take back.
     this.flush(); // @mark flush
+    // @caption Only now that its record is on disk does {k}={v} go into memory, where reads will find it fast.
     this.memory.set(k, v); // @mark apply
+    // @caption good: The client is told "saved". This promise is safe: even if the power goes this instant, {log[log.length - 1].k}={log[log.length - 1].v} is in the log on disk and recovery will replay it.
     return true; // @mark ack
   }
 
@@ -86,11 +89,13 @@ export class WalStore {
   append(k: string, v: string) {
     const seq = this.nextSeq++;
     const rec: LogRecord = { seq, k, v, checksum: checksum(seq, k, v) };
+    // @caption The write {k}={v} becomes record #{seq}, added to the end of the log file, the cheapest kind of disk write. For now it sits in the operating system's buffer (dashed, right of the green line), not on disk: a crash would lose it.
     this.log.push(rec);
   }
 
   // @why fsync: wait until the operating system has really written the buffered records to disk.
   flush() {
+    // @caption fsync: the store waits until the operating system has really written the log to disk. {durable === 1 ? "The record is" : "All " + durable + " records are"} now left of the green line: safe from a crash. Memory has not changed yet.
     this.durable = this.log.length; // @mark fsync
   }
 
@@ -99,9 +104,11 @@ export class WalStore {
     const half = this.log[this.durable];
     this.memory = new Map(); // @mark crash
     this.log = this.log.slice(0, this.durable);
+    // @caption Crash! The power goes out and the machine restarts. Memory is now empty, and anything still in the buffer is gone. Only the disk is left: {log.length} log record{log.length === 1 ? "" : "s"}{snapshot.size ? " and a snapshot of " + snapshot.size + " keys" : ", and no snapshot"}.
     this.snapshotInBuffer = new Map();
     if (tornTail && half) {
       // @why Only the first part of the record made it; the rest of the space holds leftover bytes.
+      // @caption Crash, in the middle of writing record #{half.seq}! Memory is empty. The first {durable} records are safe on disk, but #{half.seq} ({half.k}={half.v}) reached disk only half-written: its end is leftover bytes, drawn ▒.
       this.log.push({ ...half, v: `${half.v.slice(0, 1)}▒▒` });
       this.durable = this.log.length;
     }
@@ -109,19 +116,23 @@ export class WalStore {
 
   recover() {
     // @why Start from the last checkpoint's snapshot, so only the records written after it need replaying.
+    // @caption {log.length === 0 && snapshot.size === 0 ? "bad: Recovery starts, and finds nothing on disk: no log records and no snapshot. Every write the client was told was saved is gone for good." : "Recovery starts. Memory is first loaded from the snapshot (" + (snapshot.size ? snapshot.size + " keys" : "none yet") + "), then the " + log.length + " log record" + (log.length === 1 ? "" : "s") + " on disk will be replayed, oldest first."}
     this.memory = new Map(this.snapshot); // @mark restore
     this.replayed = 0;
     for (let i = 0; i < this.log.length; i++) {
       const rec = this.log[i];
       // @why A record whose checksum does not match was cut short by a crash. It was never acknowledged, so it is dropped, along with anything after it.
       if (rec.checksum !== checksum(rec.seq, rec.k, rec.v)) {
+        // @caption good: Record #{rec.seq} fails its checksum: the crash cut it in half. It was never fsynced, so the client was never told "saved". Recovery drops it, instead of loading garbage into memory, and stops here.
         this.log = this.log.slice(0, i); // @mark torn
         this.durable = i;
         break;
       }
+      // @caption Replaying record #{rec.seq}: {rec.k}={rec.v} goes back into memory. Records are redone in the order they were written, so a later write to the same key wins, just as it did before the crash.
       this.memory.set(rec.k, rec.v); // @mark replay
       this.replayed++;
     }
+    // @caption {memory.size === 0 ? "bad: Recovery is finished, and memory is still empty. The client was told its writes were saved, and they are lost." : "good: Recovery is finished: memory holds all " + memory.size + " keys again, rebuilt from " + (snapshot.size ? "the snapshot plus " : "") + replayed + " replayed log record" + (replayed === 1 ? "" : "s") + ". No acknowledged write was lost."}
     this.nextSeq = (this.log.at(-1)?.seq ?? this.nextSeq - 1) + 1;
   }
 
@@ -133,16 +144,19 @@ export class WalStore {
   }
 
   writeSnapshot() {
+    // @caption Checkpoint, step 1: a copy of memory ({snapshotInBuffer.size} keys) is written to a snapshot file. Like any file write, it lands in the buffer first: not on disk yet.
     this.snapshotInBuffer = new Map(this.memory);
   }
 
   syncSnapshot() {
+    // @caption Checkpoint, step 2: fsync the snapshot. Its {snapshot.size} keys are now safe on disk, so the log records they came from are no longer needed.
     this.snapshot = this.snapshotInBuffer;
     this.snapshotInBuffer = new Map();
   }
 
   // @why Everything in the log is now in the snapshot, so the log can start again empty and recovery stays short.
   truncateLog() {
+    // @caption good: Checkpoint, step 3: the log is emptied. Everything it held is in the durable snapshot, so nothing is lost, and the next recovery replays only writes made after this point.
     this.log = [];
     this.durable = 0;
   }
@@ -157,8 +171,10 @@ export class WalStore {
 // Broken on purpose: applies the write to memory and acknowledges it, and leaves the fsync for later.
 export class MemoryFirstStore extends WalStore {
   put(k: string, v: string): boolean {
+    // @caption This store puts {k}={v} in memory first, and means to write the log later.
     this.memory.set(k, v); // @mark mem-first
     this.append(k, v);
+    // @caption bad: The client is told "saved", but record #{log.length} for {log[log.length - 1].k}={log[log.length - 1].v} is still in the buffer (dashed): there was no fsync. A crash right now would lose a write the client believes is safe.
     return true; // @mark early-ack
   }
 }
@@ -167,6 +183,7 @@ export class MemoryFirstStore extends WalStore {
 export class TruncateEarlyStore extends WalStore {
   checkpoint() {
     this.writeSnapshot();
+    // @caption bad: The log is emptied while the snapshot ({snapshotInBuffer.size} keys) is still only in the buffer. For this moment, no copy of these writes exists on disk at all.
     this.log = []; // @mark early-truncate
     this.durable = 0;
   }

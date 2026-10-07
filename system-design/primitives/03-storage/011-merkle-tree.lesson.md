@@ -8,6 +8,14 @@
 - **Not the right tool when:** Most of the data differs, so the tree compares nearly every node and sending everything is simpler. If replicas apply the same ordered log of writes, comparing log positions is enough, as in [leader-follower replication](#/sd-05-replication/017-leader-follower-replication).
 - **Where you'll meet it:** Amazon's Dynamo paper and Cassandra's repair, which compare trees per key range to sync replicas; Git, which names files, directories and commits by content hashes; Bitcoin, where each block header holds the Merkle root of its transactions; and interview questions such as "Design a key-value store".
 
+## In plain words
+
+Two servers are supposed to hold the same copy of the data, but one missed a few writes while it was down. To find out which keys differ, they could send each other every key, but with millions of keys that is far too much traffic. A Merkle tree lets them compare a single short fingerprint first. If the fingerprints match, all the data matches. If not, they compare the two halves and keep going down only where the fingerprints differ.
+
+Think of two people checking that their copies of a thick book are identical. Instead of reading each page aloud, they compare a checksum of the whole book. It differs, so they compare checksums of the first half and the second half: the first half matches, so they never look at it again. A few rounds later they have found the one page that differs.
+
+In the picture on the right are two replicas, A on top and B below, each drawn as its tree of fingerprints. The bottom row holds one fingerprint per bucket of keys, with the bucket number and its key count underneath; each node above is a fingerprint of the two below it. A fingerprint drawn in red differs from the one in the same place on the other replica. The pair being compared right now is highlighted and tagged `x` (on A) and `y` (on B), and the count above the trees shows how many pairs have been compared. During a write, only one replica is shown, with the node being recomputed tagged `node`.
+
 ## Words we'll use
 
 - **Replica** — one copy of the data on its own server. Here there are two, a and b, that should hold the same keys and values.
@@ -18,7 +26,7 @@
 - **Leaf** — a node on the bottom row. Its value is the fingerprint of one bucket's contents.
 - **Parent** — a node whose value is the fingerprint of its two children's values put together.
 - **Root** — the single node at the top. Its fingerprint covers every bucket below it.
-- **Compare** — check whether two nodes, one from each replica's tree, have the same fingerprint. The view tags them `x` (replica a) and `y` (replica b).
+- **Compare** — check whether two nodes, one from each replica's tree, have the same fingerprint. The picture tags them `x` (on replica A) and `y` (on replica B).
 
 ## The world we're in
 
@@ -95,6 +103,16 @@ The roots match, so the comparison stops at once and the difference is never rep
   A: 4: the leaf, and one node on each of the 3 levels above it, up to the root. [▶ See it](play:build@at=rehash-parent#3)
 - **Q:** What goes wrong if a parent fingerprints only its left child?
   A: A change in a right half never reaches the root, so equal roots hide a real difference and it is never repaired. [▶ See it](play:broken: parent hashes@at=same)
+
+## When to use which
+
+- **Merkle tree** — when two copies of large data must be checked and repaired in the background, and usually only a little differs. Example: replicas in a Dynamo-style store, such as Cassandra's repair, finding the few keys a replica missed while it was down.
+- **Send everything, or a fingerprint per key** — when the data is small, or when most of it differs anyway. The tree would end up comparing nearly every node, so it saves nothing.
+- **A flat list of bucket fingerprints** — when there are only a handful of buckets. It always compares every bucket, so its cost grows with the data, not with how much differs.
+- **Replay a shared log instead** — when replicas apply the same ordered log of writes, comparing log positions tells you exactly what is missing. Example: [leader-follower replication](#/sd-05-replication/017-leader-follower-replication) or [Raft log replication](#/sd-05-replication/021-raft-log-replication).
+- **Fix on read, not in the background** — when you want repairs to happen sooner for the keys people actually use: a [quorum read](#/sd-05-replication/018-quorum-read-write) that notices stale replicas can repair them on the spot. The Merkle tree catches the keys nobody reads.
+- **Detect tampering** — when one trusted fingerprint must vouch for many pieces of data. Example: Git commits and Bitcoin blocks; change any file or transaction, and the root changes.
+- **In an interview:** for "how do replicas get back in sync?", say anti-entropy with Merkle trees per key range: compare roots, descend only into differing halves, resend only the differing buckets.
 
 ## Deep dive
 

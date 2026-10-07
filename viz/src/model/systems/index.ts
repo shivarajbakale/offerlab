@@ -10,9 +10,10 @@ import { buildPages, type PagesPanel } from "./pages.ts";
 import { buildRing, type RingPanel } from "./ring.ts";
 import { buildSpatial, type SpatialPanel } from "./spatial.ts";
 import { buildTimeline, type TimelinePanel } from "./timeline.ts";
+import { buildMerkle, type MerklePanel } from "./merkle.ts";
 import type { Builder, SystemsCtx, SystemsKind } from "./types.ts";
 
-export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel | BalancerPanel | GatePanel;
+export type SystemsPanel = RingPanel | SpatialPanel | BitsPanel | LevelsPanel | PagesPanel | TimelinePanel | BalancerPanel | GatePanel | MerklePanel;
 /** Scene variables, as collected by buildScene: `this` fields are flattened in. */
 export type SceneVar = { name: string; v: Value; frame: number; inner: boolean; field?: boolean };
 export type Builders = Partial<Record<SystemsKind, Builder<SystemsPanel>>>;
@@ -26,6 +27,7 @@ export const BUILDERS: Builders = {
   timeline: buildTimeline,
   balancer: buildBalancer,
   gate: buildGate,
+  merkle: buildMerkle,
 };
 
 /** A variable by name (innermost frame first), then through object fields or array indexes. */

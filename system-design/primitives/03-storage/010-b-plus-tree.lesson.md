@@ -8,6 +8,14 @@
 - **Not the right tool when:** Writes dominate and arrive faster than scattered page rewrites can keep up; an [LSM tree](#/sd-03-storage/009-lsm-tree) batches them into large sequential writes. For key-only lookups held entirely in memory, a hash table is simpler.
 - **Where you'll meet it:** PostgreSQL's default index type, MySQL InnoDB's tables and indexes, and SQLite's tables; Bayer and McCreight's 1972 B-tree paper; and any interview question about why an index makes a query fast or how to choose a primary key.
 
+## In plain words
+
+A database index has to find one row among billions, and the data lives on disk, where every read is slow compared to memory. The trick is that a disk always reads a whole block, called a page, at once. So a B+ tree packs hundreds of keys into each page. Each page is like a signpost with many arrows, and with that many arrows per page, three or four page reads get you from the top to any key.
+
+Think of a big library. The sign at the entrance says which floor has which letters, the sign on each floor says which aisle, and the label on each aisle says which shelf. Three signs, and you are at the right shelf out of millions of books. The shelves themselves sit side by side in order, so to collect every book from "Ma" to "Me" you find the first one and walk along the shelf.
+
+In the picture on the right, each box is one page on disk, and opening it costs one disk read. The top row is the root, the middle rows are inner pages holding only signposts, and the bottom row is the leaves, which hold the keys with their values written under them. Teal arrows link each leaf to the next. The pages the current search has read are highlighted and labelled "read 1", "read 2", ..., and the counter above the tree shows the disk reads so far. A page drawn below the tree has just been split off and is not linked in yet.
+
 ## Words we'll use
 
 - **Disk** — storage that keeps its contents through a crash. It holds far more than memory, but every read from it is slow by comparison.
@@ -108,6 +116,16 @@ The fourth trip down starts with 9 page reads already spent, and the scan ends a
   A: Six: three to reach the first leaf, then one per extra leaf by following the links. [▶ See it](play:range scan@at=range-end#11)
 - **Q:** Without leaf links, how many page reads does the same scan take?
   A: Twelve: a trip from the root, three page reads, for each of the four leaves. [▶ See it](play:broken: no leaf links@at=re-descend#4)
+
+## When to use which
+
+- **B+ tree** — when reads matter most: lookups by key, sorted results and ranges ("orders from last week"), with a steady but moderate stream of writes. Example: the primary key and secondary indexes of a relational database such as PostgreSQL or MySQL.
+- **[LSM tree](#/sd-03-storage/009-lsm-tree)** — when writes dominate and come in faster than pages can be rewritten in place. Example: an event log or metrics store taking millions of writes a second. Writes are cheaper, but a read may check several tables.
+- **The trade in one line** — a B+ tree pays on every write (a whole page is rewritten, and sometimes a split touches several) so that every read costs the same few page reads; an LSM tree does the opposite.
+- **Hash index** — when you only ever look up exact keys, never ranges or sorted order, and the index fits in memory. Example: a session store keyed by session id. A hash table finds a key in one step but cannot answer "everything between A and B".
+- **Binary search tree** — only in memory. On disk, one key per page makes the tree as tall as the number of keys allows, so it costs one disk read per key on the way down, as the broken scenario shows.
+- **Always paired with a [write-ahead log](#/sd-03-storage/008-write-ahead-log)** — a page split changes several pages; if the machine crashes halfway, the log is how the database finishes or undoes it.
+- **In an interview:** "Why is this query slow?" usually means a missing index: without one, the database reads every page. And when choosing a primary key, say that increasing keys fill the rightmost leaf neatly, while random ones (such as random UUIDs) scatter inserts and cause more splits.
 
 ## Deep dive
 

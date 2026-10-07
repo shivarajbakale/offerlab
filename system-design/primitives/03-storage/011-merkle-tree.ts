@@ -60,7 +60,7 @@ function fingerprint(s: string): string {
 }
 
 export class MerkleTree {
-  // @viz hide:k,v values:lo,hi,mid,b
+  // @viz merkle:this,other hide:other,k,v,lo,hi,mid,i,s,h,fresh,combined,size,compared,rehashed,differing,buckets,rest,root,x,y,node,left,right,hashes,ignoresRight,b values:lo,hi,mid,b
   root: MerkleNode;
   // @why Keys are grouped into a fixed number of buckets, so both replicas build trees of the same shape and can compare them node by node.
   size: number;
@@ -73,6 +73,7 @@ export class MerkleTree {
   rehashed = 0;
 
   constructor(buckets = 8) {
+    // @caption A replica builds its Merkle tree. Its keys are spread over {size} buckets; each bucket gets a fingerprint (a leaf), and each node above is a fingerprint of the two below it, up to one root that sums up all the data.
     this.size = buckets;
     this.root = this.build(0, buckets - 1);
   }
@@ -102,6 +103,7 @@ export class MerkleTree {
   put(k: string, v: string): string {
     const b = this.bucketOf(k);
     const rest = (this.buckets.get(b) ?? []).filter((e) => !e.startsWith(`${k}=`));
+    // @caption {v === "v1" ? "Write " + k + "=" + v + "." : "One replica, B, gets a write, " + k + "=" + v + ", that the other replica, A, missed (say A was down for a moment)."} The key falls in bucket {b}, so only that bucket's contents change.
     this.buckets.set(b, [...rest, `${k}=${v}`].sort()); // @mark bucket
     this.rehashed = 0;
     this.update(this.root, 0, this.size - 1, b);
@@ -113,6 +115,7 @@ export class MerkleTree {
     this.rehashed++;
     if (lo === hi) {
       const fresh = this.leafHash(b);
+      // @caption Bucket {b}'s leaf gets a new fingerprint, {fresh}. Any change to a bucket's keys changes its fingerprint.
       node.value = fresh; // @mark rehash-leaf
       return;
     }
@@ -120,6 +123,7 @@ export class MerkleTree {
     if (b <= mid) this.update(node.left!, lo, mid, b);
     else this.update(node.right!, mid + 1, hi, b);
     const combined = this.combine(node.left!, node.right!);
+    // @caption {self.ignoresRight && b > mid ? "bad: The change is in this node's right half, but this broken tree fingerprints only the left child. So the node keeps its old fingerprint, " + combined + ", and the change goes no higher." : lo === 0 && hi === size - 1 ? "The root's fingerprint changes too, to " + combined + ". This write recomputed " + rehashed + " fingerprints: the leaf and one per level above it, not the whole tree." : "The node above covers buckets " + lo + " to " + hi + ". Its fingerprint is made from its two children's, so it changes too: now " + combined + "."}
     node.value = combined; // @mark rehash-parent
   }
 
@@ -131,14 +135,17 @@ export class MerkleTree {
   }
 
   walk(x: MerkleNode, y: MerkleNode, lo: number, hi: number) {
+    // @caption {x.value === y.value ? (lo === 0 && hi === size - 1 ? (self.ignoresRight ? "bad: The roots match (" + x.value + "), so the replicas look identical and nothing is repaired. But they hold different data: the change in the right half never reached the root." : "good: The roots match (" + x.value + " on both), so all the data matches. One comparison, and nothing needs to be sent.") : "good: " + (lo === hi ? "Bucket " + lo + " matches" : "Buckets " + lo + " to " + hi + " match") + " (" + x.value + " on both). Everything below is equal, so this whole part is skipped without looking inside.") : lo === hi ? "Bucket " + lo + " differs: " + x.value + " on A, " + y.value + " on B." : (lo === 0 && hi === size - 1 ? "Compare the roots first: " + x.value + " on A, " + y.value + " on B. They differ, so something differs somewhere. Look one level down." : "Buckets " + lo + " to " + hi + " differ (" + x.value + " vs " + y.value + "). Look one level down, at both halves.")} ({compared === 1 ? "1 pair" : compared + " pairs"} compared so far.)
     this.compared++;
     // @why Equal fingerprints mean everything below is equal, so this whole subtree is skipped. This is where the savings come from.
     if (x.value === y.value) return; // @mark same
     if (lo === hi) {
+      // @caption good: Found it: bucket {lo} is the one that differs, after {compared} comparisons. Only that bucket's keys need to be sent across the network and repaired, not all the data.
       this.differing.push(lo); // @mark found
       return;
     }
     const mid = (lo + hi) >> 1;
+    // @caption Look one level down, left half first: {lo === hi ? "bucket " + lo : "buckets " + lo + " to " + hi}, {x.value} on A and {y.value} on B. {x.value === y.value ? "They match, so this whole half is skipped." : "They differ too, so keep going down."}
     this.walk(x.left!, y.left!, lo, mid); // @mark descend
     this.walk(x.right!, y.right!, mid + 1, hi);
   }
@@ -164,6 +171,7 @@ export class FlatHashList {
   put(k: string, v: string) {
     const b = this.bucketOf(k);
     this.buckets.set(b, [...(this.buckets.get(b) ?? []).filter((e) => !e.startsWith(`${k}=`)), `${k}=${v}`].sort());
+    // @caption {v === "v1" ? "Write " + k + "=" + v + "." : "One replica, B, gets a write, " + k + "=" + v + ", that the other replica, A, missed."} It falls in bucket {b}, so that bucket's fingerprint changes. There is no tree above the buckets: just this flat list.
     this.hashes[b] = fingerprint(this.buckets.get(b)!.join(","));
   }
 
@@ -171,6 +179,7 @@ export class FlatHashList {
     this.compared = 0;
     this.differing = [];
     for (let i = 0; i < this.hashes.length; i++) {
+      // @caption {i === hashes.length - 1 ? "bad: Bucket " + i + ": " + hashes[i] + " vs " + other.hashes[i] + ". That was the last of all " + compared + " buckets: a flat list must compare every bucket, every time, to find " + (differing.length + (hashes[i] !== other.hashes[i] ? 1 : 0)) + " difference. With 1,024 buckets it would be 1,024 comparisons." : "Compare bucket " + i + ": " + hashes[i] + " on A, " + other.hashes[i] + " on B. " + (hashes[i] === other.hashes[i] ? "Same." : "Different!") + " (" + compared + " of " + hashes.length + " compared.)"}
       this.compared++; // @mark flat-compare
       if (this.hashes[i] !== other.hashes[i]) this.differing.push(i);
     }
@@ -180,6 +189,9 @@ export class FlatHashList {
 
 // Broken on purpose: a parent's hash covers only its left child.
 export class LeftOnlyMerkle extends MerkleTree {
+  // For the picture only: marks this tree as the broken one in captions.
+  ignoresRight = true;
+
   combine(left: MerkleNode, right: MerkleNode): string {
     void right;
     return fingerprint(left.value); // @mark left-only

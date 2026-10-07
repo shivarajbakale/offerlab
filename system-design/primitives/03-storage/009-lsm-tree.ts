@@ -54,7 +54,8 @@ export type SSTable = { id: string; entries: Entry[] };
 const TABLE_SIZE = 4;
 
 export class LsmTree {
-  // @viz levels:memtable,levels,hot=checked
+  // @viz levels:memtable,levels,hot=checked,memory=memtable,disk=levels,title.memtable=Memtable_(sorted),title.L0=Level_0_(newest_first;_ranges_overlap),title.L1=Level_1_(merged;_no_overlaps)
+  // @viz hide:forgot,nextId,memLimit,l0Limit,k,v,i,lo,hi,mid,mem,e,table,newest,merged,kept,out,moved,j
   // @why Writes land here first, in memory, kept sorted. A write costs no disk seek at all. (A write-ahead log, lesson 008, keeps them safe from a crash.)
   memtable: Entry[] = [];
   // @why levels[0] holds flushed memtables, newest first; their key ranges overlap. levels[1] holds merged tables whose ranges do not overlap.
@@ -83,7 +84,9 @@ export class LsmTree {
     this.checked = [];
     let i = 0;
     while (i < this.memtable.length && this.memtable[i][0] < k) i++;
+    // @caption {memtable[i] && memtable[i][0] === k ? (v === null ? k + " is already in the memtable, so it is replaced there by a tombstone " + k + "=†." : k + " is already in the memtable, so its value is replaced there: " + k + "=" + v + ".") : (v === null ? "Delete " + k + "." : "Write " + k + "=" + v + ".")}
     if (this.memtable[i]?.[0] === k) this.memtable[i] = [k, v];
+    // @caption {v === null ? "Delete " + k + ": its old value sits in tables on disk, which are never changed. So a tombstone, " + k + "=† (meaning deleted), goes into the memtable instead, to hide the old value." : k + "=" + v + " goes into the memtable, a small sorted table in memory, in key order. No disk is touched, so the write is very fast."} The memtable holds {memtable.length} of {memLimit} entries.
     else this.memtable.splice(i, 0, [k, v]); // @mark insert
     if (this.memtable.length >= this.memLimit) this.flush();
   }
@@ -91,25 +94,32 @@ export class LsmTree {
   // @why A full memtable is written out in one sequential pass as a new table. Tables are never changed after this, so writing one needs no seeks.
   flush() {
     const table: SSTable = { id: `T${this.nextId++}`, entries: this.memtable };
+    // @caption The memtable has reached its limit, so its {table.entries.length} entries are written to disk in one go, as table {table.id} at the front of level 0 (newest first). That is one long sequential write, the fastest kind, and {table.id} will never be changed again. The memtable starts over empty.
     this.levels[0].unshift(table); // @mark flush
     this.memtable = [];
     if (this.levels[0].length >= this.l0Limit) this.compact();
   }
 
   get(k: string): string | undefined {
+    // @caption Read {k}. The newest data is in the memtable, so the read looks there first (the numbers show the order it checks places in).
     this.checked = ["memtable"];
     const mem = this.find(this.memtable, k);
+    // @caption {mem ? (mem[1] === null ? "good: The memtable holds a tombstone for " + k + ": it was deleted. The read stops here and answers \"not found\", without opening the older tables that still hold its old value." : "good: Found " + k + "=" + mem[1] + " in the memtable, the newest place. No disk read needed.") : "No " + k + " in the memtable. Next: the tables on disk, newest first."}
     if (mem) return mem[1] ?? undefined; // @mark hit-mem
     // @why Newest first: the first table that has the key holds its latest value, so the read can stop there.
     for (const table of this.levels[0]) {
+      // @caption Open table {table.id} in level 0, a disk read (place {checked.length} this read has checked).
       this.checked.push(table.id); // @mark check-l0
       const e = this.find(table.entries, k);
+      // @caption {e ? (e[1] === null ? "good: " + table.id + " holds a tombstone for " + k + ": deleted. The read stops with \"not found\"." : "good: " + table.id + " has " + k + "=" + e[1] + ". It is the newest table holding " + k + ", so this is the latest value. The read stops, and older tables are never opened.") : table.id + " has no " + k + ". Try the next older table."}
       if (e) return e[1] ?? undefined; // @mark hit-l0
     }
     // @why Level-1 tables do not overlap, so at most one of them can hold the key.
+    // @caption {table ? "Not in level 0 either. Level 1 tables do not overlap, so only one of them can hold " + k + ": " + table.id + ", which covers " + table.entries[0][0] + " to " + table.entries[table.entries.length - 1][0] + "." : "Not in level 0, and no level 1 table covers " + k + ". The key is not stored anywhere: \"not found\"."}
     const table = this.levels[1].find((t) => t.entries[0][0] <= k && k <= t.entries.at(-1)![0]);
     if (!table) return undefined; // @mark miss
     this.checked.push(table.id); // @mark check-l1
+    // @caption {table.entries.some((x) => x[0] === k && x[1] !== null) ? (self.forgot && self.forgot.includes(k) ? "bad: The read finds " + k + "=" + table.entries.find((x) => x[0] === k)[1] + " in " + table.id + ". But " + k + " was deleted! Its tombstone was thrown away at the flush, so nothing hides this old value any more: deleted data has come back." : "good: Found " + k + "=" + table.entries.find((x) => x[0] === k)[1] + " in " + table.id + ", after checking " + checked.length + " places.") : "good: " + k + " is not in " + table.id + ", the only table that could hold it, so the answer is \"not found\" (" + checked.length + " places checked)."}
     const e = this.find(table.entries, k); // @mark search-l1
     return e?.[1] ?? undefined;
   }
@@ -134,11 +144,13 @@ export class LsmTree {
     for (const table of [...this.levels[0], ...this.levels[1]]) {
       for (const [k, v] of table.entries) if (!newest.has(k)) newest.set(k, v);
     }
+    // @caption Level 0 now has {levels[0].length} tables, the limit, and their key ranges overlap, so a read may have to open all of them. Compaction merges them with level 1: {levels[0].concat(levels[1]).reduce((n, t) => n + t.entries.length, 0)} entries go in, and for each key only the newest version is kept: {newest.size} keys.
     const merged: Entry[] = [...newest].sort((a, b) => (a[0] < b[0] ? -1 : 1));
     // @why Level 1 is the bottom: no older value lies below it, so a tombstone has nothing left to hide and can go.
     const kept = merged.filter(([, v]) => v !== null); // @mark drop-tombstones
     const out: SSTable[] = [];
     for (let i = 0; i < kept.length; i += TABLE_SIZE) out.push({ id: `T${this.nextId++}`, entries: kept.slice(i, i + TABLE_SIZE) });
+    // @caption good: Compaction done. Level 0 is empty, and level 1 holds {out.length === 1 ? "1 table" : out.length + " tables"} with no overlapping key ranges and one version per key. {merged.length > kept.length ? "Level 1 is the bottom level, so a tombstone has nothing older left to hide: " + (merged.length - kept.length === 1 ? "the tombstone was" : (merged.length - kept.length) + " tombstones were") + " dropped, and the deleted key is gone for good. " : ""}A read now checks the memtable and at most one table on disk.
     this.levels = [[], out]; // @mark compacted
   }
 }
@@ -147,7 +159,12 @@ export class LsmTree {
 
 // Broken on purpose: drops tombstones as soon as the memtable is flushed, not at the bottom level.
 export class EarlyTombstoneDrop extends LsmTree {
+  // For the picture only: the keys whose tombstones this store threw away.
+  forgot: string[] = [];
+
   flush() {
+    this.forgot.push(...this.memtable.filter(([, v]) => v === null).map(([k]) => k));
+    // @caption {memtable.length < memLimit ? "bad: This flush throws away the tombstone for " + forgot.join(", ") + " before writing the table. But level 1 below still holds the old value, and now nothing will hide it." : "This store drops tombstones at every flush, too early. This memtable has none, so nothing goes wrong yet."}
     this.memtable = this.memtable.filter(([, v]) => v !== null); // @mark early-drop
     super.flush();
   }
@@ -158,8 +175,10 @@ export class OldestFirstRead extends LsmTree {
   get(k: string): string | undefined {
     this.checked = ["memtable"];
     for (const table of [...this.levels[0]].reverse()) {
+      // @caption This read checks level 0 from the OLDEST table to the newest. It opens {table.id} first.
       this.checked.push(table.id); // @mark oldest-first
       const e = this.find(table.entries, k);
+      // @caption {e ? "bad: " + table.id + " has " + k + "=" + e[1] + ", and the read stops there. But " + table.id + " is the oldest table: a newer table holds a later write of " + k + ", so this answer is stale." : table.id + " has no " + k + ". On to the next table."}
       if (e) return e[1] ?? undefined; // @mark stale-hit
     }
     return undefined;
@@ -168,7 +187,7 @@ export class OldestFirstRead extends LsmTree {
 
 // Broken on purpose: one sorted file on disk, with every write put into its place.
 export class SortedFileStore {
-  // @viz levels:file
+  // @viz levels:file,disk=file,title.file=One_sorted_file_on_disk
   file: Entry[] = [];
   // How many entries had to be rewritten to make room, over all writes.
   moved = 0;
@@ -183,9 +202,11 @@ export class SortedFileStore {
     // Everything after the new key's place moves one slot along, and is written again.
     this.file.push(["_", "_"]);
     for (let j = this.file.length - 1; j > i; j--) {
+      // @caption bad: To make room for {k}, the entry {file[j][0]} is moved one slot along and written to disk again (move {moved + 1} so far, over all writes).
       this.file[j] = this.file[j - 1]; // @mark shift
       this.moved++;
     }
+    // @caption {file.length - 1 - i > 0 ? "bad: " + k + " is in place, but only after the " + (file.length - 1 - i) + " entries after it were each moved and written again. The bigger the file, the more every write moves." : k + " sorts after every key in the file, so it goes at the end and nothing moves. That is the lucky case."}
     this.file[i] = [k, v]; // @mark placed
   }
 }

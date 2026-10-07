@@ -8,6 +8,14 @@
 - **Not the right tool when:** Reads dominate and need steady, predictable speed, or the same keys are updated and range-scanned all the time; a [B+ tree](#/sd-03-storage/010-b-plus-tree) gives each key exactly one place on disk.
 - **Where you'll meet it:** LevelDB and RocksDB, and the many databases built on RocksDB; Apache Cassandra, HBase and Google's Bigtable; the 1996 paper by O'Neil, Cheng, Gawlick and O'Neil; and interview questions such as "Design a key-value store" or "Design a metrics store".
 
+## In plain words
+
+Disks are fast when you write a long run of data in one go, and slow when you change small bits in many different places. Keeping one big sorted file means every new key has to be squeezed into the middle of it, which is the slow kind of write. An LSM tree avoids that. It collects new writes in a small sorted table in memory, and when that table is full, it writes the whole thing to disk at once as a new sorted file that is never edited again. Old files are merged in the background.
+
+Think of an office that gets hundreds of letters a day. Instead of walking to the big filing cabinet for each letter, a clerk sorts the day's letters into a tray, and when the tray is full it goes into a new labelled box, in order. Now and then someone merges old boxes into one tidy box and throws away out-of-date letters. Filing is quick. Finding a letter means checking the tray first, then the newest boxes, which is the price paid.
+
+In the picture on the right, the **Memory** band holds the memtable, where writes land. The **Disk** band holds the sorted tables: level 0 has freshly flushed tables, newest on the left, whose key ranges can overlap; level 1 has merged tables that do not overlap. A dagger (†) is a tombstone, which marks a deleted key. During a read, the places it checks light up, numbered in the order it checked them. The box at the top tells each step: the write, the flush, the read, the merge.
+
 ## Words we'll use
 
 - **Disk** — storage that keeps its contents through a crash. There is far more of it than memory, but it is slower.
@@ -109,6 +117,16 @@ The next read for a misses in T7, carries on into L1, and finds the old a=1. The
   A: One, the newest: a=3 in T4. [▶ See it](play:compaction@at=search-l1)
 - **Q:** Why is one sorted file slow for random writes?
   A: A new key in the middle makes every key after it move and be written again, and the cost grows with the file. [▶ See it](play:broken: one sorted file@at=shift#6)
+
+## When to use which
+
+- **LSM tree** — when writes far outnumber reads, or arrive in huge bursts. Example: storing click events, chat messages or metrics, where millions of writes a second must be taken in and most data is read rarely.
+- **[B+ tree](#/sd-03-storage/010-b-plus-tree)** — when reads matter most and must be fast every time: lookups by key and range queries, with moderate writes. Example: an orders table in a shop's database, read on every page view and updated a few times per order. Each key has exactly one place, so a read never checks several tables.
+- **The trade in one line** — an LSM tree makes writes cheap and pays later, in reads that may check several tables and in background merging (compaction); a B+ tree pays on every write, by rewriting pages in place, so reads stay cheap.
+- **Add a [Bloom filter](#/sd-02-probabilistic/005-bloom-filter) per table** — when reads for keys that are not there are common. The filter says "definitely not in this table", so the read skips it without a disk read.
+- **Leveled vs. tiered compaction** — leveled (as here: one non-overlapping level below) when reads and disk space matter; tiered (merge tables of similar size) when even more write speed matters and slower reads are fine.
+- **Needs a [write-ahead log](#/sd-03-storage/008-write-ahead-log)** — the memtable is in memory, so every write is also appended to a log first. Without it, a crash loses everything not yet flushed.
+- **In an interview:** say "write-heavy, so an LSM tree", then name its costs: read amplification (several tables per read), write amplification (compaction rewrites data), and tombstones that linger until compaction.
 
 ## Deep dive
 
