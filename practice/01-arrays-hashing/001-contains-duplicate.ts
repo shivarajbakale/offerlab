@@ -25,7 +25,15 @@ import assert from "node:assert/strict";
 
 export function containsDuplicate(nums: number[]): boolean {
   // TODO: implement
-  throw new Error("Not implemented");
+  // using extra space 
+  const s= new Set();
+  for (let i=0;i<nums.length;i++){
+    if(s.has(nums[i])){
+      return true
+    }
+    s.add(nums[i]);
+  }
+  return false
 }
 
 test("217. Contains Duplicate", () => {

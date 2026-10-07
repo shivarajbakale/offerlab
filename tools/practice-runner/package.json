@@ -1,0 +1,54 @@
+{
+  "name": "practice-runner",
+  "displayName": "Practice Runner",
+  "description": "Run a NeetCode practice file with one click and see pass/fail inline.",
+  "version": "0.2.0",
+  "publisher": "offerlab",
+  "license": "MIT",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Testing"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:typescript"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "practiceRunner.run",
+        "title": "Run Problem",
+        "category": "Practice",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "practiceRunner.run",
+          "group": "navigation",
+          "when": "resourceExtname == .ts && resourcePath =~ /practice|neetcode-150/"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "practiceRunner.run",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "editorLangId == typescript"
+      }
+    ],
+    "configuration": {
+      "title": "Practice Runner",
+      "properties": {
+        "practiceRunner.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Node executable used to run tests. Needs Node 23.6+ to run .ts files directly."
+        },
+        "practiceRunner.timeoutSeconds": {
+          "type": "number",
+          "default": 10,
+          "description": "Kill the run after this many seconds (guards against infinite loops)."
+        }
+      }
+    }
+  }
+}

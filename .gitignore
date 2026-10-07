@@ -4,3 +4,4 @@ node_modules/
 .env
 .claude/
 .superpowers/
+*.vsix
