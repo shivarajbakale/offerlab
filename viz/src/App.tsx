@@ -11,7 +11,7 @@ import { SimProblemView } from "./sim/SimProblemView.tsx";
 import { TrafficProblemView } from "./traffic/TrafficProblemView.tsx";
 import { DrillView } from "./drills/DrillView.tsx";
 import { OverviewView } from "./components/OverviewView.tsx";
-import { overviewTab } from "./sidebarTabs.ts";
+import { overviewId, overviewTab } from "./sidebarTabs.ts";
 import { findRun, markLocate, parseLesson, scenarioOptionLabel, type PlayLink } from "./sim/lesson.ts";
 import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
@@ -25,13 +25,34 @@ const EMPTY_STEPS: Step[] = [];
 /** Narrations are computed lazily per step and cached per run. */
 const narrationCache = new WeakMap<Step[], Map<number, Narration>>();
 
+const isPage = (id: string) => problems.some((p) => p.id === id) || overviewTab(id) !== null;
+
 function idFromHash(): string | null {
   const id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
-  return problems.some((p) => p.id === id) || overviewTab(id) ? id : null;
+  return isPage(id) ? id : null;
+}
+
+const LAST_KEY = "viz:last-page";
+/** The page open last time, so a return visit picks up where it left off. */
+function lastPage(): string | null {
+  try {
+    const id = localStorage.getItem(LAST_KEY);
+    return id && isPage(id) ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 function useProblemId(): [string, (id: string) => void] {
-  const [id, setId] = useState(() => idFromHash() ?? problems.find((p) => p.id.includes("016"))?.id ?? problems[0].id);
+  // A link wins, then the last page; a first visit opens the Algorithms overview.
+  const [id, setId] = useState(() => idFromHash() ?? lastPage() ?? overviewId("algorithms"));
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_KEY, id);
+    } catch {
+      // Storage blocked: every visit opens the overview.
+    }
+  }, [id]);
   useEffect(() => {
     const onHash = () => {
       const next = idFromHash();
