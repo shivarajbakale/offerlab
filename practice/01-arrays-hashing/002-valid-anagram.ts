@@ -24,18 +24,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export function isAnagram(s: string, t: string): boolean {
-  // if the length is not the same, its not an anagram anyway
+  // Get the char code of a  // 97
+  // Char code of current element- 97 gives us the element index to update
+  const charCodeA='a'.charCodeAt(0);
+  const counts= new Array(26).fill(0);
+
   if(s.length!==t.length){
     return false
   }
-  const count=new Array(26).fill(0);
-  const aValue='a'.charCodeAt(0);// 97
   for(let i=0;i<s.length;i++){
-    count[s.charCodeAt(i)-aValue]++; // Increment on the S item position
-    count[t.charCodeAt(i)-aValue]--; // decrement on the T item position 
+    counts[s.charCodeAt(i)-charCodeA]++;
+    counts[t.charCodeAt(i)-charCodeA]--;
   }
-
-  return count.every((x)=>x===0);
+  return counts.every((x)=>x==0);
 }
 
 test("242. Valid Anagram", () => {

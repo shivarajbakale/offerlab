@@ -31,6 +31,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 export function twoSum(nums: number[], target: number): number[] {
+  const store=new Map();
+  for(let i=0;i<nums.length;i++){
+    let j=store.get(target-nums[i]) // gives us the index of the taget- nums[i];
+    if(j!==undefined){
+      return [j,i]
+    }
+    store.set(nums[i],i);
+  }
+  return []
   // TODO: implement
   throw new Error("Not implemented");
 }
