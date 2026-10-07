@@ -78,12 +78,23 @@ export function narrateSim(steps: SimStep[], k: number): Narration {
 export function simCaption(steps: SimStep[], k: number): { tone: "info" | "good" | "bad"; text: string } | null {
   const s = steps[k];
   if (!s) return null;
+  const notes = (s.note ?? "").split(" · ").filter(Boolean);
+  const tones = notes.map((n) => n.match(/^(good|bad):\s*/)?.[1]);
+  const words = notes.map((n) => n.replace(/^(good|bad):\s*/, "")).join(" ");
   const problem = s.violation ?? s.error;
-  if (problem) return { tone: "bad", text: `${problem}.${s.note ? ` ${s.note.replace(/^(good|bad):\s*/, "")}` : ""}` };
-  if (s.note) {
-    const tone = s.note.match(/^(good|bad):\s*/)?.[1] as "good" | "bad" | undefined;
-    return { tone: tone ?? "info", text: s.note.replace(/^(good|bad):\s*/, "").replace(/ · (good|bad):\s*/g, " · ") };
-  }
-  const head = SAY[s.kind](s);
-  return { tone: s.kind === "crash" || s.kind === "drop" || s.kind === "partition" ? "bad" : "info", text: head.charAt(0).toUpperCase() + head.slice(1) + "." };
+  if (problem) return { tone: "bad", text: `${problem}.${words ? ` ${words}` : ""}` };
+  // Several notes on one step: any bad one makes the step bad, else any good one makes it good.
+  if (notes.length) return { tone: tones.includes("bad") ? "bad" : tones.includes("good") ? "good" : "info", text: words };
+  const plain = PLAIN[s.kind]?.(s) ?? SAY[s.kind](s);
+  return { tone: s.kind === "crash" || s.kind === "drop" || s.kind === "partition" ? "bad" : "info", text: plain.charAt(0).toUpperCase() + plain.slice(1) + "." };
 }
+
+/** Plainer words for events no handler explains: crashes, lost messages, splits and replies. */
+const PLAIN: Partial<Record<StepKind, (s: SimStep) => string>> = {
+  deliver: (s) => (s.node === "client" ? `the client gets its answer from ${s.msg!.from}: ${msgText(s.msg!)}` : SAY.deliver(s)),
+  drop: (s) => `a ${s.msg!.type} message from ${s.msg!.from} to ${s.msg!.to} never arrives, because ${DROP_REASON[s.dropReason!]}. Nobody is told it was lost`,
+  crash: (s) => `${s.node} crashes. It stops answering, its timers stop, and anything it kept only in memory is gone`,
+  recover: (s) => `${s.node} restarts. It has only what it saved to disk`,
+  partition: (s) => `the network splits into ${groups(s, " and ")}. Machines on one side can't reach the other, and each side may think the other is dead`,
+  heal: () => "the network is whole again, and messages flow between all machines",
+};
