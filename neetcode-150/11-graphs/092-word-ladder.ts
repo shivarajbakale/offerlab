@@ -45,6 +45,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule queue holds the words exactly steps words from beginWord; visited never repeat
 // @why Returns the number of words in the shortest chain from `beginWord` to `endWord`, or 0.
 export function ladderLength(beginWord: string, endWord: string, wordList: string[]): number {
   // @why If the end word is not in the list, no chain can end there.
@@ -91,16 +92,16 @@ export function ladderLength(beginWord: string, endWord: string, wordList: strin
           // @why Skip words already seen; a longer path to them is useless.
           if (visited.has(nb)) continue;
           // @why Mark it so no later path adds it again.
-          visited.add(nb);
+          visited.add(nb); // @moment reach {nb} at step {steps + 1}
           // @why It becomes part of the next layer.
           next.push(nb);
         }
       }
     }
     // @why Move on to the next layer.
-    queue = next;
+    queue = next; // @ask queue.length
     // @why One more word added to the chain.
-    steps++;
+    steps++; // @ask steps
   }
   // @why The queue ran out without reaching the end word, so no chain exists.
   return 0;

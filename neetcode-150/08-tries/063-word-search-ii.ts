@@ -60,6 +60,7 @@ class TrieNode {
   word: string | null = null; // set on the node where a word ends
 }
 
+// @rule node is the trie node for the letters on the current path; path cells are '#'
 // @why Finds every word from `words` that can be traced on the grid.
 export function findWords(board: string[][], words: string[]): string[] {
   // @why Put all words in one trie so one grid walk searches for all of them at once.
@@ -97,14 +98,14 @@ export function findWords(board: string[][], words: string[]): string[] {
     // @why The letter in this cell.
     const ch = board[r][c];
     // @why Is there a word path continuing with this letter?
-    const node = parent.children.get(ch);
+    const node = parent.children.get(ch); // @ask node===undefined
     // @why No word starts this way, so stop early.
     if (!node) return;
 
     // @why A word ends at this node.
     if (node.word !== null) {
       // @why Record the word.
-      result.push(node.word);
+      result.push(node.word); // @moment found "{node.word}"
       // @why Clear it so the same word is not added twice.
       node.word = null; // report each word once
     }
@@ -124,7 +125,7 @@ export function findWords(board: string[][], words: string[]): string[] {
 
     // Prune exhausted branches.
     // @why A node with no children and no word is useless; remove it so later searches skip dead branches.
-    if (node.children.size === 0 && node.word === null) parent.children.delete(ch);
+    if (node.children.size === 0 && node.word === null) parent.children.delete(ch); // @ask parent.children.size
   };
 
   // @why Start a search from every cell.

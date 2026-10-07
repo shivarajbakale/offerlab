@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule matrix[0][c]===0 marks column c, matrix[r][0]===0 marks row r, rowZero marks row 0
 // @why Zeroes whole rows and columns in place, wherever a 0 appears.
 export function setZeroes(matrix: number[][]): void {
   // @why Number of rows.
@@ -56,11 +57,11 @@ export function setZeroes(matrix: number[][]): void {
       // @why Only zeros need to leave a mark.
       if (matrix[r][c] !== 0) continue;
       // @why Mark this cell's column by zeroing its top cell (a note saying clear this column).
-      matrix[0][c] = 0;
+      matrix[0][c] = 0; // @moment zero found at ({r},{c})
       // @why Mark this cell's row by zeroing its first cell (a note saying clear this row).
       if (r > 0) matrix[r][0] = 0;
       // @why For row 0, the first cell is shared with column 0's mark, so use `rowZero` instead.
-      else rowZero = true;
+      else rowZero = true; // @ask rowZero
     }
   }
 
@@ -68,8 +69,10 @@ export function setZeroes(matrix: number[][]): void {
   for (let r = 1; r < rows; r++) {
     // @why Visit every inner cell.
     for (let c = 1; c < cols; c++) {
+      // @why Is this cell's column marked (top cell 0) or its row marked (first cell 0)?
+      const marked = matrix[0][c] === 0 || matrix[r][0] === 0; // @ask marked
       // @why Zero it if its row or its column was marked.
-      if (matrix[0][c] === 0 || matrix[r][0] === 0) matrix[r][c] = 0;
+      if (marked) matrix[r][c] = 0;
     }
   }
 

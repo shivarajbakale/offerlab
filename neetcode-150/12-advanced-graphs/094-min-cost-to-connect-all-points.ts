@@ -107,6 +107,7 @@ class MinHeap<T extends number[]> {
   }
 }
 
+// @rule visited is a tree joined by the cheapest edges found; total is its cost
 // @why Returns the smallest total wire length that connects every point (a minimum spanning tree).
 export function minCostConnectPoints(points: number[][]): number {
   // @why Number of points.
@@ -127,9 +128,9 @@ export function minCostConnectPoints(points: number[][]): number {
     // @why This point may already be connected by a cheaper way; skip the old entry.
     if (visited.has(i)) continue;
     // @why Connect the point to the tree.
-    visited.add(i);
+    visited.add(i); // @moment connect point {i} for {cost}
     // @why Pay the cost of this connection.
-    total += cost;
+    total += cost; // @ask total
     // @why Get this point's position.
     const [x1, y1] = points[i];
     // @why Offer a connection to every other point.

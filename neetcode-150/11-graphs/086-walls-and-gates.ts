@@ -55,6 +55,7 @@ import assert from "node:assert/strict";
 // @why Marks an empty room that no gate has reached yet.
 const INF = 2147483647;
 
+// @rule cells leave the queue in order of distance, so a first distance is the nearest gate
 // @why Fills each empty room with its distance to the nearest gate, in place.
 export function wallsAndGates(rooms: number[][]): void {
   // @why Save the grid size once for the bounds check.
@@ -84,9 +85,9 @@ export function wallsAndGates(rooms: number[][]): void {
       // @why Skip off-grid cells, walls, gates, and rooms already given a distance.
       if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || rooms[nr][nc] !== INF) continue;
       // @why This neighbour is one step farther than the current cell; this also marks it visited.
-      rooms[nr][nc] = rooms[r][c] + 1;
+      rooms[nr][nc] = rooms[r][c] + 1; // @ask rooms[nr][nc]
       // @why Queue it so its own neighbours get distances later.
-      queue.push([nr, nc]);
+      queue.push([nr, nc]); // @ask queue.length
     }
   }
 }

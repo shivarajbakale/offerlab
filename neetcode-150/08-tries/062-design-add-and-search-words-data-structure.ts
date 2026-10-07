@@ -51,6 +51,7 @@ class TrieNode {
   isWord = false;
 }
 
+// @rule a '.' tries every child; a match must end on a node with isWord set
 // @why A trie that also supports '.' as a wildcard letter when searching.
 export class WordDictionary {
   // @why The empty starting node.
@@ -75,7 +76,7 @@ export class WordDictionary {
       node = next;
     }
     // @why Mark the end so this exact word is findable.
-    node.isWord = true;
+    node.isWord = true; // @moment added "{word}"
   }
 
   // @why Looks up a word that may have '.' standing for any letter.
@@ -97,7 +98,7 @@ export class WordDictionary {
         return false;
       }
       // @why A normal letter has exactly one place to go.
-      const next = node.children.get(ch);
+      const next = node.children.get(ch); // @ask next===undefined
       // @why Keep going only if that child exists.
       return next !== undefined && dfs(next, i + 1);
     };

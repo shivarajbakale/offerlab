@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule if a pair adds up to target, both of its numbers are inside l..r
 // @why Return the 1-based positions of two numbers adding to `target`.
 export function twoSum(numbers: number[], target: number): number[] {
   // @why `l` starts at the smallest number.
@@ -56,9 +57,9 @@ export function twoSum(numbers: number[], target: number): number[] {
     // @why Found it; add 1 because positions start at 1.
     if (sum === target) return [l + 1, r + 1];
     // @why Too big, and the array is sorted, so use a smaller right number.
-    if (sum > target) r--;
+    if (sum > target) r--; // @ask r
     // @why Too small, so use a bigger left number.
-    else l++;
+    else l++; // @ask l
   }
   // @why Just a safe default; the problem promises an answer exists.
   return [];

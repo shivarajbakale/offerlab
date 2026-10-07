@@ -38,6 +38,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule result is sorted with no overlaps; only its last interval can still grow
 // @why Returns the intervals with all overlapping ones combined.
 export function merge(intervals: number[][]): number[][] {
   // @why Sort by start so any overlapping intervals end up next to each other; copy to keep the input intact.
@@ -50,9 +51,9 @@ export function merge(intervals: number[][]): number[][] {
     // @why The most recent merged interval, the only one the next can overlap.
     const last = result[result.length - 1];
     // @why Next one starts before `last` ends, so they overlap: stretch `last` to the later end (it may sit inside).
-    if (start <= last[1]) last[1] = Math.max(last[1], end);
+    if (start <= last[1]) last[1] = Math.max(last[1], end); // @ask last[1]
     // @why No overlap, so this interval begins a new group.
-    else result.push([start, end]);
+    else result.push([start, end]); // @ask result.length // @moment new interval [{start},{end}]
   }
   // @why The merged intervals.
   return result;

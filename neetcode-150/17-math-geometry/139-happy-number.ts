@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule fast takes two steps per slow step, so in any cycle they meet; happy iff they meet at 1
 // @why Replaces a number with the sum of the squares of its digits.
 function sumOfSquares(n: number): number {
   // @why Running sum of the squared digits.
@@ -48,7 +49,7 @@ function sumOfSquares(n: number): number {
     // @why The last digit of `n`.
     const d = n % 10;
     // @why Square it and add it.
-    total += d * d;
+    total += d * d; // @ask total
     // @why Chop off the last digit.
     n = Math.floor(n / 10);
   }
@@ -67,7 +68,7 @@ export function isHappy(n: number): boolean {
     // @why Slow moves one step.
     slow = sumOfSquares(slow);
     // @why Fast moves two steps.
-    fast = sumOfSquares(sumOfSquares(fast));
+    fast = sumOfSquares(sumOfSquares(fast)); // @moment slow {slow}, fast jumps from {fast}
   }
   // @why If they met at 1, it is happy; if they met anywhere else, it is stuck in a loop.
   return slow === 1;

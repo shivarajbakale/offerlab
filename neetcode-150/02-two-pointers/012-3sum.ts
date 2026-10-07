@@ -44,6 +44,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 // @viz array:sorted hide:a
+// @rule with a fixed, any pair of the rest that sums to -a lies inside l..r
 // @why Return every unique triplet that adds up to 0.
 export function threeSum(nums: number[]): number[][] {
   // @why Sort a copy so two pointers work and equal numbers sit together.
@@ -69,13 +70,13 @@ export function threeSum(nums: number[]): number[][] {
       // @why Total of the fixed number and the two pointer numbers.
       const sum = a + sorted[l] + sorted[r];
       // @why Too big, so make it smaller by moving the right pointer left.
-      if (sum > 0) r--; // @say Fixing {sorted[i]}; sum too big means move r left to a smaller number
+      if (sum > 0) r--; // @ask r // @say Fixing {sorted[i]}; sum too big means move r left to a smaller number
       // @why Too small, so make it bigger by moving the left pointer right.
-      else if (sum < 0) l++; // @say Sum too small, so move l right to a larger number
+      else if (sum < 0) l++; // @ask l // @say Sum too small, so move l right to a larger number
       // @why Sum is exactly 0, so we found a triplet.
       else {
         // @why Save the triplet.
-        result.push([a, sorted[l], sorted[r]]); // @say {a} + {sorted[l]} + {sorted[r]} = 0, record the triplet
+        result.push([a, sorted[l], sorted[r]]); // @moment found [{a},{sorted[l]},{sorted[r]}] // @say {a} + {sorted[l]} + {sorted[r]} = 0, record the triplet
         // @why Move both pointers in to look for other pairs.
         l++;
         r--;

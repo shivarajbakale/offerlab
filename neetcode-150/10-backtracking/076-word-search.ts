@@ -46,6 +46,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule cells marked '#' are exactly the current path; each is restored on the way back
 // @why Returns true if `word` can be traced through neighboring cells of the grid.
 export function exist(board: string[][], word: string): boolean {
   // @why Number of rows in the grid.
@@ -65,7 +66,7 @@ export function exist(board: string[][], word: string): boolean {
     // @why Remember the letter so we can put it back later.
     const ch = board[r][c];
     // @why Mark the cell used so the path can't reuse it.
-    board[r][c] = "#"; // mark visited
+    board[r][c] = "#"; // mark visited // @moment {word[i]} at {r},{c}
     // @why Try going down, up, right, then left; any success is enough.
     const found =
       dfs(r + 1, c, i + 1) ||
@@ -73,7 +74,7 @@ export function exist(board: string[][], word: string): boolean {
       dfs(r, c + 1, i + 1) ||
       dfs(r, c - 1, i + 1);
     // @why Backtrack: put the letter back so other paths can use this cell.
-    board[r][c] = ch; // restore
+    board[r][c] = ch; // restore // @ask found
     // @why Pass the result up.
     return found;
   };

@@ -115,6 +115,7 @@ class MinHeap<T extends number[]> {
   }
 }
 
+// @rule the heap pops cells by the lowest water level needed to reach them
 // @why Returns the least time at which you can swim from the top-left to the bottom-right.
 export function swimInWater(grid: number[][]): number {
   // @why The grid is `n` by `n`.
@@ -145,9 +146,11 @@ export function swimInWater(grid: number[][]): number {
       // @why Skip neighbors that are off the grid or already seen.
       if (nr < 0 || nc < 0 || nr >= n || nc >= n || visited.has(key)) continue;
       // @why Mark it seen so it's queued only once.
-      visited.add(key);
+      visited.add(key); // @moment reach ({nr},{nc})
       // @why To get there we need the higher of the time so far and its own height.
-      heap.push([Math.max(t, grid[nr][nc]), nr, nc]);
+      const need = Math.max(t, grid[nr][nc]); // @ask need
+      // @why Queue the neighbor keyed by that time, so the lowest-time cell pops first.
+      heap.push([need, nr, nc]);
     }
   }
   // @why Safety return; the goal is always reachable, so it shouldn't happen.

@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule i always points at the start of the next item's length number
 // @why Pack many strings into one string that can be unpacked exactly.
 export function encode(strs: string[]): string {
   // @why Put the length and a `#` before each string so we know where it ends, whatever it contains.
@@ -58,11 +59,11 @@ export function decode(str: string): string[] {
     // @why The first `#` after the digits ends the length; the text can't confuse this.
     while (str[j] !== "#") j++;
     // @why Read the number in front of the `#`; it tells how many characters to take.
-    const len = Number(str.slice(i, j));
+    const len = Number(str.slice(i, j)); // @ask len
     // @why Take exactly `len` characters after the `#`, even if they contain `#`.
-    result.push(str.slice(j + 1, j + 1 + len));
+    result.push(str.slice(j + 1, j + 1 + len)); // @moment decoded "{str.slice(j + 1, j + 1 + len)}"
     // @why Jump past the length, the `#`, and the string to the next item.
-    i = j + 1 + len;
+    i = j + 1 + len; // @ask i
   }
   // @why All strings are recovered.
   return result;

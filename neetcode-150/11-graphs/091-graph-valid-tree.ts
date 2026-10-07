@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule visited holds the nodes reached so far, each by exactly one path from 0
 // @why Returns true if the edges connect all n nodes with no cycle.
 export function validTree(n: number, edges: number[][]): boolean {
   // @why A tree always has exactly n - 1 edges; any other count fails right away.
@@ -59,9 +60,9 @@ export function validTree(n: number, edges: number[][]): boolean {
   // @why Returns false if a cycle is found; `prev` is the node we just came from.
   const dfs = (node: number, prev: number): boolean => {
     // @why Reaching a node twice by a different route means a cycle.
-    if (visited.has(node)) return false;
+    if (visited.has(node)) return false; // @broken
     // @why Mark this node as reached.
-    visited.add(node);
+    visited.add(node); // @ask visited.size // @moment visit {node} from {prev}
     // @why Visit each neighbour.
     for (const nb of adj[node]) {
       // @why Going back along the edge we came from is not a cycle in an undirected graph.

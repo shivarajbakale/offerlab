@@ -38,6 +38,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule mins[k] is the smallest value in stack[0..k], so the top of mins is the current min
 // @why A stack that can also report its smallest value in O(1).
 export class MinStack {
   // @why The normal stack of values.
@@ -50,9 +51,9 @@ export class MinStack {
     // @why Store the value itself for `top()`.
     this.stack.push(val);
     // @why Find the minimum so far; the first value has nothing below it, so it is its own min.
-    const curMin = this.mins.length ? this.mins[this.mins.length - 1] : val;
+    const curMin = this.mins.length ? this.mins[this.mins.length - 1] : val; // @ask curMin
     // @why Save the smaller of the new value and the old min at this level.
-    this.mins.push(Math.min(val, curMin));
+    this.mins.push(Math.min(val, curMin)); // @ask this.mins[this.mins.length-1] // @moment push {val}
   }
 
   // @why Remove from both stacks so they stay in step.
@@ -60,7 +61,7 @@ export class MinStack {
     // @why Drop the value itself.
     this.stack.pop();
     // @why Dropping the matching min entry brings the previous minimum back for free.
-    this.mins.pop();
+    this.mins.pop(); // @moment pop; min back to {this.mins[this.mins.length - 2]}
   }
 
   // @why The newest value is at the end of the stack.

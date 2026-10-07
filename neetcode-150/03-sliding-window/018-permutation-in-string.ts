@@ -37,6 +37,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule matches counts the letters whose window count equals their count in s1
 // @why Return true if some window of `s2` has the same letters as `s1`.
 export function checkInclusion(s1: string, s2: string): boolean {
   // @why `s1` is too long to fit inside `s2`.
@@ -66,7 +67,7 @@ export function checkInclusion(s1: string, s2: string): boolean {
     // @why It matched before the change, so it may stop matching.
     if (have[idx] === need[idx]) matches--;
     // @why Apply the change.
-    have[idx] += delta;
+    have[idx] += delta; // @ask have[idx]===need[idx]
     // @why If it matches now, count it.
     if (have[idx] === need[idx]) matches++;
   };

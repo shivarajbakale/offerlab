@@ -45,7 +45,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// @viz hide:p values:lo,hi,k
+// @viz hide:p values:lo,hi,k range:lo..hi@k best:best
+// @rule every speed below lo is too slow; every speed above hi finishes in time
 // @why Finds the slowest eating speed that still finishes within `h` hours.
 export function minEatingSpeed(piles: number[], h: number): number {
   // @why The slowest possible speed is 1 banana per hour.
@@ -63,14 +64,14 @@ export function minEatingSpeed(piles: number[], h: number): number {
     // @why Each pile takes whole hours, so round up.
     for (const p of piles) hours += Math.ceil(p / k); // @say Each pile takes ceil(pile / {k}) hours at this speed
     // @why Fast enough? Then this speed is a candidate.
-    if (hours <= h) { // @say Can Koko finish in {h} hours eating {k} per hour?
+    if (hours <= h) { // @ask hours<=h // @say Can Koko finish in {h} hours eating {k} per hour?
       // @why Keep this speed as the best so far.
       best = k;
       // @why Try slower speeds to see if something smaller still works.
-      hi = k - 1; // @say {k} works; look for an even slower speed
+      hi = k - 1; // @ask hi // @say {k} works; look for an even slower speed
     } else {
       // @why Too slow, so only faster speeds can work.
-      lo = k + 1; // @say {k} is too slow, so she must eat faster
+      lo = k + 1; // @ask lo // @say {k} is too slow, so she must eat faster
     }
   }
   // @why The slowest speed that worked.

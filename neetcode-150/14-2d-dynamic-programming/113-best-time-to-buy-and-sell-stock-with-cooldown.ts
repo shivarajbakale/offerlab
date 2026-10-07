@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule buy1 / sell1 are the best profit from day i+1 on when free to buy / holding a stock
 // @why Returns the max profit with unlimited trades, but a one-day cooldown after each sell.
 export function maxProfit(prices: number[]): number {
   // @why `buy1` means the best future profit from day `i + 1` on when you are free to buy.
@@ -54,9 +55,9 @@ export function maxProfit(prices: number[]): number {
   // @why Go backwards so the future days are solved first.
   for (let i = prices.length - 1; i >= 0; i--) {
     // @why When free to buy: wait (`buy1`) or buy today, paying the price and moving to the holding state.
-    const buy = Math.max(buy1, sell1 - prices[i]);
+    const buy = Math.max(buy1, sell1 - prices[i]); // @ask buy
     // @why When holding: wait (`sell1`) or sell today for the price, then skip a day (cooldown) to `buy2`.
-    const sell = Math.max(sell1, buy2 + prices[i]);
+    const sell = Math.max(sell1, buy2 + prices[i]); // @ask sell
     // @why Slide the window: today's `i + 1` becomes the next round's `i + 2`.
     buy2 = buy1;
     // @why Save today's free-to-buy value.

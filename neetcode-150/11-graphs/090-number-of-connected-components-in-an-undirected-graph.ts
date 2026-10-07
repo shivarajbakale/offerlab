@@ -38,6 +38,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule components equals the number of nodes that are their own root in parent
 // @why Returns how many separate connected groups the graph has.
 export function countComponents(n: number, edges: number[][]): number {
   // @why Each node starts as its own group leader.
@@ -71,11 +72,11 @@ export function countComponents(n: number, edges: number[][]): number {
     // @why Make `ra` the bigger group so the tree stays shallow.
     if (rank[ra] < rank[rb]) [ra, rb] = [rb, ra];
     // @why Hang the smaller group under the bigger one.
-    parent[rb] = ra;
+    parent[rb] = ra; // @ask parent[rb]
     // @why The merged group is now bigger.
     rank[ra] += rank[rb];
     // @why Two groups became one.
-    components--;
+    components--; // @ask components // @moment merge {a} and {b}
   }
   // @why Groups left after all edges are used.
   return components;

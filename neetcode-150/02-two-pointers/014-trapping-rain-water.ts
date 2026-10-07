@@ -37,6 +37,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule the water over every bar outside l..r is already counted
 // @why Return how much rain water the bars can hold.
 export function trap(height: number[]): number {
   // @why `l` walks in from the left.
@@ -56,7 +57,7 @@ export function trap(height: number[]): number {
       // @why Update the tallest wall on the left.
       leftMax = Math.max(leftMax, height[l]);
       // @why Water above this bar is the wall height minus the bar.
-      water += leftMax - height[l];
+      water += leftMax - height[l]; // @ask water
       // @why This bar is done, so step right.
       l++;
     // @why The right side is lower or equal, so the right max decides its water.
@@ -64,7 +65,7 @@ export function trap(height: number[]): number {
       // @why Update the tallest wall on the right.
       rightMax = Math.max(rightMax, height[r]);
       // @why Water above this bar is the wall height minus the bar.
-      water += rightMax - height[r];
+      water += rightMax - height[r]; // @ask water
       // @why This bar is done, so step left.
       r--;
     }

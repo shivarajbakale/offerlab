@@ -48,8 +48,8 @@ export function CodePanel({
   let shown = 0;
   for (let n = codeStart; n <= codeEnd; n++) {
     // Hint comments are shown elsewhere (narration bar, notes), not as code.
-    if (/^\s*\/\/\s*@viz\b/.test(lines[n - 1]) || isWhyLine(lines[n - 1])) continue;
-    const plain = lines[n - 1].replace(/\s*\/\/\s*@(say|mark)\b.*$/, "");
+    if (/^\s*\/\/\s*@(viz|rule)\b/.test(lines[n - 1]) || isWhyLine(lines[n - 1])) continue;
+    const plain = lines[n - 1].replace(/\s*\/\/\s*@(say|mark|ask|broken|rule|moment)\b.*$/, "");
     let lineTokens = tokens?.[n - 1];
     if (lineTokens && plain.length < lines[n - 1].length) {
       let used = 0;

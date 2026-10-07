@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import type { CallTree } from "../model/callTree.ts";
 import type { Panel, Scene } from "../model/scene.ts";
 import { colorOf } from "./colors.ts";
-import { ArrayView } from "./views/ArrayView.tsx";
+import type { Deps } from "../model/deps.ts";
+import type { Story } from "../model/story.ts";
+import { ArrayView, type ArrayLens } from "./views/ArrayView.tsx";
 import { BitArrayView } from "./views/BitArrayView.tsx";
 import { CallTreeView } from "./views/CallTreeView.tsx";
 import { GraphView } from "./views/GraphView.tsx";
@@ -12,9 +14,10 @@ import { ListView } from "./views/ListView.tsx";
 import { PagesView } from "./views/PagesView.tsx";
 import { RingView } from "./views/RingView.tsx";
 import { SpatialView } from "./views/SpatialView.tsx";
+import { RangeView, SearchSpaceView, WindowHistoryView } from "./views/StoryViews.tsx";
 import { MapView, ObjectView, SetView } from "./views/TableViews.tsx";
 import { TimelineView } from "./views/TimelineView.tsx";
-import { TreeView } from "./views/TreeView.tsx";
+import { TreeView, type TreeLens } from "./views/TreeView.tsx";
 import { TrieView } from "./views/TrieView.tsx";
 
 const KIND_LABEL: Record<Panel["kind"], string> = {
@@ -63,14 +66,43 @@ function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
   );
 }
 
-function renderPanel(p: Panel) {
+/** The story's extras for one step: the main array's lens, the rule, and a pending question. */
+export type StoryView = {
+  story: Story;
+  lens?: ArrayLens;
+  rule?: string;
+  broken: boolean;
+  quiz?: { on: boolean; toggle: () => void };
+  ask?: {
+    name: string;
+    feedback: string;
+    onReveal: () => void;
+    /** A question answered by picking a value rather than clicking a cell. */
+    choices?: string[];
+    wrong?: string;
+    onChoose?: (c: string) => void;
+  };
+  /** Grid cells visited or filled so far, by panel key. */
+  trail?: Map<string, Set<string>>;
+};
+
+/** What the current step adds to every drawing, story or not: the cells its line reads and writes, and the tree's recursion. */
+export type StepLens = { deps?: Deps | null; tree?: TreeLens };
+
+function renderPanel(p: Panel, story?: StoryView, step?: StepLens) {
   switch (p.kind) {
     case "array":
-      return <ArrayView panel={p} />;
+      return (
+        <ArrayView
+          panel={p}
+          lens={story?.lens && p.name === story.story.win?.array ? story.lens : undefined}
+          deps={step?.deps?.[p.name]}
+        />
+      );
     case "grid":
-      return <GridView panel={p} />;
+      return <GridView panel={p} trail={story?.trail?.get(p.key)} deps={step?.deps?.[p.name]} />;
     case "tree":
-      return <TreeView panel={p} />;
+      return <TreeView panel={p} lens={step?.tree} />;
     case "list":
       return <ListView panel={p} />;
     case "trie":
@@ -98,10 +130,68 @@ function renderPanel(p: Panel) {
   }
 }
 
-export function Visual({ scene, callTree, index }: { scene: Scene; callTree: CallTree; index: number }) {
+export function Visual({
+  scene,
+  callTree,
+  index,
+  story,
+  step,
+}: {
+  scene: Scene;
+  callTree: CallTree;
+  index: number;
+  story?: StoryView;
+  step?: StepLens;
+}) {
   const showTree = callTree.recursive && callTree.nodes.length >= 3;
+  const win = story?.story.win;
+  const range = story?.story.range;
+  const showWindow = win && win.len <= 24 && !win.restarts;
   return (
     <div className="visual">
+      {story && (story.rule || story.quiz) && (
+        <div className={`rule-bar ${story.broken ? "broken" : ""}`}>
+          <span className="dot" />
+          <span className="rule-text">
+            {story.rule ? `${story.broken ? "Rule broken" : "Rule holds"}: ${story.rule}` : "Key moments pause for your guess."}
+          </span>
+          {story.quiz && (
+            <label className="quiz-toggle" title="Pause at key moments and guess where the pointer goes">
+              <input type="checkbox" checked={story.quiz.on} onChange={story.quiz.toggle} />
+              Ask me first
+            </label>
+          )}
+        </div>
+      )}
+      {story?.ask && (
+        <div className="ask-bar" role="status">
+          <span>
+            <b>Your turn.</b>{" "}
+            {story.ask.choices ? (
+              <>
+                What is <code>{story.ask.name}</code> after this line?
+              </>
+            ) : (
+              <>
+                Where does <code>{story.ask.name}</code> go next? Click a cell.
+              </>
+            )}
+          </span>
+          {story.ask.choices && (
+            <span className="ask-choices">
+              {story.ask.choices.map((c) => (
+                <button key={c} className={`btn ${story.ask!.wrong === c ? "wrong" : ""}`} onClick={() => story.ask!.onChoose?.(c)}>
+                  {c}
+                </button>
+              ))}
+            </span>
+          )}
+          <button className="btn" onClick={story.ask.onReveal}>
+            Show me
+          </button>
+          <span className="ask-feedback">{story.ask.feedback}</span>
+        </div>
+      )}
       {scene.scalars.length > 0 && (
         <div className="scalars">
           {scene.scalars.map((s) => (
@@ -117,11 +207,43 @@ export function Visual({ scene, callTree, index }: { scene: Scene; callTree: Cal
       <div className="panels">
         {scene.panels.map((p) => (
           <PanelBox key={p.key} panel={p}>
-            {renderPanel(p)}
+            {renderPanel(p, story, step)}
           </PanelBox>
         ))}
         {scene.panels.length === 0 && scene.scalars.length === 0 && <div className="empty">no variables yet</div>}
       </div>
+      {(showWindow || range) && (
+        <div className="side-by-side">
+          {range && (
+            <div className="panel">
+              <div className="panel-title">
+                <b>search range</b>
+                <span>
+                  {range.lo}..{range.hi} over time
+                </span>
+              </div>
+              <RangeView range={range} index={index} />
+            </div>
+          )}
+          {showWindow && !range && (
+            <div className="panel">
+              <div className="panel-title">
+                <b>search space</b>
+                <span>every start and end brute force would try</span>
+              </div>
+              <SearchSpaceView story={win} index={index} />
+            </div>
+          )}
+          {showWindow && !range && (
+            <div className="panel">
+              <div className="panel-title">
+                <b>window over time</b>
+              </div>
+              <WindowHistoryView story={win} index={index} />
+            </div>
+          )}
+        </div>
+      )}
       {(scene.frames.length > 1 || showTree) && (
         <div className="side-by-side">
           {scene.frames.length > 1 && (

@@ -41,6 +41,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule the smallest card left must start a group; cards below start are all used
 // @why Returns true if the cards can be split into groups of `groupSize` consecutive numbers.
 export function isNStraightHand(hand: number[], groupSize: number): boolean {
   // @why If the cards cannot be split into equal groups, it is impossible right away.
@@ -56,7 +57,7 @@ export function isNStraightHand(hand: number[], groupSize: number): boolean {
   // @why The smallest remaining card must start a group, so go from low to high.
   for (const start of keys) {
     // @why How many copies of `start` are still unused.
-    const c = count.get(start) ?? 0;
+    const c = count.get(start) ?? 0; // @ask c
     // @why If they were all used by earlier groups, nothing to start here.
     if (c === 0) continue;
     // `start` begins c groups: each needs start..start+groupSize-1.
@@ -67,7 +68,7 @@ export function isNStraightHand(hand: number[], groupSize: number): boolean {
       // @why Not enough copies to give every group one, so the hand cannot work.
       if (have < c) return false;
       // @why Use up `c` copies of this value.
-      count.set(v, have - c);
+      count.set(v, have - c); // @ask count.get(v)
     }
   }
   // @why Every card ended up in a valid group.

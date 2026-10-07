@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule total is always the sum of path; candidates before i are never picked again
 // @why Finds all combinations of `candidates` that add up to `target`; numbers can be reused.
 export function combinationSum(candidates: number[], target: number): number[][] {
   // @why Collects every valid combination.
@@ -56,7 +57,7 @@ export function combinationSum(candidates: number[], target: number): number[][]
     // @why Hit the target exactly, so this path is a valid answer.
     if (total === target) {
       // @why Save a copy, because `path` keeps changing.
-      res.push([...path]);
+      res.push([...path]); // @ask res.length // @moment found {JSON.stringify(path)}
       // @why No need to go deeper; adding more would overshoot.
       return;
     }
@@ -64,7 +65,7 @@ export function combinationSum(candidates: number[], target: number): number[][]
     if (i >= candidates.length || total > target) return;
 
     // @why First choice: take candidate `i`.
-    path.push(candidates[i]); // reuse candidates[i]
+    path.push(candidates[i]); // reuse candidates[i] // @ask path.length
     // @why Stay on the same index, because the same number may be used again.
     dfs(i, total + candidates[i]);
     // @why Backtrack: remove it so we can try not using it.

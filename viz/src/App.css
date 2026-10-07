@@ -2319,3 +2319,304 @@
     font-size: inherit;
   }
 }
+
+/* window story: ruled-out cells, repeats, arcs, best window, questions */
+.arr-cell.ruled-out {
+  color: var(--muted);
+  background: var(--panel-2);
+  opacity: 0.45;
+}
+.arr-cell.ruled-out::after,
+.arr-cell.just-left::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 50%;
+  height: 1.5px;
+  background: var(--muted);
+  transform: rotate(-35deg);
+}
+.arr-cell.just-left {
+  opacity: 0.7;
+  background: var(--bad-soft);
+}
+.arr-cell.just-left::after {
+  background: var(--bad);
+}
+.arr-cell.ahead {
+  opacity: 0.6;
+}
+.arr-cell.dup {
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-weight: 700;
+}
+.window.broken {
+  border-color: var(--bad);
+}
+.arr-cell.pickable {
+  cursor: pointer;
+  opacity: 1;
+}
+.arr-cell.pickable:hover {
+  background: var(--accent-soft);
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+}
+.arr-cell.wrong {
+  animation: shake 0.35s;
+  background: var(--bad-soft);
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+.arr .arcs {
+  position: absolute;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  font-family: var(--mono);
+}
+.best-row {
+  position: relative;
+  height: 30px;
+  margin-top: 4px;
+}
+.best-bar {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ok);
+}
+.best-bar span {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ok);
+}
+.rule-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 13px;
+  transition: background 0.25s, color 0.25s;
+}
+.rule-bar.broken {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.rule-bar .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.rule-bar .rule-text {
+  flex: 1;
+  min-width: 0;
+}
+.quiz-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ask-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent);
+  border-radius: 9px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.ask-bar b {
+  color: var(--accent);
+}
+.ask-bar .ask-feedback {
+  flex-basis: 100%;
+  color: var(--ink-2);
+}
+.ask-bar .ask-feedback:empty {
+  display: none;
+}
+.story-svg text {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+.story-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 46ch;
+}
+.story-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.story-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.scrub-tick {
+  position: absolute;
+  top: -9px;
+  width: 3px;
+  height: 8px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.scrub-tick.broken,
+.scrub-tick.shrink {
+  background: var(--bad);
+}
+.scrub-tick.best {
+  background: var(--ok);
+}
+.scrub-tick.moment {
+  background: var(--accent);
+}
+
+/* choices for a question that is not a cell click */
+.ask-choices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ask-choices .btn {
+  font-family: var(--mono);
+  min-width: 40px;
+}
+.ask-choices .btn.wrong {
+  animation: shake 0.35s;
+  background: var(--bad-soft);
+  border-color: var(--bad);
+}
+
+/* reads and writes of the current line */
+.arr-cell.dep-read,
+.grid-cell.dep-read {
+  box-shadow: inset 0 0 0 2px var(--p1);
+}
+.arr-cell.dep-write,
+.grid-cell.dep-write {
+  box-shadow: inset 0 0 0 2.5px var(--accent);
+  font-weight: 700;
+}
+.grid-cell.trail {
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--panel));
+}
+.dep-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 3;
+}
+.dep-arrows line {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+/* tree recursion: the path still open, and what finished subtrees returned */
+.node-circle.on-path {
+  stroke: var(--accent-line);
+  stroke-width: 2.5;
+}
+.node-circle.done {
+  fill: var(--panel-2);
+  stroke: var(--ok);
+}
+.edge.on-path {
+  stroke: var(--accent-line);
+  stroke-width: 2.5;
+}
+.node-ret {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  fill: var(--ok);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* linked list: a next pointer that was just rewired */
+.list-arrow.rewired {
+  color: var(--accent);
+  font-weight: 700;
+  position: relative;
+}
+.list-was {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* backtracking: calls that found an answer and dead ends */
+.call-node.found rect {
+  stroke: var(--ok);
+  stroke-width: 2;
+}
+.call-node.dead rect {
+  stroke-dasharray: 3 3;
+  opacity: 0.6;
+}
+.call-node.dead text {
+  fill: var(--muted);
+}
+
+/* binary search number line */
+.range-svg text {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .arr-cell.wrong,
+  .ask-choices .btn.wrong {
+    animation: none;
+  }
+}

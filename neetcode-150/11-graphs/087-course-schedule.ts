@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule following prerequisites never leads back to a course in visiting (no cycle)
 // @why Returns true if every course can be taken, meaning the prerequisites have no cycle.
 export function canFinish(numCourses: number, prerequisites: number[][]): boolean {
   // @why `pre[c]` lists the courses that must be done before course `c`.
@@ -55,17 +56,17 @@ export function canFinish(numCourses: number, prerequisites: number[][]): boolea
   // @why Returns true if this course can be completed.
   const dfs = (course: number): boolean => {
     // @why Cycle found: the course needs itself, so it can never be taken.
-    if (visiting.has(course)) return false; // @say Reaching a course already on our path means a cycle
+    if (visiting.has(course)) return false; // @broken // @say Reaching a course already on our path means a cycle
     // @why No prerequisites left, so the course is takeable.
     if (pre[course].length === 0) return true; // @say A course with no prereqs left can always be taken
     // @why Mark this course as on the current path.
-    visiting.add(course); // @say Mark {course} as on the current DFS path
+    visiting.add(course); // @ask visiting.size // @say Mark {course} as on the current DFS path
     // @why Every prerequisite must itself be completable.
     for (const req of pre[course]) if (!dfs(req)) return false; // @say Course {course} is only doable if every prereq is
     // @why Done with this path, so remove it; another path may legally reach it later.
     visiting.delete(course);
     // @why Remember it is fine, so later visits return instantly.
-    pre[course] = []; // @say Memoize: {course} is completable, so skip it next time
+    pre[course] = []; // @moment course {course} can be taken // @say Memoize: {course} is completable, so skip it next time
     // @why Every prerequisite checked out.
     return true;
   };

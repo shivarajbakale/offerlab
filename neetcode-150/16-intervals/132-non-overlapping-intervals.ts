@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule prevEnd is the end of the last kept interval, as small as any choice allows
 // @why Returns the fewest intervals to remove so none overlap.
 export function eraseOverlapIntervals(intervals: number[][]): number {
   // @why Sort by start so we can compare each interval with the one kept before it.
@@ -60,13 +61,13 @@ export function eraseOverlapIntervals(intervals: number[][]): number {
     // @why It starts after the last kept one ends, so there is no overlap.
     if (start >= prevEnd) {
       // @why Keep it and move the frontier to its end.
-      prevEnd = end;
+      prevEnd = end; // @ask prevEnd
     // @why Overlap: one of the two must go.
     } else {
       // @why Count the one we remove.
-      removed++;
+      removed++; // @moment overlap: drop one (removed {removed+1})
       // @why Keep the one that ends sooner; it leaves the most room for later intervals.
-      prevEnd = Math.min(prevEnd, end);
+      prevEnd = Math.min(prevEnd, end); // @ask prevEnd
     }
   }
   // @why The minimum number of removals.

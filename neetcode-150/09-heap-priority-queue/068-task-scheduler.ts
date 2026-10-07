@@ -127,6 +127,7 @@ class Heap<T> {
   }
 }
 
+// @rule heap holds counts of tasks ready now; queue holds tasks cooling until their time
 // @why Fewest time units to run all tasks, with `n` units of cooldown between equal tasks.
 export function leastInterval(tasks: string[], n: number): number {
   // @why How many times each task appears.
@@ -153,18 +154,18 @@ export function leastInterval(tasks: string[], n: number): number {
     // @why If a task is ready, run the one with the most left.
     if (heap.size() > 0) {
       // @why Run it once, so one less remains.
-      const cnt = heap.pop()! - 1;
+      const cnt = heap.pop()! - 1; // @ask cnt
       // @why If more remain, park it until the cooldown ends.
       if (cnt > 0) queue.push([cnt, time + n]);
     // @why Nothing is ready, so we would sit idle.
     } else {
       // @why Skip straight to when the next task is ready instead of ticking.
-      time = queue[head][1]; // idle until the next task is ready
+      time = queue[head][1]; // idle until the next task is ready // @ask time // @moment idle until {queue[head][1]}
     }
     // @why If the oldest cooling task is ready now, move it back to the heap.
     if (head < queue.length && queue[head][1] === time) {
       // @why Put it back into the heap to be picked again.
-      heap.push(queue[head++][0]);
+      heap.push(queue[head++][0]); // @moment task back from cooldown at {time}
     }
   }
   // @why The total time units used.

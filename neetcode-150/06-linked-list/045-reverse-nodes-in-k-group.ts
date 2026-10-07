@@ -67,6 +67,7 @@ function getKth(node: ListNode | null, k: number): ListNode | null {
   return node;
 }
 
+// @rule nodes before groupPrev are final; the group after it is reversed in place
 // @why Reverse every full group of `k` nodes; a short group at the end stays as is.
 export function reverseKGroup(head: ListNode | null, k: number): ListNode | null {
   // @why A fake node before the head so the first group is handled like any other.
@@ -93,7 +94,7 @@ export function reverseKGroup(head: ListNode | null, k: number): ListNode | null
       // @why Save the next node before changing its link.
       const next: ListNode | null = cur!.next;
       // @why Flip this node to point backward.
-      cur!.next = prev;
+      cur!.next = prev; // @ask cur.next?.val
       // @why Grow the reversed part.
       prev = cur;
       // @why Step to the saved next node.
@@ -103,7 +104,7 @@ export function reverseKGroup(head: ListNode | null, k: number): ListNode | null
     // @why The old first node is now the group's last node; save it.
     const oldFirst = groupPrev.next!;
     // @why Link the previous group to the new first node (the old k-th).
-    groupPrev.next = kth;
+    groupPrev.next = kth; // @ask groupPrev.next.val // @moment group now starts at {kth.val}
     // @why Move `groupPrev` to the end of this group, ready for the next one.
     groupPrev = oldFirst;
   }

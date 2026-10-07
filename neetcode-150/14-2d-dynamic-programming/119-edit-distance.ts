@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i][j] is the fewest edits that turn word1[i..] into word2[j..]
 // @why Returns the fewest insert, delete or replace steps to turn `word1` into `word2`.
 export function minDistance(word1: string, word2: string): number {
   // @why Length of `word1`.
@@ -61,10 +62,7 @@ export function minDistance(word1: string, word2: string): number {
     // @why Fill from the end of `word2` too.
     for (let j = n - 1; j >= 0; j--) {
       // @why If letters match, no edit is needed, so use the diagonal; otherwise pay 1 for the best of three edits.
-      dp[i][j] =
-        word1[i] === word2[j]
-          ? dp[i + 1][j + 1]
-          : 1 + Math.min(dp[i + 1][j], dp[i][j + 1], dp[i + 1][j + 1]);
+      dp[i][j] = word1[i] === word2[j] ? dp[i + 1][j + 1] : 1 + Math.min(dp[i + 1][j], dp[i][j + 1], dp[i + 1][j + 1]); // @ask dp[i][j]
     }
   }
   // @why `dp[0][0]` is the whole of both words.

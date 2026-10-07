@@ -35,6 +35,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule seen holds every number before n, and no two of them are equal
 // @why Return true as soon as any value shows up a second time.
 export function containsDuplicate(nums: number[]): boolean {
   // @why A set remembers every value we passed and checks membership instantly.
@@ -42,7 +43,7 @@ export function containsDuplicate(nums: number[]): boolean {
   // @why Look at each number once, left to right.
   for (const n of nums) {
     // @why If we already stored this value, it is a repeat, so we can stop with the answer.
-    if (seen.has(n)) return true;
+    if (seen.has(n)) return true; // @ask seen.has(n)
     // @why First time seeing it, so store it for later numbers to be checked against.
     seen.add(n);
   }

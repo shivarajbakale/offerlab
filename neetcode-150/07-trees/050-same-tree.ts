@@ -59,14 +59,21 @@ export class TreeNode {
   }
 }
 
+// @rule each call returns whether the two subtrees at this spot match exactly
 // @why Two trees are the same if they have the same shape and the same values.
 export function isSameTree(p: TreeNode | null, q: TreeNode | null): boolean {
   // @why Both empty at the same spot means they match here.
   if (!p && !q) return true;
   // @why Only one is empty, or the values differ, so the trees cannot be the same.
   if (!p || !q || p.val !== q.val) return false;
-  // @why This node matches; now both left subtrees and both right subtrees must match too.
-  return isSameTree(p.left, q.left) && isSameTree(p.right, q.right);
+  // @why This node matches; now check whether the two left subtrees match.
+  const leftSame = isSameTree(p.left, q.left);
+  // @why Only check the right sides if the left sides already match.
+  const rightSame = leftSame && isSameTree(p.right, q.right);
+  // @why The two subtrees here match only if both sides do.
+  const same = leftSame && rightSame; // @ask same
+  // @why Hand the verdict for this spot up to the caller.
+  return same;
 }
 
 // --- helper: LeetCode level-order array -> tree ---

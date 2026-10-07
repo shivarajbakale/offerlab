@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp maps each running sum to how many sign choices for the numbers so far reach it
 // @why Returns how many ways to put + or - before each number so the total equals `target`.
 export function findTargetSumWays(nums: number[], target: number): number {
   // @why `dp` maps a running sum to how many sign choices so far reach it; before any number, sum 0 has 1 way.
@@ -55,7 +56,7 @@ export function findTargetSumWays(nums: number[], target: number): number {
     // @why Take every sum reached so far and extend it.
     for (const [sum, count] of dp) {
       // @why Choosing + moves the sum to `sum + n`, carrying over all `count` ways.
-      next.set(sum + n, (next.get(sum + n) ?? 0) + count);
+      next.set(sum + n, (next.get(sum + n) ?? 0) + count); // @ask next.get(sum+n)
       // @why Choosing - moves the sum to `sum - n`, carrying over all `count` ways.
       next.set(sum - n, (next.get(sum - n) ?? 0) + count);
     }

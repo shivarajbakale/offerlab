@@ -36,6 +36,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i] is the bit count of i; offset is the highest power of two not above i
 // @why Returns the number of 1 bits for every number from 0 to `n`.
 export function countBits(n: number): number[] {
   // @why `dp[i]` will hold the bit count of `i`. 0 has no 1 bits.
@@ -45,9 +46,11 @@ export function countBits(n: number): number[] {
   // @why Fill in each number using answers we already know.
   for (let i = 1; i <= n; i++) {
     // @why When `i` reaches the next power of two, that becomes the new `offset`.
-    if (offset * 2 === i) offset = i;
+    if (offset * 2 === i) offset = i; // @ask offset
     // @why `i` is the high bit (`offset`) plus the smaller number `i - offset`, so add one to that count.
-    dp[i] = 1 + dp[i - offset];
+    const bits = 1 + dp[i - offset]; // @ask bits
+    // @why Store it so bigger numbers can reuse it.
+    dp[i] = bits;
   }
   // @why Every number from 0 to `n` now has its count.
   return dp;

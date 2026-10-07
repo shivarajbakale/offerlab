@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule end is the last index of any letter seen so far in the current part
 // @why Returns the sizes of the parts, where each letter appears in only one part.
 export function partitionLabels(s: string): number[] {
   // @why `last` remembers the final index where each letter shows up.
@@ -57,11 +58,11 @@ export function partitionLabels(s: string): number[] {
     // @why Add this character to the current part.
     size++;
     // @why This letter may force the part to extend to its last occurrence.
-    end = Math.max(end, last.get(s[i]) ?? i);
+    end = Math.max(end, last.get(s[i]) ?? i); // @ask end
     // @why When we reach `end`, no letter in this part appears later, so the part can be cut here.
     if (i === end) {
       // @why Save the finished part's size.
-      result.push(size);
+      result.push(size); // @moment cut a part of {size}
       // @why Start counting the next part from zero.
       size = 0;
     }

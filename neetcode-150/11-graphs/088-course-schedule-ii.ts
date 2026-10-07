@@ -45,6 +45,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule every course in output comes after all of its prerequisites
 // @why Returns a valid order to take all courses, or [] if there is a cycle.
 export function findOrder(numCourses: number, prerequisites: number[][]): number[] {
   // @why `pre[c]` lists the courses that must be done before course `c`.
@@ -66,7 +67,7 @@ export function findOrder(numCourses: number, prerequisites: number[][]): number
     // @why Already finished earlier, so skip it.
     if (visited.has(course)) return true;
     // @why Mark this course as on the current path.
-    onPath.add(course);
+    onPath.add(course); // @ask onPath.size
     // @why Handle all prerequisites first.
     for (const req of pre[course]) if (!dfs(req)) return false;
     // @why Leaving this path.
@@ -74,7 +75,7 @@ export function findOrder(numCourses: number, prerequisites: number[][]): number
     // @why This course is completely done.
     visited.add(course);
     // @why All prerequisites are already in `output`, so this course can go next.
-    output.push(course);
+    output.push(course); // @ask output.length // @moment take course {course}
     // @why No cycle below this course.
     return true;
   };

@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i][j] is the LCS length of the suffixes text1[i..] and text2[j..]
 // @why Returns the length of the longest sequence that appears in order in both strings.
 export function longestCommonSubsequence(text1: string, text2: string): number {
   // @why Length of `text1`.
@@ -57,10 +58,7 @@ export function longestCommonSubsequence(text1: string, text2: string): number {
     // @why Go from the end of `text2` so the cells after `j` are done.
     for (let j = n - 1; j >= 0; j--) { // @say Fill from the end so dp[i+1] and dp[j+1] are ready
       // @why If the letters match, count them and move both forward; otherwise drop one letter from either string and take the better.
-      dp[i][j] = // @say {text1[i]} vs {text2[j]}: match extends diagonal, else best of skip one
-        text1[i] === text2[j]
-          ? 1 + dp[i + 1][j + 1]
-          : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      dp[i][j] = text1[i] === text2[j] ? 1 + dp[i + 1][j + 1] : Math.max(dp[i + 1][j], dp[i][j + 1]); // @ask dp[i][j] // @say {text1[i]} vs {text2[j]}: match extends diagonal, else best of skip one
     }
   }
   // @why `dp[0][0]` covers both whole strings.

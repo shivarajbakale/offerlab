@@ -38,6 +38,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:best
+// @rule a run is only counted from its first number, the one with no n-1 in the set
 // @why Return the length of the longest run of numbers like 4,5,6,7.
 export function longestConsecutive(nums: number[]): number {
   // @why A set gives instant lookups and removes duplicates; no sorting needed.
@@ -49,11 +51,11 @@ export function longestConsecutive(nums: number[]): number {
     // @why `n` is in the middle of a run, so skip it; only start counting at a run's first number.
     if (set.has(n - 1)) continue;
     // @why The run so far is just `n` itself.
-    let len = 1;
+    let len = 1; // @moment run starts at {n}
     // @why Keep extending while the next number exists.
     while (set.has(n + len)) len++;
     // @why Keep the longest run seen.
-    best = Math.max(best, len);
+    best = Math.max(best, len); // @ask best
   }
   // @why The longest run length (0 for an empty array).
   return best;

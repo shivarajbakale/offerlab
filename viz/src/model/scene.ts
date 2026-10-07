@@ -23,6 +23,10 @@ export type ArrayPanel = {
   /** 26 counters, one per letter: indexes show as a to z. */
   letters?: boolean;
   heap?: boolean;
+  /** From `@viz arc:a->b`: arcs from index a back to index b; `inside` when b is in the window. */
+  arcs?: { from: number; to: number; name: string; inside: boolean }[];
+  /** From `@viz unique`: indexes inside the window whose value appears there more than once. */
+  dups?: number[];
 };
 export type GridPanel = {
   kind: "grid";
@@ -49,6 +53,8 @@ export type ListNodeData = {
   names: NodeName[];
   changed: boolean;
   extra?: string;
+  /** This node's `next` was just rewired; the label of where it pointed before ("null" for none). */
+  was?: string;
 };
 export type ListPanel = {
   kind: "list";
@@ -114,14 +120,15 @@ export type Panel =
 
 export type Scalar = { name: string; text: string; changed: boolean; pointer: boolean };
 export type FrameInfo = { fn: string; args: string };
-export type Scene = { panels: Panel[]; scalars: Scalar[]; frames: FrameInfo[] };
+/** `ruleBroken` is set only when `@viz unique` finds a repeat inside the window. */
+export type Scene = { panels: Panel[]; scalars: Scalar[]; frames: FrameInfo[]; ruleBroken?: boolean };
 
 const POINTER_NAMES = new Set([
   "i", "j", "k", "l", "r", "lo", "hi", "low", "high", "m", "mid", "left", "right",
   "start", "end", "slow", "fast", "p", "q", "p1", "p2", "idx", "index", "ptr",
   "lp", "rp", "a", "b", "w", "read", "write", "pos",
 ]);
-const WINDOW_PAIRS: [string, string][] = [
+export const WINDOW_PAIRS: [string, string][] = [
   ["l", "r"], ["left", "right"], ["lo", "hi"], ["low", "high"], ["start", "end"], ["i", "j"],
 ];
 const CELL_PAIRS: [string, string][] = [["r", "c"], ["row", "col"], ["i", "j"], ["x", "y"], ["y", "x"]];
@@ -290,7 +297,14 @@ export function buildScene(step: Step, prev: Step | undefined, hints: Hints, bui
       shown.add(id);
       index.set(id, nodes.length);
       const random = o.fields.random;
+      const before = prevObj(id);
+      const oldNext = before?.kind === "object" ? before.fields.next : undefined;
+      const newNext = o.fields.next;
+      const rewired =
+        before?.kind === "object" && "next" in before.fields &&
+        (oldNext?.t === "r" ? oldNext.id : null) !== (newNext?.t === "r" ? newNext.id : null);
       nodes.push({
+        ...(rewired ? { was: oldNext?.t === "r" && prev ? label(prev, oldNext) : "null" } : {}),
         id,
         label: label(step, o.fields.val ?? o.fields.value ?? { t: "p", v: "·" }),
         names: names(id),
@@ -658,6 +672,30 @@ export function buildScene(step: Step, prev: Step | undefined, hints: Hints, bui
     }
   }
 
+  let ruleBroken: boolean | undefined;
+  if (primary) {
+    const arcs: NonNullable<ArrayPanel["arcs"]> = [];
+    for (const [a, b] of hints.arcs) {
+      const from = intOf(a);
+      const to = intOf(b);
+      if (from === undefined || to === undefined || from === to) continue;
+      if (from < 0 || to < 0 || from >= primary.len || to >= primary.len) continue;
+      const [wl, wr] = primary.window ?? [0, -1];
+      arcs.push({ from, to, name: b, inside: to >= wl && to <= wr });
+    }
+    if (arcs.length) primary.arcs = arcs;
+    if (hints.unique && primary.window) {
+      const [wl, wr] = primary.window;
+      const at = new Map<string, number[]>();
+      for (let i = wl; i <= wr; i++) {
+        const t = primary.cells[i]?.text;
+        if (t !== undefined) at.set(t, [...(at.get(t) ?? []), i]);
+      }
+      primary.dups = [...at.values()].filter((xs) => xs.length > 1).flat();
+      ruleBroken = primary.dups.length > 0;
+    }
+  }
+
   const charNames = new Set(charPanels.map((p) => p.name));
   const scalarNames = new Set<string>();
   for (const x of innerPrims) {
@@ -684,7 +722,7 @@ export function buildScene(step: Step, prev: Step | undefined, hints: Hints, bui
       .join(", "),
   }));
 
-  return { panels, scalars, frames: frameInfos };
+  return { panels, scalars, frames: frameInfos, ...(ruleBroken !== undefined ? { ruleBroken } : {}) };
 
   function rootName(root: HeapId, fallback: string) {
     const ns = names(root);

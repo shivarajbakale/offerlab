@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule count is how many 1 bits have been cleared from x; x still holds the rest
 // @why Returns how many bits in `n` are 1.
 export function hammingWeight(n: number): number {
   // @why `>>> 0` treats the number as unsigned 32-bit, so negative inputs do not loop forever.
@@ -51,9 +52,9 @@ export function hammingWeight(n: number): number {
   // @why Stop when no 1 bits remain.
   while (x !== 0) {
     // @why `x & (x - 1)` switches off the lowest 1 bit, so each loop removes exactly one 1.
-    x = (x & (x - 1)) >>> 0; // drop lowest set bit, keep unsigned
+    x = (x & (x - 1)) >>> 0; // @ask x // @moment clear lowest 1 bit of {x} // drop lowest set bit, keep unsigned
     // @why We removed one 1 bit, so count it.
-    count++;
+    count++; // @ask count
   }
   // @why The count is the number of loops it took to clear all the bits.
   return count;

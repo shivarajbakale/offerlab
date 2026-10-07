@@ -48,6 +48,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule every "1" still on the grid belongs to an island not yet counted
 // @why Takes the grid of "1" land and "0" water and returns how many separate islands it has.
 export function numIslands(grid: string[][]): number {
   // @why Save the grid size once so the bounds check below stays short.
@@ -76,7 +77,7 @@ export function numIslands(grid: string[][]): number {
       // @why Land still standing here must belong to an island we have not seen yet.
       if (grid[r][c] === "1") { // @say Unsunk land here means we found a brand-new island
         // @why One new island found, so count it.
-        islands++; // @say Count island #{islands + 1}, then sink all of it
+        islands++; // @ask islands // @moment new island #{islands + 1} at ({r},{c}) // @say Count island #{islands + 1}, then sink all of it
         // @why Sink the whole island now so its other cells are not counted again.
         sink(r, c);
       }

@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule path is a subset of sorted[0..i-1]; skipping a value skips all its copies too
 // @why Returns all subsets of `nums`, which may contain repeated numbers, without duplicate subsets.
 export function subsetsWithDup(nums: number[]): number[][] {
   // @why Sort so equal numbers sit next to each other; that makes duplicates easy to skip.
@@ -53,13 +54,13 @@ export function subsetsWithDup(nums: number[]): number[][] {
     // @why All numbers decided, so the path is one full subset.
     if (i === sorted.length) {
       // @why Save a copy, because `path` keeps changing.
-      res.push([...path]);
+      res.push([...path]); // @ask res.length // @moment found {JSON.stringify(path)}
       // @why This branch is done.
       return;
     }
     // Include sorted[i]
     // @why First choice: include this number.
-    path.push(sorted[i]);
+    path.push(sorted[i]); // @ask path.length
     // @why Decide the rest with it included.
     dfs(i + 1);
     // @why Backtrack: remove it.

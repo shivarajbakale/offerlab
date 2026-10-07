@@ -46,6 +46,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule best is the size of the largest island fully sunk and counted so far
+// @viz best:best
 // @why Returns the size of the biggest island, or 0 if there is none.
 export function maxAreaOfIsland(grid: number[][]): number {
   // @why Save the grid size once for the bounds check.
@@ -67,7 +69,7 @@ export function maxAreaOfIsland(grid: number[][]): number {
   // @why Try every row as a starting point.
   for (let r = 0; r < rows; r++) {
     // @why Water and sunk cells return 0, so only fresh land starts a real count.
-    for (let c = 0; c < cols; c++) best = Math.max(best, area(r, c));
+    for (let c = 0; c < cols; c++) best = Math.max(best, area(r, c)); // @ask best
   }
   // @why The biggest island area seen.
   return best;

@@ -43,6 +43,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:lo..hi@mid
+// @rule the minimum is always inside lo..hi
 // @why Finds the smallest value in a sorted array that was rotated.
 export function findMin(nums: number[]): number {
   // @why `lo` and `hi` bound where the minimum could be.
@@ -53,9 +55,9 @@ export function findMin(nums: number[]): number {
     // @why Look at the middle.
     const mid = (lo + hi) >> 1;
     // @why If the middle is bigger than the right end, the rotation break is to the right, so the min is right of `mid`.
-    if (nums[mid] > nums[hi]) lo = mid + 1;
+    if (nums[mid] > nums[hi]) lo = mid + 1; // @ask lo
     // @why Otherwise the right part is sorted, so the min is at `mid` or to its left. Keep `mid` since it could be the min.
-    else hi = mid;
+    else hi = mid; // @ask hi
   }
   // @why `lo` and `hi` meet at the minimum.
   return nums[lo];

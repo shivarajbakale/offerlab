@@ -49,6 +49,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule a letter enters post only after every letter that must follow it
 // @why Returns the alien letter order, or an empty string if the words can't be valid.
 export function alienOrder(words: string[]): string {
   // @why For each letter, the letters that must come after it.
@@ -71,7 +72,7 @@ export function alienOrder(words: string[]): string {
       // @why The first difference tells us which letter comes first.
       if (w1[j] !== w2[j]) {
         // @why Record the rule: `w1[j]` comes before `w2[j]`.
-        adj.get(w1[j])!.add(w2[j]);
+        adj.get(w1[j])!.add(w2[j]); // @moment {w1[j]} comes before {w2[j]}
         // @why Later letters tell us nothing, so stop.
         break;
       }
@@ -95,7 +96,7 @@ export function alienOrder(words: string[]): string {
     // @why All followers are done, so mark it finished.
     state.set(ch, true);
     // @why Add it after everything that must come after it.
-    post.push(ch);
+    post.push(ch); // @ask post.length
     // @why No cycle found here.
     return true;
   };

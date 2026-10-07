@@ -14,8 +14,13 @@ const ICONS = {
   last: "M4 5v14l11-7zM16 5h2v14h-2z",
 };
 
-/** `counter` replaces the "step i / n" text; `marks` are labelled ticks over the scrubber (chaos events). */
-export function Controls({ player, counter, marks }: { player: Player; counter?: string; marks?: { index: number; label: string }[] }) {
+export type ScrubMark = { index: number; label: string; kind?: "broken" | "shrink" | "best" | "moment" };
+
+/**
+ * `counter` replaces the "step i / n" text; `marks` are labelled ticks over the scrubber: chaos events
+ * (no kind), or key moments of a window story (a colored tick that jumps there when clicked).
+ */
+export function Controls({ player, counter, marks }: { player: Player; counter?: string; marks?: ScrubMark[] }) {
   const { index, count, playing } = player;
   return (
     <div className="controls">
@@ -37,11 +42,25 @@ export function Controls({ player, counter, marks }: { player: Player; counter?:
         </button>
       </div>
       <div className="scrub-wrap">
-      {marks?.map((m) => (
-        <span key={`${m.index}-${m.label}`} className="scrub-mark" style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }} title={m.label}>
-          ⚡
-        </span>
-      ))}
+      {marks?.map((m) =>
+        m.kind ? (
+          <button
+            key={`${m.index}-${m.label}`}
+            className={`scrub-tick ${m.kind}`}
+            style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }}
+            title={m.label}
+            aria-label={`Jump to: ${m.label}`}
+            onClick={() => {
+              player.pause();
+              player.setIndex(m.index);
+            }}
+          />
+        ) : (
+          <span key={`${m.index}-${m.label}`} className="scrub-mark" style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }} title={m.label}>
+            ⚡
+          </span>
+        ),
+      )}
       <input
         className="scrub"
         type="range"

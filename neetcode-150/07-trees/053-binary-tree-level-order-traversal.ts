@@ -59,6 +59,7 @@ export class TreeNode {
   }
 }
 
+// @rule level holds exactly the nodes of one depth, left to right
 // @why Returns the values grouped by depth, top level first.
 export function levelOrder(root: TreeNode | null): number[][] {
   // @why Collects one array of values per level.
@@ -69,7 +70,7 @@ export function levelOrder(root: TreeNode | null): number[][] {
   // @why Keep going while the current level has any nodes.
   while (level.length) {
     // @why Record this whole level's values as one row.
-    result.push(level.map((node) => node.val));
+    result.push(level.map((node) => node.val)); // @moment depth {result.length}
     // @why `next` will collect the children, which are the next level down.
     const next: TreeNode[] = [];
     // @why Visit every node on this level.
@@ -80,7 +81,7 @@ export function levelOrder(root: TreeNode | null): number[][] {
       if (node.right) next.push(node.right);
     }
     // @why Move down one level and repeat.
-    level = next;
+    level = next; // @ask level.length
   }
   // @why Return all the rows.
   return result;

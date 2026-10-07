@@ -48,6 +48,7 @@ import assert from "node:assert/strict";
 // @why Map each closing bracket to the opener it needs, so matching is one lookup.
 const OPENER: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
 
+// @rule the stack holds openers still waiting for their closer, newest on top
 // @why Returns true only if every bracket is closed correctly and in order.
 export function isValid(s: string): boolean {
   // @why The stack holds openers still waiting for their closer.
@@ -57,8 +58,8 @@ export function isValid(s: string): boolean {
     // @why If this is a closer, `open` is the opener it needs; openers have no entry, so this is undefined.
     const open = OPENER[ch];
     // @why An opener has to wait, so push it. A closer must match the newest opener, so pop and compare; a mismatch (or empty stack) means invalid.
-    if (open === undefined) stack.push(ch); // @say '{ch}' opens a bracket; push it and wait for its closer
-    else if (stack.pop() !== open) return false; // @say '{ch}' must close the most recent opener, which must be '{open}'
+    if (open === undefined) stack.push(ch); // @ask stack.length // @say '{ch}' opens a bracket; push it and wait for its closer
+    else if (stack.pop() !== open) return false; // @moment '{ch}' needs '{open}' on top // @say '{ch}' must close the most recent opener, which must be '{open}'
   }
   // @why Any opener still left on the stack never got closed, so the string is only valid if it is empty.
   return stack.length === 0; // @say Valid only if every opener was closed

@@ -55,6 +55,7 @@ export class TreeNode {
   }
 }
 
+// @rule the stack holds ancestors still waiting to be visited, smallest on top
 // @why Inorder walk of a BST gives values in sorted order, so the kth one visited is the answer.
 export function kthSmallest(root: TreeNode | null, k: number): number {
   // @why Our own stack replaces recursion, remembering nodes we still need to come back to.
@@ -73,7 +74,7 @@ export function kthSmallest(root: TreeNode | null, k: number): number {
       cur = cur.left;
     }
     // @why Nothing more on the left, so the top of the stack is the next smallest value.
-    const node = stack.pop()!;
+    const node = stack.pop()!; // @ask node.val // @moment visit {stack[stack.length - 1].val}
     // @why Count down `k`; when it hits 0 this node is the kth smallest.
     if (--k === 0) return node.val;
     // @why Now explore the right subtree, which holds the next larger values.

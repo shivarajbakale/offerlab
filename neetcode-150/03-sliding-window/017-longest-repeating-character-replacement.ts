@@ -39,6 +39,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:best
+// @rule the window needs at most k changes: its length minus its most common letter's count
 // @why Return the longest stretch that can become one letter using at most `k` changes.
 export function characterReplacement(s: string, k: number): number {
   // @why How many of each letter are in the current window.
@@ -58,13 +60,13 @@ export function characterReplacement(s: string, k: number): number {
     // @why Add the new letter to the window counts.
     counts[ci]++;
     // @why Track the biggest letter count; it never needs to shrink, since only a bigger one can beat `best`.
-    maxFreq = Math.max(maxFreq, counts[ci]);
+    maxFreq = Math.max(maxFreq, counts[ci]); // @ask maxFreq
     // @why Letters other than the most common must be replaced; too many (over `k`) means shrink.
-    while (r - l + 1 - maxFreq > k) {
+    while (r - l + 1 - maxFreq > k) { // @broken
       // @why Remove the left letter from the counts.
       counts[s.charCodeAt(l) - A]--;
       // @why Move the left edge in.
-      l++;
+      l++; // @ask l
     }
     // @why The window is valid now, so keep its size if it is the biggest.
     best = Math.max(best, r - l + 1);

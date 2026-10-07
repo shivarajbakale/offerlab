@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule rings outside l..r are fully rotated; each 4-cell swap moves its cells one corner clockwise
 // @why Rotates the square matrix 90 degrees clockwise in place, with no extra grid.
 export function rotate(matrix: number[][]): void {
   // @why `l` is the left edge of the current outer ring.
@@ -58,16 +59,16 @@ export function rotate(matrix: number[][]): void {
       const topLeft = matrix[top][l + i]; // save top-left
 
       // @why Rotate four cells at once: each spot takes the value of the spot counter-clockwise from it.
-      matrix[top][l + i] = matrix[bottom - i][l]; // bottom-left -> top-left
+      matrix[top][l + i] = matrix[bottom - i][l]; // @ask matrix[top][l+i] // bottom-left -> top-left
       // @why The bottom-right value moves left into the bottom-left spot.
       matrix[bottom - i][l] = matrix[bottom][r - i]; // bottom-right -> bottom-left
       // @why The top-right value moves down into the bottom-right spot.
       matrix[bottom][r - i] = matrix[top + i][r]; // top-right -> bottom-right
       // @why The saved top-left value finishes the cycle.
-      matrix[top + i][r] = topLeft; // top-left -> top-right
+      matrix[top + i][r] = topLeft; // @moment 4-cycle done at offset {i} // top-left -> top-right
     }
     // @why Move to the next ring in: shrink from the left.
-    l++;
+    l++; // @moment ring {l} rotated
     // @why And shrink from the right.
     r--;
   }

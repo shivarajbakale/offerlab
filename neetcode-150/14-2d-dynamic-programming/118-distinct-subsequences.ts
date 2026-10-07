@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i][j] is the number of ways to pick t[j..] in order from the suffix s[i..]
 // @why Returns how many different ways `t` can be picked, in order, from `s`.
 export function numDistinct(s: string, t: string): number {
   // @why Length of `s`.
@@ -60,7 +61,7 @@ export function numDistinct(s: string, t: string): number {
       // @why Skipping `s[i]` always works, so start with the ways from the next `s` position.
       dp[i][j] = dp[i + 1][j];
       // @why If letters match, we may also use `s[i]` for `t[j]`, adding the ways to match the rest.
-      if (s[i] === t[j]) dp[i][j] += dp[i + 1][j + 1];
+      if (s[i] === t[j]) dp[i][j] += dp[i + 1][j + 1]; // @ask dp[i][j]
     }
   }
   // @why `dp[0][0]` is all of `s` and all of `t`.

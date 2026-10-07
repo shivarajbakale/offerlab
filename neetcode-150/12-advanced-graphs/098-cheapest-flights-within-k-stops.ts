@@ -50,6 +50,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule after round i, next[x] is the cheapest cost to x using at most i + 1 flights
 // @why Returns the cheapest price from `src` to `dst` with at most `k` stops, or -1.
 export function findCheapestPrice(
   n: number,
@@ -72,10 +73,10 @@ export function findCheapestPrice(
       // @why Skip it if we can't reach its starting city yet.
       if (prices[from] === Infinity) continue;
       // @why Keep the cheaper of the old price and the price using this flight.
-      if (prices[from] + price < next[to]) next[to] = prices[from] + price;
+      if (prices[from] + price < next[to]) next[to] = prices[from] + price; // @ask next[to]
     }
     // @why The new round's prices become the current ones.
-    prices = next;
+    prices = next; // @moment round {i + 1}: {next.join(",")}
   }
   // @why If the destination was never reached, return -1.
   return prices[dst] === Infinity ? -1 : prices[dst];

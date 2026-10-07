@@ -125,6 +125,7 @@ class Heap<T> {
   }
 }
 
+// @rule small holds the lower half, large the upper; small has the same size or one more
 // @why Keeps a running median by splitting the numbers into a lower and an upper half.
 export class MedianFinder {
   // @why Max-heap of the smaller half; its top is the biggest of the small numbers.
@@ -137,11 +138,11 @@ export class MedianFinder {
     // @why Put the number in the lower half first.
     this.small.push(num);
     // @why Move the lower half's biggest to the upper half, so every lower number is at most every upper number.
-    this.large.push(this.small.pop()!);
+    this.large.push(this.small.pop()!); // @ask this.large.data[0]
     // @why Keep the lower half the same size or one bigger.
     if (this.large.size() > this.small.size()) {
       // @why Move the smallest upper number back down to rebalance.
-      this.small.push(this.large.pop()!);
+      this.small.push(this.large.pop()!); // @ask this.small.data.length
     }
   }
 

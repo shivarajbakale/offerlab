@@ -52,6 +52,7 @@ export class ListNode {
   }
 }
 
+// @rule dummy..tail is sorted and holds the smallest nodes taken from a and b
 // @why Take two sorted lists and return one sorted list made from their nodes.
 export function mergeTwoLists(
   list1: ListNode | null,
@@ -71,7 +72,7 @@ export function mergeTwoLists(
       // @why Attach the smaller node to the result.
       tail.next = a;
       // @why Advance in the list we just took from.
-      a = a.next;
+      a = a.next; // @ask a?.val
     // @why Otherwise `b` has the smaller value.
     } else {
       // @why Attach `b` to the result.
@@ -80,10 +81,10 @@ export function mergeTwoLists(
       b = b.next;
     }
     // @why Move `tail` to the node we just attached.
-    tail = tail.next;
+    tail = tail.next; // @ask tail.val
   }
   // @why One list is empty; the rest of the other is already sorted, so attach it whole.
-  tail.next = a ?? b;
+  tail.next = a ?? b; // @moment attach the rest from {(a ?? b)?.val}
   // @why Skip the fake node and return the real head.
   return dummy.next;
 }

@@ -46,6 +46,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[r][c] is the longest increasing path starting at cell (r, c), or 0 if not solved yet
 // @why Returns the length of the longest path that moves up, down, left or right through strictly bigger numbers.
 export function longestIncreasingPath(matrix: number[][]): number {
   // @why Number of rows.
@@ -76,7 +77,7 @@ export function longestIncreasingPath(matrix: number[][]): number {
       }
     }
     // @why Save the answer so this cell is never solved twice.
-    dp[r][c] = best;
+    dp[r][c] = best; // @ask dp[r][c] // @moment solved ({r},{c}) = {best}
     // @why Longest path starting here.
     return best;
   };

@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule each edge so far joined two different groups, so the edges seen form no cycle
 // @why Returns the edge that closes a cycle, found with union-find.
 export function findRedundantConnection(edges: number[][]): number[] {
   // @why A tree with n nodes has n - 1 edges, so this input has exactly one extra edge.
@@ -71,13 +72,13 @@ export function findRedundantConnection(edges: number[][]): number[] {
     // @why Leader of the second node.
     let rb = find(b);
     // @why Same leader means they are already connected, so this edge makes a cycle.
-    if (ra === rb) return false;
+    if (ra === rb) return false; // @broken
     // @why Make `ra` the bigger group so the tree stays shallow.
     if (rank[ra] < rank[rb]) [ra, rb] = [rb, ra];
     // @why Hang the smaller group under the bigger one.
-    parent[rb] = ra;
+    parent[rb] = ra; // @ask parent[rb] // @moment join group {rb} under {ra}
     // @why The merged group is now bigger.
-    rank[ra] += rank[rb];
+    rank[ra] += rank[rb]; // @ask rank[ra]
     // @why The edge joined two separate groups, so it is fine.
     return true;
   };

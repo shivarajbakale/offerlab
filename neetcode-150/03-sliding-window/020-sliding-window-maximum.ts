@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dq holds window indices with values falling front to back; the front is the max
 // @why Return the biggest number in each window of size `k`.
 export function maxSlidingWindow(nums: number[], k: number): number[] {
   // @why Queue of indices whose values go from big to small; the front is the window's max.
@@ -52,11 +53,11 @@ export function maxSlidingWindow(nums: number[], k: number): number[] {
   // @why Slide the window by moving the right edge across the array.
   for (let r = 0; r < nums.length; r++) {
     // @why Smaller numbers behind a bigger new one can never be the max again, so drop them.
-    while (dq.length > head && nums[dq[dq.length - 1]] <= nums[r]) dq.pop();
+    while (dq.length > head && nums[dq[dq.length - 1]] <= nums[r]) dq.pop(); // @broken
     // @why Add the new index at the back.
-    dq.push(r);
+    dq.push(r); // @ask dq.length-head
     // @why The front index fell out of the window on the left, so drop it.
-    if (dq[head] <= r - k) head++;
+    if (dq[head] <= r - k) head++; // @ask head
     // @why Once the first full window exists, record its max.
     if (r >= k - 1) result.push(nums[dq[head]]);
   }

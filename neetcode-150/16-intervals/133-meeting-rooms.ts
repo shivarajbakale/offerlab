@@ -51,14 +51,17 @@ export class Interval {
   }
 }
 
+// @rule no two meetings in sorted[0..i] overlap
 // @why Returns true if one person can attend every meeting, meaning none overlap.
 export function canAttendMeetings(intervals: Interval[]): boolean {
   // @why Sort by start so any clash must be between neighbours.
   const sorted = [...intervals].sort((a, b) => a.start - b.start);
   // @why Compare each meeting with the one just before it.
   for (let i = 1; i < sorted.length; i++) {
-    // @why This one starts before the previous one ends, so they overlap.
-    if (sorted[i].start < sorted[i - 1].end) return false;
+    // @why Does this one start before the previous one ends? Then they overlap.
+    const clash = sorted[i].start < sorted[i - 1].end; // @ask clash
+    // @why An overlap means one person cannot attend both.
+    if (clash) return false; // @broken
   }
   // @why No neighbours overlapped, so no meetings clash.
   return true;

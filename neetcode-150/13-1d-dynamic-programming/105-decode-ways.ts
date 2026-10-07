@@ -47,6 +47,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule next1 is the number of ways to decode s from i + 1 on; next2, from i + 2 on
 // @why Returns how many ways the digit string can be read as letters (1 to 26).
 export function numDecodings(s: string): number {
   // @why `next1` means ways to decode the suffix starting at `i + 1`; the empty suffix has 1 way.
@@ -62,7 +63,7 @@ export function numDecodings(s: string): number {
       // @why Read this digit as one letter; the rest can be decoded in `dp[i + 1]` ways.
       cur = next1;
       // @why Also read two digits as one letter if they make 10 to 26 (the '0' check above rules out 0x).
-      if (i + 1 < s.length && Number(s.slice(i, i + 2)) <= 26) cur += next2;
+      if (i + 1 < s.length && Number(s.slice(i, i + 2)) <= 26) cur += next2; // @ask cur
     }
     // @why Slide the window: old `i + 1` becomes `i + 2`.
     next2 = next1;

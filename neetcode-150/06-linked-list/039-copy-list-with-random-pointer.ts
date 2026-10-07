@@ -62,6 +62,7 @@ export class _Node {
   }
 }
 
+// @rule every original node has its copy in map before any copy link is wired
 // @why Return a deep copy: brand new nodes with the same shape.
 export function copyRandomList(head: _Node | null): _Node | null {
   // @why Map each original node to its copy, so we can find any copy instantly.
@@ -75,9 +76,9 @@ export function copyRandomList(head: _Node | null): _Node | null {
     // @why Look up this node's copy.
     const copy = map.get(cur)!;
     // @why Point the copy's `next` at the copy of the next node, not the original.
-    copy.next = cur.next ? map.get(cur.next)! : null;
+    copy.next = cur.next ? map.get(cur.next)! : null; // @ask copy.next?.val
     // @why Same for `random`: point at the copy of the random target.
-    copy.random = cur.random ? map.get(cur.random)! : null;
+    copy.random = cur.random ? map.get(cur.random)! : null; // @moment wire random of {cur.val}
   }
   // @why The copy of the head is the head of the new list.
   return head ? map.get(head)! : null;

@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule next1 is the cheapest cost to finish from stair i + 1; next2, from stair i + 2
 // @why Returns the cheapest total cost to get past the last stair, starting at stair 0 or 1.
 export function minCostClimbingStairs(cost: number[]): number {
   // @why `next1` means the cheapest cost to finish when standing on stair `i + 1`; past the end costs 0.
@@ -49,7 +50,7 @@ export function minCostClimbingStairs(cost: number[]): number {
   // @why Walk from the top down so the answers for later stairs are ready when we need them.
   for (let i = cost.length - 1; i >= 0; i--) {
     // @why Standing on `i` you pay `cost[i]`, then jump 1 or 2 stairs: take the cheaper way on.
-    const cur = cost[i] + Math.min(next1, next2);
+    const cur = cost[i] + Math.min(next1, next2); // @ask cur
     // @why Slide the window down: the old `i + 1` becomes the new `i + 2`.
     next2 = next1;
     // @why The stair just solved becomes the new `i + 1` for the next round.

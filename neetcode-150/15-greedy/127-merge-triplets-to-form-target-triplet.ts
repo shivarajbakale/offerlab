@@ -46,6 +46,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule found[i] is true once a safe triplet (nothing over target) has target[i] at i
 // @why Returns true if merging some triplets (taking max per position) can make `target`.
 export function mergeTriplets(triplets: number[][], target: number[]): boolean {
   // @why `found[i]` says whether some usable triplet already supplies target value in position `i`.
@@ -57,7 +58,7 @@ export function mergeTriplets(triplets: number[][], target: number[]): boolean {
     // @why Check each of the three positions.
     for (let i = 0; i < 3; i++) {
       // @why This safe triplet gives the exact target value here.
-      if (t[i] === target[i]) found[i] = true;
+      if (t[i] === target[i]) found[i] = true; // @ask found[i]
     }
   }
   // @why We need all three positions to be matched exactly.

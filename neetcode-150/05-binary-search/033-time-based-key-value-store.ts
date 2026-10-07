@@ -39,6 +39,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:lo..hi@mid
+// @rule res is the newest entry left of lo; every entry right of hi is too new
 // @why Stores values per key with timestamps and answers 'latest value at or before this time'.
 export class TimeMap {
   // @why For each key, a list of [timestamp, value] pairs.
@@ -83,13 +85,13 @@ export class TimeMap {
       // @why This entry is not too new, so it could be the answer.
       if (list[mid][0] <= timestamp) {
         // @why Remember it, then look right for a later timestamp that still fits.
-        res = list[mid][1];
+        res = list[mid][1]; // @moment fits: {list[mid][0]}
         // @why Move right to find a newer valid entry.
-        lo = mid + 1;
+        lo = mid + 1; // @ask lo
       // @why This entry is too new.
       } else {
         // @why Move left to older entries.
-        hi = mid - 1;
+        hi = mid - 1; // @ask hi
       }
     }
     // @why Return the latest valid value found.

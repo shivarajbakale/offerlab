@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule cols, posDiag and negDiag hold exactly the queens in rows 0..r-1, none attacking
 // @why Returns every way to place `n` queens so none attack each other.
 export function solveNQueens(n: number): string[][] {
   // @why Collects all solved boards.
@@ -57,7 +58,7 @@ export function solveNQueens(n: number): string[][] {
     // @why All rows have a queen, so this board is a solution.
     if (r === n) {
       // @why Turn each row into a string and save the board.
-      res.push(board.map((row) => row.join("")));
+      res.push(board.map((row) => row.join(""))); // @ask res.length // @moment found board {res.length+1}
       // @why This branch is done.
       return;
     }
@@ -72,7 +73,7 @@ export function solveNQueens(n: number): string[][] {
       // @why Claim the other diagonal.
       negDiag.add(r - c);
       // @why Draw the queen on the board.
-      board[r][c] = "Q";
+      board[r][c] = "Q"; // @ask c
 
       // @why Place queens in the rows below.
       dfs(r + 1);

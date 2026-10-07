@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule row[c] is the number of paths from cell (r, c) down to the bottom-right corner
 // @why Returns how many paths lead from top-left to bottom-right moving only right or down.
 export function uniquePaths(m: number, n: number): number {
   // @why One row of the grid: `row[c]` means paths from the current row's cell `c` to the goal; the bottom row has 1 path each.
@@ -49,7 +50,7 @@ export function uniquePaths(m: number, n: number): number {
     // @why Go right to left so `row[c + 1]` is already updated for this row.
     for (let c = n - 2; c >= 0; c--) {
       // @why Paths from a cell = paths going down (old `row[c]`) + paths going right (`row[c + 1]`).
-      row[c] += row[c + 1];
+      row[c] += row[c + 1]; // @ask row[c]
     }
   }
   // @why Top-left cell holds the total paths.

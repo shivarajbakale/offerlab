@@ -52,6 +52,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i][j] is true when the pattern p[j..] matches all of s[i..]
 // @why Returns whether pattern `p` (with `.` and `*`) matches all of `s`.
 export function isMatch(s: string, p: string): boolean {
   // @why Length of `s`.
@@ -72,10 +73,10 @@ export function isMatch(s: string, p: string): boolean {
       // @why A `*` after this pattern letter means it can repeat zero or more times.
       if (j + 1 < n && p[j + 1] === "*") {
         // @why Either use zero copies (skip `x*`), or match one letter now and stay on the same `x*`.
-        dp[i][j] = dp[i][j + 2] || (first && dp[i + 1][j]);
+        dp[i][j] = dp[i][j + 2] || (first && dp[i + 1][j]); // @ask dp[i][j]
       } else {
         // @why No star: this letter must match, and the rest must match too.
-        dp[i][j] = first && dp[i + 1][j + 1];
+        dp[i][j] = first && dp[i + 1][j + 1]; // @ask dp[i][j]
       }
     }
   }

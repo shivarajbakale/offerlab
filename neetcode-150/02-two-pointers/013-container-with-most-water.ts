@@ -37,6 +37,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:best
+// @rule every container that uses a wall outside l..r has already been measured
 // @why Return the most water any two walls can hold.
 export function maxArea(height: number[]): number {
   // @why `l` is the left wall, starting at the far left.
@@ -50,9 +52,9 @@ export function maxArea(height: number[]): number {
     // @why Area is width times the shorter wall; keep the biggest.
     best = Math.max(best, (r - l) * Math.min(height[l], height[r])); // @say Width {r - l} times the shorter wall {Math.min(height[l], height[r])}
     // @why The shorter wall limits the water, and moving the taller one can't help, so move the shorter.
-    if (height[l] < height[r]) l++; // @say The shorter wall caps the area; only moving it inward can help
+    if (height[l] < height[r]) l++; // @ask l // @say The shorter wall caps the area; only moving it inward can help
     // @why Right wall is the shorter (or tied), so move it inward.
-    else r--; // @say Right wall is the limit (or a tie), so move r inward
+    else r--; // @ask r // @say Right wall is the limit (or a tie), so move r inward
   }
   // @why The largest area seen.
   return best;

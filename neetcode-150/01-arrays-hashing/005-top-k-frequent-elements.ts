@@ -39,12 +39,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule buckets[f] holds exactly the values that appear f times in nums
 // @why Return the `k` values that appear most often.
 export function topKFrequent(nums: number[], k: number): number[] {
   // @why Map from each value to how many times it appears.
   const counts = new Map<number, number>();
   // @why Count every number; a missing one starts from 0.
-  for (const n of nums) counts.set(n, (counts.get(n) ?? 0) + 1);
+  for (const n of nums) counts.set(n, (counts.get(n) ?? 0) + 1); // @ask counts.get(n)
 
   // @why `buckets[f]` holds values that appear `f` times; a count can't exceed `nums.length`.
   const buckets: number[][] = Array.from({ length: nums.length + 1 }, () => []);
@@ -58,7 +59,7 @@ export function topKFrequent(nums: number[], k: number): number[] {
     // @why Take every value that has this frequency.
     for (const n of buckets[f]) {
       // @why This value is among the most frequent, so keep it.
-      result.push(n);
+      result.push(n); // @ask result.length // @moment keep {n} (seen {f} times)
       // @why We have `k` values, so stop.
       if (result.length === k) break;
     }

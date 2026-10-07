@@ -6,7 +6,7 @@ import { IntuitionPanel } from "./components/IntuitionPanel.tsx";
 import { LessonView } from "./components/LessonView.tsx";
 import { NarrationBar } from "./components/NarrationBar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
-import { Visual } from "./components/Visual.tsx";
+import { Visual, type StepLens, type StoryView } from "./components/Visual.tsx";
 import { SimProblemView } from "./sim/SimProblemView.tsx";
 import { TrafficProblemView } from "./traffic/TrafficProblemView.tsx";
 import { DrillView } from "./drills/DrillView.tsx";
@@ -17,6 +17,8 @@ import { findRun, markLocate, parseLesson, scenarioOptionLabel, type PlayLink } 
 import { buildCallTree } from "./model/callTree.ts";
 import { narrate, type Narration } from "./model/narrate.ts";
 import { buildScene } from "./model/scene.ts";
+import { lineDeps } from "./model/deps.ts";
+import { buildStory, leftWindow } from "./model/story.ts";
 import { usePlayer } from "./player/usePlayer.ts";
 import { useTrace } from "./player/useTrace.ts";
 import { problems, type Problem } from "./problems.ts";
@@ -134,6 +136,15 @@ function initialTab(): LeftTab {
   }
 }
 
+const QUIZ_KEY = "viz:quiz";
+function initialQuiz(): boolean {
+  try {
+    return localStorage.getItem(QUIZ_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 const EXPLAIN_KEY = "viz:explain";
 function initialExplain(): boolean {
   try {
@@ -213,23 +224,151 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
     },
     [steps, problem],
   );
+  const story = useMemo(() => (systems ? null : buildStory(steps, problem.hints, problem.lines)), [steps, problem, systems]);
+  const keySteps = useMemo(() => new Set(story?.marks.map((m) => m.index)), [story]);
   const dwell = useCallback(
     (k: number) => {
+      if (keySteps.has(k)) return 1.8;
       const n = narrationAt(k);
       if (!n) return 1;
       if (n.kind === "say") return 1.6;
       if (n.kind === "code") return 0.6;
       return 1;
     },
-    [narrationAt],
+    [narrationAt, keySteps],
   );
 
   const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell);
   const k = player.index;
-  const step = steps[k];
-  const after = steps[k + 1] ?? step;
+
+  // "Ask me first": arriving at a step that moves a pointer pauses on the step before it,
+  // and the learner clicks where the pointer goes before the move is shown.
+  const [quizOn, setQuizOn] = useState(initialQuiz);
+  const [asking, setAsking] = useState<{ k: number; wrong?: number; wrongChoice?: string; feedback: string } | null>(null);
+  const answered = useRef(new Set<number>());
+  const lastK = useRef(k);
+  useEffect(() => {
+    answered.current = new Set();
+    setAsking(null);
+  }, [steps]);
+  useEffect(() => {
+    const from = lastK.current;
+    lastK.current = k;
+    if (asking && asking.k !== k) setAsking(null);
+    if (story && quizOn && k === from + 1 && story.asks.has(k) && !answered.current.has(k)) {
+      player.pause();
+      setAsking({ k, feedback: "" });
+    }
+  }, [k, story, quizOn, asking, player]);
+  const shownK = asking ? asking.k - 1 : k;
+
+  const step = steps[shownK];
+  const after = steps[shownK + 1] ?? step;
   const scene = useMemo(() => (after ? buildScene(after, step, problem.hints) : null), [after, step, problem.hints]);
-  const narration = step ? narrationAt(k) : null;
+  const narration = step ? narrationAt(shownK) : null;
+
+  const storyView: StoryView | undefined = useMemo(() => {
+    if (!story) return undefined;
+    const ask = asking ? story.asks.get(asking.k) : undefined;
+    const reveal = () => {
+      if (asking) answered.current.add(asking.k);
+      setAsking(null);
+    };
+    const win = story.win;
+    const trail = new Map<string, Set<string>>();
+    for (const [key, cells] of story.trail) {
+      const set = new Set<string>();
+      for (const [rc, at] of cells) if (at <= shownK) set.add(rc);
+      trail.set(key, set);
+    }
+    return {
+      story,
+      rule: problem.hints.rule,
+      broken: story.broken[shownK] ?? false,
+      trail,
+      quiz:
+        story.asks.size > 0
+          ? {
+              on: quizOn,
+              toggle: () => {
+                const on = !quizOn;
+                setQuizOn(on);
+                if (!on) setAsking(null);
+                try {
+                  localStorage.setItem(QUIZ_KEY, on ? "1" : "0");
+                } catch {
+                  // Remembering the toggle is a convenience only.
+                }
+              },
+            }
+          : undefined,
+      ask:
+        ask && asking
+          ? {
+              name: ask.name,
+              feedback: asking.feedback,
+              onReveal: reveal,
+              ...(ask.kind === "choice"
+                ? {
+                    choices: ask.choices,
+                    wrong: asking.wrongChoice,
+                    onChoose: (c: string) => {
+                      if (c === ask.answer) return reveal();
+                      setAsking({ k: asking.k, wrongChoice: c, feedback: `Not ${c}. Read the line again, then try another value or press Show me.` });
+                    },
+                  }
+                : {}),
+            }
+          : undefined,
+      lens: win
+        ? {
+            mode: win.mode,
+            best: win.best[shownK] ?? null,
+            bestName: problem.hints.best,
+            justLeft: leftWindow(win.wins[shownK - 1] ?? null, win.wins[shownK] ?? null),
+            arcRoom: problem.hints.arcs.length > 0,
+            ask:
+              ask && asking && ask.kind === "cell"
+                ? {
+                    name: ask.name,
+                    wrong: asking.wrong,
+                    onPick: (i: number) => {
+                      if (i === ask.answer) return reveal();
+                      const towardRight = ask.answer > ask.from;
+                      const short = towardRight ? i < ask.answer : i > ask.answer;
+                      setAsking({
+                        k: asking.k,
+                        wrong: i,
+                        feedback: short
+                          ? `Not far enough: with ${ask.name} at ${i}${problem.hints.rule ? ", the rule is still broken" : ""}.`
+                          : `Too far: ${ask.name} at ${i} throws away cells that can still be part of an answer.`,
+                      });
+                    },
+                  }
+                : undefined,
+          }
+        : undefined,
+    };
+  }, [story, asking, shownK, quizOn, problem.hints]);
+
+  // Every drawing, story or not: what the line reads and writes, and how far the tree's recursion has got.
+  const stepLens: StepLens = useMemo(() => {
+    const deps = step ? lineDeps(problem.lines[step.line - 1], step) : null;
+    let tree: StepLens["tree"];
+    if (callTree.recursive) {
+      const path = new Set<number>();
+      const done = new Map<number, string | undefined>();
+      for (const n of callTree.nodes) {
+        if (n.node === undefined || n.start > shownK) continue;
+        if (n.end >= shownK) {
+          path.add(n.node);
+          done.delete(n.node);
+        } else done.set(n.node, n.retStep !== undefined && n.retStep <= shownK ? n.ret : undefined);
+      }
+      if (path.size || done.size) tree = { path, done };
+    }
+    return { deps, tree };
+  }, [step, shownK, callTree, problem.lines]);
 
   // Each play-link click is a new object, so a ref remembers which one has been carried out.
   const done = useRef<typeof jump>(null);
@@ -341,7 +480,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
           ) : tab === "code" || systems ? (
             <CodePanel
               problem={problem}
-              activeLine={step?.line ?? null}
+              activeLine={steps[k]?.line ?? null}
               callerLines={callerLines[k] ?? []}
               explain={explain}
             />
@@ -362,14 +501,14 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
                 {run.truncated && <div>Showing the first {steps.length} steps of a long run.</div>}
               </div>
             )}
-            <Visual scene={scene} callTree={callTree} index={k} />
+            <Visual scene={scene} callTree={callTree} index={shownK} story={storyView} step={stepLens} />
           </div>
         )}
       </section>
 
       <div className="dock">
         <NarrationBar narration={narration} why={step ? problem.why[step.line] : undefined} hasNotes={hasNotes} />
-        <Controls player={player} />
+        <Controls player={player} marks={story?.marks} />
       </div>
     </main>
   );

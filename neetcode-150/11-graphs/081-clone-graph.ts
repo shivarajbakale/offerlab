@@ -58,6 +58,7 @@ export class GraphNode {
   }
 }
 
+// @rule clones maps every original node seen so far to its one and only copy
 // @why Returns a brand-new copy of the graph, sharing no nodes with the original.
 export function cloneGraph(node: GraphNode | null): GraphNode | null {
   // @why Maps each original node to its copy, so a node is never copied twice.
@@ -70,9 +71,9 @@ export function cloneGraph(node: GraphNode | null): GraphNode | null {
     // @why Already copied (we hit a cycle or a shared neighbour), so reuse that copy.
     if (existing) return existing;
     // @why Make the new node with the same value but no neighbours yet.
-    const copy = new GraphNode(n.val);
+    const copy = new GraphNode(n.val); // @moment copy node {n.val}
     // @why Save the copy BEFORE visiting neighbours, so a cycle back to `n` finds it.
-    clones.set(n, copy);
+    clones.set(n, copy); // @ask clones.size
     // @why Copy every neighbour and link the copies together.
     for (const nb of n.neighbors) copy.neighbors.push(dfs(nb));
     // @why Hand back the finished copy to whoever linked to it.

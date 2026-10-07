@@ -37,6 +37,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule after step i, result's bits 31 down to 31-i are n's bits 0 up to i, mirrored
 // @why Returns the number you get by reading the 32 bits of `n` backwards.
 export function reverseBits(n: number): number {
   // @why The reversed value is built up here, starting with all zeros.
@@ -44,9 +45,9 @@ export function reverseBits(n: number): number {
   // @why Go through all 32 bit positions.
   for (let i = 0; i < 32; i++) {
     // @why Shift bit `i` down to the end and mask with 1 to read just that bit.
-    const bit = (n >>> i) & 1;
+    const bit = (n >>> i) & 1; // @ask bit
     // @why Put that bit at the mirror position (31 - i) and merge it in with OR.
-    result |= bit << (31 - i);
+    result |= bit << (31 - i); // @ask result>>>0
   }
   // @why JS bit operations give a signed number; `>>> 0` turns it back into an unsigned one.
   return result >>> 0; // convert signed 32-bit to unsigned

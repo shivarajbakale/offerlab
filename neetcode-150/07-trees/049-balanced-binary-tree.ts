@@ -59,6 +59,7 @@ export class TreeNode {
   }
 }
 
+// @rule height returns the subtree's height, or -1 once any node below it is unbalanced
 // @why Answers whether every node has left and right heights differing by at most 1.
 export function isBalanced(root: TreeNode | null): boolean {
   // Height of the subtree, or -1 if it is unbalanced.
@@ -74,8 +75,10 @@ export function isBalanced(root: TreeNode | null): boolean {
     const r = height(node.right);
     // @why Unbalanced if the right side is bad, or the two heights differ by more than 1.
     if (r === -1 || Math.abs(l - r) > 1) return -1;
-    // @why Balanced here, so report the real height for the parent to check.
-    return 1 + Math.max(l, r);
+    // @why Balanced here, so the real height is one more than the taller side.
+    const h = 1 + Math.max(l, r); // @ask h
+    // @why Report it for the parent to check.
+    return h;
   };
   // @why Any -1 anywhere means unbalanced; otherwise the whole tree is balanced.
   return height(root) !== -1;

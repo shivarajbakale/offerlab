@@ -38,6 +38,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule every piece in path is a palindrome and together they spell s[0..i-1]
 // @why Returns every way to cut `s` so each piece is a palindrome.
 export function partition(s: string): string[][] {
   // @why Collects all valid partitions.
@@ -61,7 +62,7 @@ export function partition(s: string): string[][] {
     // @why We reached the end of the string, so the pieces form one full partition.
     if (i === s.length) {
       // @why Save a copy, because `path` keeps changing.
-      res.push([...path]);
+      res.push([...path]); // @ask res.length // @moment found {JSON.stringify(path)}
       // @why This branch is done.
       return;
     }
@@ -70,7 +71,7 @@ export function partition(s: string): string[][] {
       // @why Only palindrome pieces are allowed, so skip the others.
       if (!isPali(i, j)) continue;
       // @why Take the piece from `i` to `j` as the next part.
-      path.push(s.slice(i, j + 1));
+      path.push(s.slice(i, j + 1)); // @ask path.length
       // @why Cut the rest of the string after this piece.
       dfs(j + 1);
       // @why Backtrack: remove the piece to try a longer one.

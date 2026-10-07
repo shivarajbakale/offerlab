@@ -15,7 +15,10 @@ function toLayout(n: TreeNodeData): LayoutInput<TreeNodeData> {
   return { key: String(n.id), data: n, children: kids };
 }
 
-export function TreeView({ panel }: { panel: TreePanel }) {
+/** From the recursion: nodes whose call is still open (the path down), and what each finished call returned. */
+export type TreeLens = { path: Set<number>; done: Map<number, string | undefined> };
+
+export function TreeView({ panel, lens }: { panel: TreePanel; lens?: TreeLens }) {
   const { nodes, width, height } = layoutTree(toLayout(panel.root), 46, 66);
   const byKey = new Map(nodes.map((n) => [n.key, n]));
   return (
@@ -27,7 +30,7 @@ export function TreeView({ panel }: { panel: TreePanel }) {
           return (
             <motion.line
               key={`${p.key}-${n.key}`}
-              className="edge"
+              className={`edge ${lens?.path.has(n.data.id) && lens.path.has(p.data.id) ? "on-path" : ""}`}
               initial={false}
               animate={{ x1: p.x, y1: p.y, x2: n.x, y2: n.y }}
               transition={spring}
@@ -36,17 +39,25 @@ export function TreeView({ panel }: { panel: TreePanel }) {
         })}
         {nodes.map((n) => {
           const inner = n.data.names.filter((x) => x.inner);
+          const onPath = lens?.path.has(n.data.id);
+          const done = lens?.done.has(n.data.id) && !onPath;
+          const ret = done ? lens!.done.get(n.data.id) : undefined;
           return (
             <motion.g key={n.key} initial={false} animate={{ x: n.x, y: n.y }} transition={spring}>
               <circle
                 r={17}
-                className={`node-circle ${n.data.changed ? "changed-node" : ""} ${inner.length ? "current" : ""}`}
+                className={`node-circle ${n.data.changed ? "changed-node" : ""} ${inner.length ? "current" : ""} ${onPath ? "on-path" : ""} ${done ? "done" : ""}`}
                 style={inner.length ? { stroke: colorOf(inner[0].name) } : undefined}
               />
               <text className="node-text" style={{ fontSize: n.data.label.length > 3 ? 10 : 13 }}>
                 {n.data.label}
               </text>
               <NodeTags names={n.data.names} y={-26} />
+              {ret !== undefined && (
+                <text className="node-ret" y={31}>
+                  ↑ {ret.length > 8 ? ret.slice(0, 7) + "…" : ret}
+                </text>
+              )}
             </motion.g>
           );
         })}

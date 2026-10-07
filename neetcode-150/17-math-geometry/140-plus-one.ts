@@ -41,6 +41,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule every digit right of i was a 9 and is now 0; the +1 carry is still waiting at i
 // @why Returns the digits of the number plus one; digits are stored most-significant first.
 export function plusOne(digits: number[]): number[] {
   // @why Copy the array so the input is not changed.
@@ -50,7 +51,7 @@ export function plusOne(digits: number[]): number[] {
     // @why A digit below 9 can take the +1 without any carry.
     if (res[i] < 9) {
       // @why Add one.
-      res[i]++;
+      res[i]++; // @ask res[i] // @moment carry absorbed at index {i}
       // @why No carry left, so we are finished.
       return res;
     }

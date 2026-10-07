@@ -128,6 +128,7 @@ class Heap<T> {
   }
 }
 
+// @rule the heap holds the k largest values seen so far; its top is the kth largest
 // @why Tracks the k-th largest number as new numbers arrive.
 export class KthLargest {
   // @why How many top numbers we keep.
@@ -148,7 +149,7 @@ export class KthLargest {
     // @why Add the new number to the heap.
     this.heap.push(val);
     // @why Too many kept: drop the smallest, since it can't be in the top k.
-    if (this.heap.size() > this.k) this.heap.pop();
+    if (this.heap.size() > this.k) this.heap.pop(); // @ask this.heap.data[0]
     // @why The smallest of the top k is the k-th largest.
     return this.heap.peek()!;
   }

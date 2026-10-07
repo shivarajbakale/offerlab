@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule counts maps each point to how many copies were added; points lists each location once
 // @why A data structure that stores points and counts axis-aligned squares for a query point.
 export class DetectSquares {
   // @why How many times each point was added (duplicates count), keyed by its coordinates.
@@ -69,7 +70,7 @@ export class DetectSquares {
     // @why The Map key for this point.
     const k = this.key(x, y);
     // @why Remember a new location only the first time, so `points` has no repeats.
-    if (!this.counts.has(k)) this.points.push([x, y]);
+    if (!this.counts.has(k)) this.points.push([x, y]); // @ask this.points.length
     // @why Bump the number of copies of this point.
     this.counts.set(k, (this.counts.get(k) ?? 0) + 1);
   }
@@ -86,7 +87,7 @@ export class DetectSquares {
       // @why A square's diagonal corner has equal x and y distance, and a distance of 0 would be no square.
       if (Math.abs(qx - x) !== Math.abs(qy - y) || x === qx) continue;
       // @why The other two corners are fixed. Multiply copies of all three, since each choice gives a different square.
-      res += this.get(x, y) * this.get(x, qy) * this.get(qx, y);
+      res += this.get(x, y) * this.get(x, qy) * this.get(qx, y); // @ask res // @moment diagonal corner ({x},{y})
     }
     // @why The total number of squares.
     return res;

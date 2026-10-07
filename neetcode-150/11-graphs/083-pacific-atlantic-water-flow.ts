@@ -47,6 +47,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule pac and atl hold every cell found so far that can drain into that ocean
 // @why Returns every cell whose rain can flow to both oceans.
 export function pacificAtlantic(heights: number[][]): number[][] {
   // @why Save the grid size once for the bounds check.
@@ -66,7 +67,7 @@ export function pacificAtlantic(heights: number[][]): number[][] {
     // @why Skip cells already marked, and cells lower than where we came from (water can't flow up).
     if (seen.has(key) || heights[r][c] < prev) return;
     // @why This cell can reach the ocean we started from.
-    seen.add(key);
+    seen.add(key); // @ask seen.size
     // @why Remember this height as the new minimum for the next step uphill.
     const h = heights[r][c];
     // @why Try all four neighbours; only equal or higher ones will pass.
@@ -100,7 +101,7 @@ export function pacificAtlantic(heights: number[][]): number[][] {
       // @why Same cell id used when marking.
       const key = r * cols + c;
       // @why Only cells in both sets can reach both oceans.
-      if (pac.has(key) && atl.has(key)) result.push([r, c]);
+      if (pac.has(key) && atl.has(key)) result.push([r, c]); // @ask result.length
     }
   }
   // @why All cells that drain to both oceans.

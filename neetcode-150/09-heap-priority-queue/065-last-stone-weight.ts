@@ -123,6 +123,7 @@ class Heap<T> {
   }
 }
 
+// @rule the heap holds every stone still left, heaviest on top
 // @why Smash the two heaviest stones repeatedly; return the weight left, or 0.
 export function lastStoneWeight(stones: number[]): number {
   // @why A max-heap, so the heaviest stone is always on top.
@@ -132,11 +133,11 @@ export function lastStoneWeight(stones: number[]): number {
   // @why Smash while at least two stones remain.
   while (heap.size() > 1) {
     // @why The heaviest stone.
-    const y = heap.pop()!;
+    const y = heap.pop()!; // @ask y
     // @why The second heaviest stone.
     const x = heap.pop()!;
     // @why Equal stones destroy each other; otherwise a stone of the difference is left.
-    if (y !== x) heap.push(y - x);
+    if (y !== x) heap.push(y - x); // @ask heap.data.length // @moment smash {y} vs {x}
   }
   // @why Return the last stone, or 0 if none are left.
   return heap.peek() ?? 0;

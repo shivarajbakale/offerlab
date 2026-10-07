@@ -41,6 +41,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz arc:r->prev best:best unique
+// @rule every character inside the window is different
 // @why Return the length of the longest stretch with no repeated character.
 export function lengthOfLongestSubstring(s: string): number {
   // @why Remember where each character was last seen, so a repeat can be found instantly.
@@ -52,9 +54,9 @@ export function lengthOfLongestSubstring(s: string): number {
   // @why Grow the window one character at a time by moving the right edge.
   for (let r = 0; r < s.length; r++) {
     // @why Look up where this character appeared before, if ever.
-    const prev = lastSeen.get(s[r]); // @say Where did '{s[r]}' last appear?
+    const prev = lastSeen.get(s[r]); // @say '{s[r]}' joins the window. Where did it last appear?
     // @why A repeat only matters inside the window; then jump `l` past the old copy.
-    if (prev !== undefined && prev >= l) l = prev + 1; // @say A repeat inside the window means jump l just past its old spot
+    if (prev !== undefined && prev >= l) l = prev + 1; // @ask l // @say Old '{s[r]}' is inside the window, so l jumps just past it; every start before that is finished
     // @why Store the newest position of this character.
     lastSeen.set(s[r], r); // @say Record '{s[r]}' at index {r} for future repeat checks
     // @why The window is valid now, so see if it is the longest.

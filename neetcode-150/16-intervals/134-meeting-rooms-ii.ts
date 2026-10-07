@@ -52,6 +52,8 @@ export class Interval {
   }
 }
 
+// @viz best:best
+// @rule rooms is how many meetings are running when meeting starts[s] begins
 // @why Returns the fewest rooms needed so no two overlapping meetings share one.
 export function minMeetingRooms(intervals: Interval[]): number {
   // @why All start times in order; which meeting each belongs to does not matter.
@@ -70,10 +72,10 @@ export function minMeetingRooms(intervals: Interval[]): number {
     // @why This meeting starts before the earliest end, so no room is free and we need a new one.
     if (starts[s] < ends[e]) {
       // @why Open one more room.
-      rooms++;
+      rooms++; // @ask rooms // @moment meeting at {starts[s]} needs a new room
     // @why The earliest meeting is over, so its room can be reused.
     } else {
-      e++; // a meeting ended; its room is reused
+      e++; // a meeting ended; its room is reused // @ask e
     }
     // @why Remember the busiest moment.
     best = Math.max(best, rooms);

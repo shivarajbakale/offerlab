@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule l..r are exactly the indexes first reachable with jumps jumps
 // @why Returns the fewest jumps needed to reach the last index.
 export function jump(nums: number[]): number {
   // @why Count of jumps taken so far.
@@ -54,14 +55,14 @@ export function jump(nums: number[]): number {
     // @why Look at every index in the current range.
     for (let i = l; i <= r; i++) {
       // @why Track the furthest index any of them can reach.
-      farthest = Math.max(farthest, i + nums[i]);
+      farthest = Math.max(farthest, i + nums[i]); // @ask farthest
     }
     // @why The next range starts just after the current one.
     l = r + 1;
     // @why The next range ends at the furthest spot we found.
     r = farthest;
     // @why We spent one more jump to reach this new range.
-    jumps++;
+    jumps++; // @moment jump {jumps+1} reaches {farthest}
   }
   // @why `jumps` is the smallest number of jumps to reach the end.
   return jumps;

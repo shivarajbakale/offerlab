@@ -59,6 +59,7 @@ export class TreeNode {
   }
 }
 
+// @rule maxSoFar is the largest value on the path from the root down to node
 // @why A node is good if no node on the path from the root to it is bigger.
 export function goodNodes(root: TreeNode | null): number {
   // @why `maxSoFar` is the biggest value on the path from the root to here.
@@ -66,11 +67,17 @@ export function goodNodes(root: TreeNode | null): number {
     // @why An empty subtree has no good nodes.
     if (!node) return 0;
     // @why This node is good if it is at least as big as everything above it.
-    const good = node.val >= maxSoFar ? 1 : 0;
+    const good = node.val >= maxSoFar ? 1 : 0; // @ask good
     // @why The new path maximum for the children: the bigger of the old one and this node.
     const max = Math.max(maxSoFar, node.val);
+    // @why Count the good nodes in the left subtree.
+    const left = dfs(node.left, max);
+    // @why Count the good nodes in the right subtree.
+    const right = dfs(node.right, max);
     // @why Count this node plus the good nodes found in both subtrees.
-    return good + dfs(node.left, max) + dfs(node.right, max);
+    const count = good + left + right; // @ask count
+    // @why Hand the count up to the parent.
+    return count;
   };
   // @why Start at the root with -Infinity so the root is always good.
   return dfs(root, -Infinity);

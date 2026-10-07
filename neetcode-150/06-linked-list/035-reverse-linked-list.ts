@@ -51,6 +51,7 @@ export class ListNode {
   }
 }
 
+// @rule prev holds the reversed nodes, cur..end is untouched; no node is lost
 // @why Return the new head, which is the old tail.
 export function reverseList(head: ListNode | null): ListNode | null {
   // @why `prev` is the already-reversed part; it starts empty.
@@ -62,11 +63,11 @@ export function reverseList(head: ListNode | null): ListNode | null {
     // @why Save the rest of the list first, or flipping the link would lose it.
     const next: ListNode | null = cur.next; // @say Save the rest of the list before we break the link
     // @why The actual reversal: point this node backward.
-    cur.next = prev; // @say Flip the arrow: {cur.val} now points back to the reversed part
+    cur.next = prev; // @ask cur.next?.val // @moment flip {cur.val} // @say Flip the arrow: {cur.val} now points back to the reversed part
     // @why Grow the reversed part by one node.
     prev = cur; // @say {cur.val} becomes the head of the reversed part
     // @why Move on to the saved rest of the list.
-    cur = next; // @say Step forward into the saved remainder
+    cur = next; // @ask cur?.val // @say Step forward into the saved remainder
   }
   // @why When `cur` runs out, `prev` is the last node seen, which is the new head.
   return prev;

@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule res[k] holds the digit worth 10^k so far; overflow is carried into res[k+1] at once
 // @why Multiplies two numbers given as strings, like on paper, because they may be too big for a number.
 export function multiply(num1: string, num2: string): string {
   // @why Anything times 0 is 0; this also avoids a result like "000".
@@ -61,9 +62,9 @@ export function multiply(num1: string, num2: string): string {
       // @why Turn the character into its digit.
       const d2 = num2.charCodeAt(n - 1 - j) - 48;
       // @why Digit `i` times digit `j` is worth 10^(i+j), so add it to that slot.
-      res[i + j] += d1 * d2;
+      res[i + j] += d1 * d2; // @ask res[i+j]
       // @why Whatever is 10 or more carries into the next slot.
-      res[i + j + 1] += Math.floor(res[i + j] / 10);
+      res[i + j + 1] += Math.floor(res[i + j] / 10); // @ask res[i+j+1]
       // @why Keep only the ones digit in this slot.
       res[i + j] %= 10;
     }

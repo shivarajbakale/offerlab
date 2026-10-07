@@ -36,6 +36,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule stack is always a valid prefix: close <= open <= n
 // @why Returns every well-formed string made of `n` pairs of parentheses.
 export function generateParenthesis(n: number): string[] {
   // @why Collects the finished strings.
@@ -48,11 +49,11 @@ export function generateParenthesis(n: number): string[] {
     // @why All pairs used means the string is complete.
     if (open === n && close === n) {
       // @why Save a copy of the finished string.
-      result.push(stack.join(""));
+      result.push(stack.join("")); // @moment found {stack.join("")}
       return;
     }
     // @why We can add `(` as long as we have not used all `n` of them.
-    if (open < n) {
+    if (open < n) { // @ask open<n
       // @why Choose `(`.
       stack.push("(");
       // @why Explore everything that can follow this choice.
@@ -61,7 +62,7 @@ export function generateParenthesis(n: number): string[] {
       stack.pop();
     }
     // @why A `)` is only legal if there is an unmatched `(` to close, so `close` must stay below `open`.
-    if (close < open) {
+    if (close < open) { // @ask close<open
       // @why Choose `)`.
       stack.push(")");
       backtrack(open, close + 1);

@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule the stack holds days still waiting for a warmer day, coldest on top
 // @why For each day, find how many days until a warmer one (0 if never).
 export function dailyTemperatures(temperatures: number[]): number[] {
   // @why Default 0 covers days that never see a warmer temperature.
@@ -51,14 +52,14 @@ export function dailyTemperatures(temperatures: number[]): number[] {
   // @why Visit each day once as the possible warmer day.
   for (let i = 0; i < temperatures.length; i++) {
     // @why If today beats the waiting day on top, that waiting day is answered.
-    while (stack.length && temperatures[stack[stack.length - 1]] < temperatures[i]) { // @say Is {temperatures[i]} warmer than the day waiting on top of the stack?
+    while (stack.length && temperatures[stack[stack.length - 1]] < temperatures[i]) { // @broken // @say Is {temperatures[i]} warmer than the day waiting on top of the stack?
       // @why Take the day that just got its answer off the stack.
-      const j = stack.pop()!;
+      const j = stack.pop()!; // @ask j
       // @why The gap between today and that day is how long it waited.
-      answer[j] = i - j; // @say Day {j} waited {i - j} day(s) for a warmer temperature
+      answer[j] = i - j; // @moment day {i} answers day {j} // @say Day {j} waited {i - j} day(s) for a warmer temperature
     }
     // @why Today now waits for its own warmer day.
-    stack.push(i); // @say Day {i} ({temperatures[i]}) now waits for a warmer day
+    stack.push(i); // @ask stack.length // @say Day {i} ({temperatures[i]}) now waits for a warmer day
   }
   return answer;
 }

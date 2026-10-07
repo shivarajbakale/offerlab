@@ -47,6 +47,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i][j] is true when s1[i..] and s2[j..] can be woven into s3[i+j..]
 // @why Returns whether `s3` can be made by weaving `s1` and `s2`, keeping each one's order.
 export function isInterleave(s1: string, s2: string, s3: string): boolean {
   // @why Length of `s1`.
@@ -67,7 +68,7 @@ export function isInterleave(s1: string, s2: string, s3: string): boolean {
       // @why Take the next letter from `s1` if it matches `s3[i + j]` and the rest works.
       if (i < m && s1[i] === s3[i + j] && dp[i + 1][j]) dp[i][j] = true;
       // @why Or take it from `s2` if it matches and the rest works; either path is enough.
-      if (j < n && s2[j] === s3[i + j] && dp[i][j + 1]) dp[i][j] = true;
+      if (j < n && s2[j] === s3[i + j] && dp[i][j + 1]) dp[i][j] = true; // @ask dp[i][j]
     }
   }
   // @why `dp[0][0]` is the full strings.

@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule queue holds exactly the oranges that rotted in the last minute
 // @why Returns the minutes until no fresh orange is left, or -1 if that is impossible.
 export function orangesRotting(grid: number[][]): number {
   // @why Save the grid size once for the bounds check.
@@ -86,15 +87,15 @@ export function orangesRotting(grid: number[][]): number {
         // @why This fresh orange rots now; marking it also stops us from adding it twice.
         grid[nr][nc] = 2;
         // @why One less fresh orange to worry about.
-        fresh--;
+        fresh--; // @ask fresh
         // @why It will spread rot in the next minute.
         next.push([nr, nc]);
       }
     }
     // @why Move on to the next wave.
-    queue = next;
+    queue = next; // @ask queue.length
     // @why A whole wave finished, so one minute has passed.
-    minutes++;
+    minutes++; // @moment minute {minutes + 1} done, {fresh} fresh left
   }
   // @why If any fresh orange could not be reached, it can never rot, so the answer is -1.
   return fresh === 0 ? minutes : -1;

@@ -70,7 +70,9 @@ export function CallTreeView({ tree, index }: { tree: CallTree; index: number })
         {nodes.map((n) => {
           const c = n.data;
           const done = c.end < index;
-          const cls = `call-node ${c.id === active ? "active" : onPath.has(c.id) ? "on-path" : ""} ${done ? "done" : ""}`;
+          // When the run collects answers, a finished call either found one (on its own or below it) or was a dead end.
+          const verdict = tree.collects && done ? (c.found ? "found" : "dead") : "";
+          const cls = `call-node ${c.id === active ? "active" : onPath.has(c.id) ? "on-path" : ""} ${done ? "done" : ""} ${verdict}`;
           if (compact) {
             return (
               <g key={n.key} className={cls} transform={`translate(${n.x},${n.y})`}>

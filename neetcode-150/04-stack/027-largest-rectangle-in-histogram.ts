@@ -39,6 +39,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:best
+// @rule stack heights rise toward the top; each start is as far left as that bar can reach
 // @why Finds the biggest rectangle that fits inside the bars.
 export function largestRectangleArea(heights: number[]): number {
   // @why Bars with rising heights; each keeps how far left its rectangle can stretch.
@@ -51,13 +53,13 @@ export function largestRectangleArea(heights: number[]): number {
     // @why By default this bar's rectangle begins at its own position.
     let start = i;
     // @why Taller bars on the stack cannot extend past this shorter bar, so their rectangles end here.
-    while (stack.length && stack[stack.length - 1][1] > heights[i]) {
+    while (stack.length && stack[stack.length - 1][1] > heights[i]) { // @broken
       // @why Take the taller bar off the stack and look at its start and height.
-      const [idx, h] = stack.pop()!;
+      const [idx, h] = stack.pop()!; // @moment bar {stack[stack.length - 1][1]} ends at {i}
       // @why Its rectangle spans from `idx` up to this bar, so area is height times width.
-      best = Math.max(best, h * (i - idx));
+      best = Math.max(best, h * (i - idx)); // @ask best
       // @why The new shorter bar can stretch back left to where the taller one began.
-      start = idx;
+      start = idx; // @ask start
     }
     // @why Save this bar with the earliest start it can reach.
     stack.push([start, heights[i]]);

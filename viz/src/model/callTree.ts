@@ -13,6 +13,10 @@ export type CallNode = {
   end: number;
   ret?: string;
   retStep?: number;
+  /** The first argument that is a tree or list node, so the drawing can show what that node's call returned. */
+  node?: number;
+  /** The results list grew during this call: it, or a call under it, found an answer. */
+  found?: boolean;
 };
 
 export type CallTree = {
@@ -21,7 +25,21 @@ export type CallTree = {
   maxDepth: number;
   /** Some function calls itself (directly or through a helper with the same name). */
   recursive: boolean;
+  /** The run collects answers in a results list, so calls are marked as finding one or not. */
+  collects: boolean;
 };
+
+const RESULT_NAMES = /^(res|result|results|ans|answer|out|output|combos|combinations|perms|permutations|subsets|paths|boards|partitions)$/;
+
+/** Length of the results list visible in the outermost frame, if there is one. */
+function resultLen(s: Step): number | undefined {
+  for (const [n, v] of s.stack[0]?.vars ?? []) {
+    if (!RESULT_NAMES.test(n) || v.t !== "r") continue;
+    const o = s.heap[v.id];
+    if (o?.kind === "array") return o.len;
+  }
+  return undefined;
+}
 
 export function buildCallTree(steps: Step[]): CallTree {
   const nodes: CallNode[] = [];
@@ -42,6 +60,12 @@ export function buildCallTree(steps: Step[]): CallTree {
         .map((p) => label(s, frame.vars.find(([n]) => n === p)?.[1], 2, true));
       const name = frame.fn.includes(".") ? frame.fn.split(".").pop()! : frame.fn;
       const parent = open.at(-1) ?? null;
+      const nodeArg = frame.params
+        .map((p) => frame.vars.find(([n]) => n === p)?.[1])
+        .find((v) => {
+          const o = v?.t === "r" ? s.heap[v.id] : undefined;
+          return o?.kind === "object" && ("left" in o.fields || "next" in o.fields);
+        });
       const node: CallNode = {
         id: nodes.length,
         label: `${name}(${args.join(", ")})`,
@@ -49,6 +73,7 @@ export function buildCallTree(steps: Step[]): CallTree {
         children: [],
         start: k,
         end: k,
+        ...(nodeArg?.t === "r" ? { node: nodeArg.id } : {}),
       };
       nodes.push(node);
       fnOf.set(node.id, frame.fn);
@@ -69,5 +94,8 @@ export function buildCallTree(steps: Step[]): CallTree {
     activeAt.push(top?.id ?? null);
   });
 
-  return { nodes, activeAt, maxDepth, recursive };
+  const lens = steps.map(resultLen);
+  const collects = recursive && lens.some((n) => n !== undefined);
+  if (collects) for (const n of nodes) n.found = (lens[n.end] ?? 0) > (lens[n.start] ?? 0);
+  return { nodes, activeAt, maxDepth, recursive, collects };
 }

@@ -54,12 +54,19 @@ export class TreeNode {
   }
 }
 
+// @rule each call returns the depth of the subtree below its node
 // @why Depth of a tree = 1 for this node + the deeper of its two subtrees.
 export function maxDepth(root: TreeNode | null): number {
   // @why Base case: no node means depth 0, which also ends the recursion.
   if (!root) return 0;
-  // @why Ask each side for its depth, keep the bigger one, and add 1 for this node.
-  return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+  // @why Ask the left side for its depth.
+  const left = maxDepth(root.left);
+  // @why Ask the right side for its depth.
+  const right = maxDepth(root.right);
+  // @why Keep the deeper side and add 1 for this node itself.
+  const depth = 1 + Math.max(left, right); // @ask depth
+  // @why Hand this subtree's depth up to the parent.
+  return depth;
 }
 
 // --- helper: LeetCode level-order array -> tree ---

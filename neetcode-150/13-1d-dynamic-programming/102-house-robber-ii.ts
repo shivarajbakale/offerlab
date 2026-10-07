@@ -52,7 +52,7 @@ function robLine(nums: number[], start: number, end: number): number {
   // @why Only look at houses in the chosen range.
   for (let i = start; i <= end; i++) {
     // @why Rob this house (plus best from two back) or skip it (keep `rob2`); pick the bigger.
-    const best = Math.max(rob1 + nums[i], rob2);
+    const best = Math.max(rob1 + nums[i], rob2); // @ask best
     // @why Slide forward so `rob1` lags `rob2` by one house.
     rob1 = rob2;
     // @why Save the new best as the previous-house value.
@@ -62,6 +62,8 @@ function robLine(nums: number[], start: number, end: number): number {
   return rob2;
 }
 
+// @viz best:rob2
+// @rule rob2 is the most money from houses start..i; rob1, from start..i - 1
 // @why Returns the most you can rob when the houses form a circle, so first and last touch.
 export function rob(nums: number[]): number {
   // @why Count the houses once for the range checks below.

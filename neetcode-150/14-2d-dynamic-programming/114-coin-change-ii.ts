@@ -51,6 +51,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[a] is the number of coin combinations making a, using only the coins seen so far
 // @why Returns how many different coin combinations make `amount` (order doesn't matter).
 export function change(amount: number, coins: number[]): number {
   // @why `dp[a]` means the number of combinations making amount `a` using the coins processed so far.
@@ -62,7 +63,7 @@ export function change(amount: number, coins: number[]): number {
     // @why Go upward so the same coin can be used again; `dp[a - c]` already includes this coin.
     for (let a = c; a <= amount; a++) {
       // @why Every combination for `a - c` plus coin `c` is a new combination for `a`.
-      dp[a] += dp[a - c];
+      dp[a] += dp[a - c]; // @ask dp[a]
     }
   }
   // @why The number of combinations for the target.

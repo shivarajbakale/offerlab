@@ -39,6 +39,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:goal
+// @rule goal is the leftmost index known to reach the last index
 // @why Returns true if we can reach the last index starting from index 0.
 export function canJump(nums: number[]): boolean {
   // @why Work backwards: `goal` is the leftmost spot we know can reach the end. It starts at the last index.
@@ -46,7 +48,7 @@ export function canJump(nums: number[]): boolean {
   // @why Check each earlier index, moving from right to left.
   for (let i = nums.length - 2; i >= 0; i--) {
     // @why If this index can jump to `goal` or beyond, it can reach the end, so it becomes the new `goal`.
-    if (i + nums[i] >= goal) goal = i;
+    if (i + nums[i] >= goal) goal = i; // @ask goal
   }
   // @why If `goal` moved all the way back to index 0, the start can reach the end.
   return goal === 0;

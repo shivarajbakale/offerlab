@@ -54,6 +54,7 @@ export class ListNode {
   }
 }
 
+// @rule once the head start is done, right stays n+1 steps ahead of left
 // @why Remove the n-th node counted from the end, and return the head.
 export function removeNthFromEnd(head: ListNode | null, n: number): ListNode | null {
   // @why A fake node before the head so removing the head works like any other node.
@@ -68,12 +69,12 @@ export function removeNthFromEnd(head: ListNode | null, n: number): ListNode | n
   // @why Move both until `right` falls off the end.
   while (right) {
     // @why Move `left` forward.
-    left = left.next!;
+    left = left.next!; // @ask left.val
     // @why Move `right` forward, keeping the gap.
     right = right.next;
   }
   // @why `left` is just before the target, so skip over the target node.
-  left.next = left.next!.next;
+  left.next = left.next!.next; // @ask left.next?.val // @moment remove {left.next.val}
   // @why Return from the fake node so a removed head is handled.
   return dummy.next;
 }

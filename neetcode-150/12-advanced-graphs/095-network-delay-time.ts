@@ -111,6 +111,7 @@ class MinHeap<T extends number[]> {
   }
 }
 
+// @rule nodes leave the heap in order of arrival time, so a first pop is the fastest
 // @why Returns the time for a signal from `k` to reach all `n` nodes, or -1 if it can't.
 export function networkDelayTime(times: number[][], n: number, k: number): number {
   // @why A list of outgoing edges for each node; nodes are numbered from 1.
@@ -134,9 +135,9 @@ export function networkDelayTime(times: number[][], n: number, k: number): numbe
     // @why Skip it if we already found a faster way to it.
     if (visited.has(node)) continue;
     // @why This is the fastest way to this node, so its time is final.
-    visited.add(node);
+    visited.add(node); // @moment signal reaches {node} at {t}
     // @why Times only go up as we pop, so this is the latest arrival so far.
-    elapsed = t;
+    elapsed = t; // @ask elapsed
     // @why Look at every edge leaving this node.
     for (const [nb, w] of adj[node]) {
       // @why Queue the neighbor with its arrival time through this node.

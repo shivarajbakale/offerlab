@@ -38,6 +38,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule count is how many palindromes were found; inside the loop s[l..r] is one
 // @why Returns how many substrings are palindromes (same position range counts separately).
 export function countSubstrings(s: string): number {
   // @why Running total of palindromes found.
@@ -48,7 +49,7 @@ export function countSubstrings(s: string): number {
     // @why Stop at the edges or the first mismatch, because a bigger one can't be a palindrome then.
     while (l >= 0 && r < s.length && s[l] === s[r]) {
       // @why This range matches, so it is one more palindrome.
-      count++;
+      count++; // @ask count // @moment palindrome {s.slice(l, r + 1)}
       // @why Step the left edge outward.
       l--;
       // @why Step the right edge outward.

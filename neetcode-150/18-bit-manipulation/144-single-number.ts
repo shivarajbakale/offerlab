@@ -41,12 +41,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule result holds the xor of every number seen so far; pairs cancel to 0
 // @why Returns the one number that appears once while all others appear twice.
 export function singleNumber(nums: number[]): number {
   // @why Start at 0, because XOR with 0 leaves a number unchanged.
   let result = 0;
   // @why XOR flips bits: a number XOR itself is 0, so every pair cancels out and only the lonely number stays.
-  for (const n of nums) result ^= n;
+  for (const n of nums) result ^= n; // @ask result
   // @why What is left after all the pairs cancel is the answer.
   return result;
 }

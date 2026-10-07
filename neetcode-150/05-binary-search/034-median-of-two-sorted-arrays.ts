@@ -41,6 +41,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:lo..hi@i
+// @rule the correct count i of values taken from A always lies in lo..hi
 // @why Finds the median of two sorted arrays in O(log) time by searching for the right split.
 export function findMedianSortedArrays(nums1: number[], nums2: number[]): number {
   // @why Work on copies of the references so we can swap them.
@@ -62,7 +64,7 @@ export function findMedianSortedArrays(nums1: number[], nums2: number[]): number
     // @why Take `i` values from `A` for the left side.
     const i = (lo + hi) >> 1; // elements taken from A
     // @why Take the rest of the left side from `B`.
-    const j = half - i; // elements taken from B
+    const j = half - i; // elements taken from B // @ask j
 
     // @why Last value of A's left part; -Infinity if the left part is empty, so it never blocks.
     const aLeft = i > 0 ? A[i - 1] : -Infinity;
@@ -76,16 +78,16 @@ export function findMedianSortedArrays(nums1: number[], nums2: number[]): number
     // @why The split is right when every left value is no bigger than every right value.
     if (aLeft <= bRight && bLeft <= aRight) {
       // @why The biggest left value is the middle for an odd total.
-      const leftMax = Math.max(aLeft, bLeft);
+      const leftMax = Math.max(aLeft, bLeft); // @moment split at i={i}, j={j}
       // @why Odd total: the middle value is the answer.
       if (total % 2 === 1) return leftMax;
       // @why Even total: average the two middle values.
       return (leftMax + Math.min(aRight, bRight)) / 2;
     }
     // @why A's left side reaches too far, so take fewer values from `A`.
-    if (aLeft > bRight) hi = i - 1;
+    if (aLeft > bRight) hi = i - 1; // @ask hi
     // @why Otherwise take more values from `A`.
-    else lo = i + 1;
+    else lo = i + 1; // @ask lo
   }
   // @why Cannot happen when the input is sorted.
   throw new Error("Input arrays must be sorted");

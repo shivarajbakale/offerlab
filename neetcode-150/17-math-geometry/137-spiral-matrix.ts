@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule res holds every cell outside rows top..bottom-1 and cols left..right-1, in spiral order
 // @why Returns every matrix value in spiral order, starting at the top-left going right.
 export function spiralOrder(matrix: number[][]): number[] {
   // @why The values we collect, in order.
@@ -57,17 +58,17 @@ export function spiralOrder(matrix: number[][]): number[] {
     // @why Go right along the top row.
     for (let c = left; c < right; c++) res.push(matrix[top][c]);
     // @why That row is done, so the top edge moves down.
-    top++;
+    top++; // @ask res.length
     // @why Go down the right column.
     for (let r = top; r < bottom; r++) res.push(matrix[r][right - 1]);
     // @why That column is done, so the right edge moves left.
-    right--;
+    right--; // @ask right
     // @why The shrinking could leave nothing (a single row or column). Stop so we do not repeat cells.
     if (!(top < bottom && left < right)) break;
     // @why Go left along the bottom row.
     for (let c = right - 1; c >= left; c--) res.push(matrix[bottom - 1][c]);
     // @why That row is done, so the bottom edge moves up.
-    bottom--;
+    bottom--; // @ask res.length
     // @why Go up the left column.
     for (let r = bottom - 1; r >= top; r--) res.push(matrix[r][left]);
     // @why That column is done, so the left edge moves right.

@@ -68,6 +68,7 @@ function isSameTree(p: TreeNode | null, q: TreeNode | null): boolean {
   return isSameTree(p.left, q.left) && isSameTree(p.right, q.right);
 }
 
+// @rule isSubtree(root) returns whether subRoot appears exactly somewhere under root
 // @why Is `subRoot` somewhere inside `root`, matching a node and everything below it?
 export function isSubtree(root: TreeNode | null, subRoot: TreeNode | null): boolean {
   // @why An empty tree is a subtree of anything, so answer true right away.
@@ -75,9 +76,15 @@ export function isSubtree(root: TreeNode | null, subRoot: TreeNode | null): bool
   // @why We ran out of `root` and never found a match, so false.
   if (!root) return false;
   // @why Try matching `subRoot` starting at this very node.
-  if (isSameTree(root, subRoot)) return true;
-  // @why No match here, so look for it in the left side or the right side.
-  return isSubtree(root.left, subRoot) || isSubtree(root.right, subRoot);
+  if (isSameTree(root, subRoot)) return true; // @moment try {root.val}
+  // @why No match here, so look for it in the left side first.
+  const inLeft = isSubtree(root.left, subRoot);
+  // @why Only search the right side if the left side had no match.
+  const inRight = !inLeft && isSubtree(root.right, subRoot);
+  // @why Found under this node if either side has it.
+  const found = inLeft || inRight; // @ask found
+  // @why Pass the answer for this subtree up to the caller.
+  return found;
 }
 
 // --- helper: LeetCode level-order array -> tree ---

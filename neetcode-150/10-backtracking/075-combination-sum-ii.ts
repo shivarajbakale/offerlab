@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule remain is target minus the sum of path; each value is tried once per level
 // @why Finds unique combinations that add up to `target`; each number can be used only once.
 export function combinationSum2(candidates: number[], target: number): number[][] {
   // @why Sort so equal numbers are together and we can stop early when numbers get too big.
@@ -56,7 +57,7 @@ export function combinationSum2(candidates: number[], target: number): number[][
     // @why Remaining is zero, so the path adds up to the target.
     if (remain === 0) {
       // @why Save a copy, because `path` keeps changing.
-      res.push([...path]);
+      res.push([...path]); // @moment found {JSON.stringify(path)}
       // @why No need to go deeper.
       return;
     }
@@ -67,7 +68,7 @@ export function combinationSum2(candidates: number[], target: number): number[][
       // @why The list is sorted, so this and everything after it is too big.
       if (sorted[i] > remain) break; // sorted: nothing further can fit
       // @why Add this number to the combination.
-      path.push(sorted[i]);
+      path.push(sorted[i]); // @ask remain-sorted[i]
       // @why Move to `i + 1` so each number is used at most once.
       dfs(i + 1, remain - sorted[i]);
       // @why Backtrack: remove it and try the next candidate.

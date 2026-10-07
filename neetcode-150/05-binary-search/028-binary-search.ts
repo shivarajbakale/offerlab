@@ -37,6 +37,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:lo..hi@mid
+// @rule lo..hi always contains the target if it is in the array
 // @why Returns the index of `target` in the sorted array, or -1.
 export function search(nums: number[], target: number): number {
   // @why `lo` and `hi` bound the part of the array where the target could still be.
@@ -47,10 +49,10 @@ export function search(nums: number[], target: number): number {
     // @why Look at the middle so each step throws away half of the range.
     const mid = lo + ((hi - lo) >> 1); // @say Probe the middle of the remaining range [{lo}, {hi}]
     // @why Found it, so return its index.
-    if (nums[mid] === target) return mid; // @say Is the middle value the target {target}?
+    if (nums[mid] === target) return mid; // @moment probe {nums[mid]} // @say Is the middle value the target {target}?
     // @why Sorted array: a too-small middle means the target can only be to the right, otherwise to the left.
-    if (nums[mid] < target) lo = mid + 1; // @say Sorted: if {nums[mid]} < {target}, the target can only be to the right
-    else hi = mid - 1; // @say Middle is too big, so discard it and everything right of it
+    if (nums[mid] < target) lo = mid + 1; // @ask lo // @say Sorted: if {nums[mid]} < {target}, the target can only be to the right
+    else hi = mid - 1; // @ask hi // @say Middle is too big, so discard it and everything right of it
   }
   // @why The range is empty, so the target is not there.
   return -1;

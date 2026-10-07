@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule route holds airports with no unused tickets left, in reverse trip order
 // @why Returns the trip that uses every ticket once and is the smallest in alphabet order.
 export function findItinerary(tickets: string[][]): string[] {
   // @why For each airport, the list of places you can fly to next.
@@ -65,11 +66,11 @@ export function findItinerary(tickets: string[][]): string[] {
   // @why Visit an airport by using its tickets one at a time.
   const dfs = (airport: string): void => {
     // @why The tickets still unused from here.
-    const dests = adj.get(airport);
+    const dests = adj.get(airport); // @ask dests?.length
     // @why Take the smallest unused ticket and follow it; each ticket is used only once because of `pop()`.
     while (dests && dests.length) dfs(dests.pop()!);
     // @why Add the airport only after it has no tickets left (stuck airports end up last in the trip).
-    route.push(airport);
+    route.push(airport); // @moment stuck at {airport}, add to route
   };
 
   // @why The trip must start at JFK.

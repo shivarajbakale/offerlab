@@ -62,6 +62,7 @@ export class TreeNode {
   }
 }
 
+// @rule cur is always an ancestor of both p and q
 // @why Find the lowest node that has both `p` and `q` under it, using BST ordering.
 export function lowestCommonAncestor(root: TreeNode | null, p: TreeNode, q: TreeNode): TreeNode | null {
   // @why Walk down from the root with a pointer, no recursion needed.
@@ -69,11 +70,11 @@ export function lowestCommonAncestor(root: TreeNode | null, p: TreeNode, q: Tree
   // @why Keep going while there is a node to look at.
   while (cur) {
     // @why Both targets are smaller, so the answer must be in the left subtree.
-    if (p.val < cur.val && q.val < cur.val) cur = cur.left;
+    if (p.val < cur.val && q.val < cur.val) cur = cur.left; // @ask cur.val
     // @why Both targets are bigger, so the answer must be in the right subtree.
-    else if (p.val > cur.val && q.val > cur.val) cur = cur.right;
+    else if (p.val > cur.val && q.val > cur.val) cur = cur.right; // @ask cur.val
     // @why They split here (or one equals this node), so this is the lowest common ancestor.
-    else return cur;
+    else return cur; // @moment split at {cur.val}
   }
   // @why Only reached for an empty tree; there is no ancestor.
   return null;

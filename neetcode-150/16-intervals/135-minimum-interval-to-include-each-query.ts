@@ -122,6 +122,7 @@ class MinHeap<T extends number[]> {
   }
 }
 
+// @rule heap holds intervals that start by q, smallest size on top; ended ones get popped
 // @why For each query, returns the size of the smallest interval containing it, or -1.
 export function minInterval(intervals: number[][], queries: number[]): number[] {
   // @why Sort intervals by start so we can add them as queries grow.
@@ -140,12 +141,14 @@ export function minInterval(intervals: number[][], queries: number[]): number[] 
       // @why Left and right ends of the interval being added.
       const [l, r] = sorted[i++];
       // @why Store its size first so the smallest comes out on top.
-      heap.push([r - l + 1, r]);
+      heap.push([r - l + 1, r]); // @ask heap.data.length
     }
     // @why Throw away intervals that end before `q`; they cannot cover it, or any later query.
     while (heap.size && heap.peek()![1] < q) heap.pop();
     // @why The top of the heap is the smallest interval covering `q`, or -1 if the heap is empty.
-    answer.set(q, heap.size ? heap.peek()![0] : -1);
+    const best = heap.size ? heap.peek()![0] : -1; // @ask best // @moment query {q}
+    // @why Remember the answer for this query.
+    answer.set(q, best);
   }
   // @why Return the answers in the original query order.
   return queries.map((q) => answer.get(q)!);

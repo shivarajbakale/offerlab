@@ -38,6 +38,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:rob2
+// @rule rob2 is the most money from the houses so far; rob1, from all but the last one
 // @why Returns the most money you can take without robbing two neighbouring houses.
 export function rob(nums: number[]): number {
   // @why `rob1` means the best total using houses up to two back (before the previous house).
@@ -47,7 +49,7 @@ export function rob(nums: number[]): number {
   // @why Go through the houses left to right; each decides if it joins the best plan.
   for (const n of nums) {
     // @why Either rob this house and add the best from two back, or skip it and keep `rob2`.
-    const best = Math.max(rob1 + n, rob2);
+    const best = Math.max(rob1 + n, rob2); // @ask best
     // @why Slide forward: the old `rob2` is now the best from two houses back.
     rob1 = rob2;
     // @why The new best total (up to this house) becomes the previous-house value.

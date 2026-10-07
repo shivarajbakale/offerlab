@@ -41,6 +41,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule words with the same letter counts share one key, so each bucket is one family
 // @why Return the words bucketed so each bucket holds one anagram family.
 export function groupAnagrams(strs: string[]): string[][] {
   // @why Map from a letter-count signature to the words that share it.
@@ -56,11 +57,11 @@ export function groupAnagrams(strs: string[]): string[][] {
     // @why Anagrams have the same counts, so the counts as text make a shared key.
     const key = counts.join(",");
     // @why Check if this key already has a bucket.
-    const group = groups.get(key);
+    const group = groups.get(key); // @ask group!==undefined
     // @why Bucket exists, so just add the word to it.
     if (group) group.push(s);
     // @why No bucket yet, so start one with this word.
-    else groups.set(key, [s]);
+    else groups.set(key, [s]); // @moment new family: {s}
   }
   // @why The buckets are the answer; the keys were only for matching.
   return [...groups.values()];

@@ -49,6 +49,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule every "T" is an "O" joined to the border, so it can never be captured
 // @why Edits the board in place; returns nothing.
 export function solve(board: string[][]): void {
   // @why Save the board size once for the bounds check.
@@ -60,7 +61,7 @@ export function solve(board: string[][]): void {
     // @why Stop at the edge or at anything that is not an unmarked "O".
     if (r < 0 || c < 0 || r >= rows || c >= cols || board[r][c] !== "O") return;
     // @why Temporary mark so we know this "O" is safe and do not revisit it.
-    board[r][c] = "T";
+    board[r][c] = "T"; // @moment safe ({r},{c})
     // @why Spread to all four neighbours to mark the whole connected region.
     markSafe(r + 1, c);
     markSafe(r - 1, c);
@@ -88,7 +89,7 @@ export function solve(board: string[][]): void {
     // @why Go through each column of this row.
     for (let c = 0; c < cols; c++) {
       // @why An "O" still here was never reached from the border, so it is surrounded: capture it.
-      if (board[r][c] === "O") board[r][c] = "X";
+      if (board[r][c] === "O") board[r][c] = "X"; // @ask board[r][c]
       // @why A safe cell goes back to its real value, "O".
       else if (board[r][c] === "T") board[r][c] = "O";
     }

@@ -44,6 +44,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule minOpen..maxOpen covers every unmatched '(' count some choice of * could give
 // @why Returns true if the string can be a valid parentheses string when each `*` is `(`, `)` or empty.
 export function checkValidString(s: string): boolean {
   // @why `minOpen` is the fewest unmatched `(` possible so far (treating `*` as `)` when helpful).
@@ -67,12 +68,12 @@ export function checkValidString(s: string): boolean {
       // @why As `)`, it lowers the minimum.
       minOpen--;
       // @why As `(`, it raises the maximum.
-      maxOpen++;
+      maxOpen++; // @ask maxOpen
     }
     // @why Even if every `*` was `(`, there are too many `)`, so it is invalid for sure.
     if (maxOpen < 0) return false;
     // @why We cannot have a negative number of open brackets, so the lowest count stops at 0.
-    if (minOpen < 0) minOpen = 0;
+    if (minOpen < 0) minOpen = 0; // @ask minOpen
   }
   // @why Valid only if it is possible to end with zero unmatched `(`.
   return minOpen === 0;

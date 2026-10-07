@@ -30,7 +30,9 @@ export function ListView({ panel }: { panel: ListPanel }) {
               </div>
               {n.extra ? <div className="list-extra">{n.extra}</div> : null}
             </div>
-            <div className="list-arrow">→</div>
+            <div className={`list-arrow ${n.was !== undefined ? "rewired" : ""}`} title={n.was !== undefined ? `next was ${n.was}` : undefined}>
+              {n.was !== undefined && <span className="list-was">was {n.was}</span>}→
+            </div>
           </motion.div>
         );
       })}

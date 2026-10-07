@@ -43,6 +43,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:lo..hi@mid
+// @rule lo..hi always contains the target if it is in the array
 // @why Finds `target` in a rotated sorted array, returning its index or -1.
 export function search(nums: number[], target: number): number {
   // @why `lo` and `hi` bound the part still worth searching.
@@ -56,17 +58,17 @@ export function search(nums: number[], target: number): number {
     if (nums[mid] === target) return mid;
 
     // @why After rotating, at least one half is always sorted. Find out which one.
-    if (nums[lo] <= nums[mid]) {
+    if (nums[lo] <= nums[mid]) { // @ask nums[lo]<=nums[mid]
       // Left half is sorted.
       // @why Left half is sorted, so we can tell if the target lies inside it; if so, go left.
-      if (nums[lo] <= target && target < nums[mid]) hi = mid - 1;
+      if (nums[lo] <= target && target < nums[mid]) hi = mid - 1; // @ask hi
       // @why Otherwise the target can only be in the right half.
       else lo = mid + 1;
     // @why Left half is not sorted, so the right half must be.
     } else {
       // Right half is sorted.
       // @why Right half is sorted, so check if the target lies inside it; if so, go right.
-      if (nums[mid] < target && target <= nums[hi]) lo = mid + 1;
+      if (nums[mid] < target && target <= nums[hi]) lo = mid + 1; // @ask lo
       // @why Otherwise the target can only be in the left half.
       else hi = mid - 1;
     }

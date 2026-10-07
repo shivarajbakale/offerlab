@@ -37,6 +37,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule one is the number of ways to reach the top from this stair; two, from the stair above
 // @why Returns how many ways there are to reach step `n` using moves of 1 or 2 steps.
 export function climbStairs(n: number): number {
   // @why `one` means ways from the next step up; stepping 1 from the top leaves 1 way (just finish).
@@ -46,7 +47,7 @@ export function climbStairs(n: number): number {
   // @why Each round moves one stair down; `n - 1` rounds because the base cases already cover two stairs.
   for (let i = 0; i < n - 1; i++) {
     // @why From a stair you take 1 or 2 steps, so ways = ways from `one` plus ways from `two`.
-    const next = one + two; // @say Ways = take 1 step ({one}) + take 2 steps ({two})
+    const next = one + two; // @ask next // @say Ways = take 1 step ({one}) + take 2 steps ({two})
     two = one; // @say Slide the window down one stair
     one = next; // @say Only the last two answers are ever needed
   }

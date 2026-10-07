@@ -40,6 +40,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:res
+// @rule curMax and curMin are the biggest and smallest products of a run ending at n
 // @why Returns the biggest product of any contiguous run of numbers.
 export function maxProduct(nums: number[]): number {
   // @why `res` is the best product seen so far; start with the first number so all-negative input works.
@@ -55,7 +57,7 @@ export function maxProduct(nums: number[]): number {
     // @why Extending the smallest run; if `n` is negative this may become the biggest.
     const b = n * curMin;
     // @why Best run ending here: start fresh with `n`, or extend with the biggest or smallest product.
-    curMax = Math.max(n, a, b);
+    curMax = Math.max(n, a, b); // @ask curMax
     // @why Worst run ending here, kept in case the next number is negative.
     curMin = Math.min(n, a, b);
     // @why Update the overall best with the best run ending at this number.

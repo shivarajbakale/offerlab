@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule result holds every interval ending before start; start..end has absorbed all overlaps
 // @why Returns the sorted list with `newInterval` added and any overlaps merged.
 export function insert(intervals: number[][], newInterval: number[]): number[][] {
   // @why The final merged list, built left to right.
@@ -56,7 +57,7 @@ export function insert(intervals: number[][], newInterval: number[]): number[][]
     // @why Current interval is entirely after the new one: no overlap, and no later one can overlap.
     if (end < s) {
       // @why The new interval is finished, so place it here.
-      result.push([start, end]);
+      result.push([start, end]); // @moment placed [{start},{end}]
       // @why Everything after is untouched, so just copy the rest and finish early.
       return result.concat(intervals.slice(i));
     // @why Current interval is entirely before the new one, so keep it as it is.
@@ -66,9 +67,9 @@ export function insert(intervals: number[][], newInterval: number[]): number[][]
     // @why They overlap, so merge them.
     } else {
       // @why The merged interval starts at the earlier start.
-      start = Math.min(start, s);
+      start = Math.min(start, s); // @ask start
       // @why The merged interval ends at the later end.
-      end = Math.max(end, e);
+      end = Math.max(end, e); // @ask end
     }
   }
   // @why After the loop the new interval was never placed, so it goes at the end.

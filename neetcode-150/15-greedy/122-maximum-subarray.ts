@@ -41,6 +41,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:best
+// @rule cur is the biggest sum of a slice ending at the current number
 // @why Returns the biggest sum of any contiguous slice of `nums`.
 export function maxSubArray(nums: number[]): number {
   // @why Start `best` at the first number so an all-negative array still gives the right answer.
@@ -52,9 +54,9 @@ export function maxSubArray(nums: number[]): number {
     // @why A negative running sum would only drag the next numbers down, so throw it away.
     if (cur < 0) cur = 0; // negative prefix never helps
     // @why Add this number to the slice that ends here.
-    cur += n;
+    cur += n; // @ask cur
     // @why Remember the best slice sum seen so far.
-    best = Math.max(best, cur);
+    best = Math.max(best, cur); // @ask best
   }
   // @why `best` is the answer after looking at every number.
   return best;

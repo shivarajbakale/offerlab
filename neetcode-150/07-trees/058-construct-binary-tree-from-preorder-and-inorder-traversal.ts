@@ -60,6 +60,8 @@ export class TreeNode {
   }
 }
 
+// @viz array:inorder window:lo..hi
+// @rule build(lo, hi) makes the subtree of inorder[lo..hi]; preorder[pre] is its root
 // @why Rebuild a tree from preorder (root first) and inorder (left, root, right) lists.
 export function buildTree(preorder: number[], inorder: number[]): TreeNode | null {
   // @why Map each value to its inorder position so finding the root's split point is instant.
@@ -77,9 +79,9 @@ export function buildTree(preorder: number[], inorder: number[]): TreeNode | nul
     // @why Preorder lists the root first, so the next unused value is this subtree's root.
     const val = preorder[pre++];
     // @why Find the root in inorder; everything left of it is the left subtree, the rest is right.
-    const mid = indexOf.get(val)!;
+    const mid = indexOf.get(val)!; // @ask mid
     // @why Create the node for this root value.
-    const node = new TreeNode(val);
+    const node = new TreeNode(val); // @moment root {val}
     // @why Build the left side first, because preorder lists the left subtree before the right.
     node.left = build(lo, mid - 1);
     // @why Build the right side from what is right of the root's position.

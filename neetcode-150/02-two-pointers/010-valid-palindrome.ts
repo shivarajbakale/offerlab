@@ -47,6 +47,7 @@ function isAlphaNum(ch: string): boolean {
   return /[a-z0-9]/i.test(ch);
 }
 
+// @rule every letter outside l..r already matches its mirror
 // @why Return true if the text reads the same both ways, ignoring symbols and case.
 export function isPalindrome(s: string): boolean {
   // @why `l` starts at the front.
@@ -56,9 +57,9 @@ export function isPalindrome(s: string): boolean {
   // @why Stop when the pointers meet; the middle needs no check.
   while (l < r) {
     // @why Skip symbols on the left.
-    while (l < r && !isAlphaNum(s[l])) l++;
+    while (l < r && !isAlphaNum(s[l])) l++; // @ask l
     // @why Skip symbols on the right.
-    while (l < r && !isAlphaNum(s[r])) r--;
+    while (l < r && !isAlphaNum(s[r])) r--; // @ask r
     // @why The two real characters must match, ignoring upper or lower case.
     if (s[l].toLowerCase() !== s[r].toLowerCase()) return false;
     // @why Move both pointers inward to the next pair.

@@ -77,7 +77,7 @@ function mergeTwo(a: ListNode | null, b: ListNode | null): ListNode | null {
       b = b.next;
     }
     // @why Move `tail` to the node just attached.
-    tail = tail.next;
+    tail = tail.next; // @ask tail.val
   }
   // @why One list ran out; attach the other's remainder whole.
   tail.next = a ?? b;
@@ -85,6 +85,7 @@ function mergeTwo(a: ListNode | null, b: ListNode | null): ListNode | null {
   return dummy.next;
 }
 
+// @rule every list in current is sorted; each round halves how many there are
 // @why Merge k sorted lists into one sorted list.
 export function mergeKLists(lists: Array<ListNode | null>): ListNode | null {
   // @why No lists means nothing to merge.
@@ -98,10 +99,10 @@ export function mergeKLists(lists: Array<ListNode | null>): ListNode | null {
     // @why Take lists two at a time; pairing keeps the work at O(n log k).
     for (let i = 0; i < current.length; i += 2) {
       // @why Merge a pair; with an odd count the last one pairs with null.
-      merged.push(mergeTwo(current[i], i + 1 < current.length ? current[i + 1] : null));
+      merged.push(mergeTwo(current[i], i + 1 < current.length ? current[i + 1] : null)); // @moment merge lists {i} and {i + 1}
     }
     // @why The merged lists become the next round's input.
-    current = merged;
+    current = merged; // @ask current.length
   }
   // @why Only one list remains: the answer.
   return current[0];

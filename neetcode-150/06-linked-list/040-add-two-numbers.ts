@@ -54,6 +54,7 @@ export class ListNode {
   }
 }
 
+// @rule dummy..tail holds the sum's low digits so far; carry spills into the next column
 // @why Digits are stored in reverse, so we add from the front, like adding by hand.
 export function addTwoNumbers(l1: ListNode | null, l2: ListNode | null): ListNode | null {
   // @why A fake first node so the result list is easy to start.
@@ -65,11 +66,11 @@ export function addTwoNumbers(l1: ListNode | null, l2: ListNode | null): ListNod
   // @why Keep going while any digit or a leftover carry remains.
   while (l1 || l2 || carry) {
     // @why Add the two digits (a missing list counts as 0) plus the carry.
-    const sum = (l1?.val ?? 0) + (l2?.val ?? 0) + carry;
+    const sum = (l1?.val ?? 0) + (l2?.val ?? 0) + carry; // @ask sum
     // @why The carry for the next column is the tens part of the sum.
-    carry = Math.floor(sum / 10);
+    carry = Math.floor(sum / 10); // @ask carry
     // @why The digit to keep in this column is the ones part.
-    tail.next = new ListNode(sum % 10);
+    tail.next = new ListNode(sum % 10); // @moment write digit {sum % 10}
     // @why Move `tail` to the new node.
     tail = tail.next;
     // @why Step `l1` forward, or stay at null if it ended.

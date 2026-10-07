@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule tank, the gas left driving from start up to i, never stays below 0
 // @why Returns the start station index that completes the loop, or -1 if none does.
 export function canCompleteCircuit(gas: number[], cost: number[]): number {
   // @why `total` is the net gas over the whole loop; if it is negative, no start can work.
@@ -57,13 +58,13 @@ export function canCompleteCircuit(gas: number[], cost: number[]): number {
     // @why Add to the overall balance for the final feasibility check.
     total += diff;
     // @why Add to the tank for the current candidate start.
-    tank += diff;
+    tank += diff; // @ask tank
     // @why A negative tank means we ran dry, so this start and every start before it fails.
-    if (tank < 0) {
+    if (tank < 0) { // @broken
       // @why Reset the tank because the new candidate starts empty.
       tank = 0;
       // @why Try the very next station as the new start.
-      start = i + 1;
+      start = i + 1; // @ask start // @moment ran dry at {i}, try {i+1}
     }
   }
   // @why If total gas is enough, the last candidate must work; if not, it is impossible.

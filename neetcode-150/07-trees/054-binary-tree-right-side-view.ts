@@ -63,6 +63,7 @@ export class TreeNode {
   }
 }
 
+// @rule level holds one depth left to right, so its last node is the one seen from the right
 // @why The right side view is the last node of every level, seen from the right.
 export function rightSideView(root: TreeNode | null): number[] {
   // @why Collects one visible value per level.
@@ -73,7 +74,7 @@ export function rightSideView(root: TreeNode | null): number[] {
   // @why Keep going while the current level has any nodes.
   while (level.length) {
     // @why The rightmost node on this level is the one visible from the right side.
-    result.push(level[level.length - 1].val);
+    result.push(level[level.length - 1].val); // @ask result[result.length-1] // @moment see {level[level.length - 1].val}
     // @why `next` will collect the children, which are the next level down.
     const next: TreeNode[] = [];
     // @why Visit every node on this level.
@@ -84,7 +85,7 @@ export function rightSideView(root: TreeNode | null): number[] {
       if (node.right) next.push(node.right);
     }
     // @why Move down one level and repeat.
-    level = next;
+    level = next; // @ask level.length
   }
   // @why Return the visible values from top to bottom.
   return result;

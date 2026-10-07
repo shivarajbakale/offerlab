@@ -50,6 +50,7 @@ class TrieNode {
   isWord = false;
 }
 
+// @rule each node's path from root spells a prefix of an added word; isWord marks a whole word
 // @why A trie stores words letter by letter so words with the same start share a path.
 export class Trie {
   // @why The empty starting node; every word begins here.
@@ -62,7 +63,7 @@ export class Trie {
     // @why Handle each letter in order.
     for (const ch of word) {
       // @why Look for an existing node for this letter.
-      let next = node.children.get(ch);
+      let next = node.children.get(ch); // @ask next===undefined
       // @why No node yet for this letter.
       if (!next) {
         // @why Make one.
@@ -74,7 +75,7 @@ export class Trie {
       node = next;
     }
     // @why The word ends here; mark it so `search` can tell it is a full word.
-    node.isWord = true;
+    node.isWord = true; // @moment added "{word}"
   }
 
   // @why True only if the whole word was added.

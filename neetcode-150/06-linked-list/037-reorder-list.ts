@@ -49,6 +49,7 @@ export class ListNode {
   }
 }
 
+// @rule every back-half node is woven in right after its mirror from the front half
 // @why Rearranges the list in place into first, last, second, second-last, and so on.
 export function reorderList(head: ListNode | null): void {
   // @why An empty list needs no work.
@@ -71,7 +72,7 @@ export function reorderList(head: ListNode | null): void {
   // @why The second half starts right after `slow`.
   let second: ListNode | null = slow.next;
   // @why Cut the list in two so the first half ends cleanly.
-  slow.next = null;
+  slow.next = null; // @ask second?.val // @moment split after {slow.val}
   // @why `prev` builds the reversed second half.
   let prev: ListNode | null = null;
   // @why Reverse the second half so we can read it from the back.
@@ -98,7 +99,7 @@ export function reorderList(head: ListNode | null): void {
     // @why Save the next node in the second half.
     const n2: ListNode | null = second.next;
     // @why Put a back-half node right after the front-half node.
-    first.next = second;
+    first.next = second; // @ask first.next?.val // @moment weave {second.val} after {first.val}
     // @why Then link that node to the rest of the front half.
     second.next = n1;
     // @why Step to the saved front node.

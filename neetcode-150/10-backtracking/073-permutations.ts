@@ -41,6 +41,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule used[i] is true exactly when nums[i] is in path; each choice is undone after use
 // @why Returns every ordering of the numbers in `nums`.
 export function permute(nums: number[]): number[][] {
   // @why Collects all finished permutations.
@@ -55,7 +56,7 @@ export function permute(nums: number[]): number[][] {
     // @why When `path` has all the numbers, one permutation is complete.
     if (path.length === nums.length) {
       // @why Save a copy, because `path` keeps changing.
-      res.push([...path]);
+      res.push([...path]); // @ask res.length // @moment found {JSON.stringify(path)}
       // @why Nothing more to add on this branch.
       return;
     }
@@ -66,7 +67,7 @@ export function permute(nums: number[]): number[][] {
       // @why Mark this number as taken.
       used[i] = true;
       // @why Add it to the permutation.
-      path.push(nums[i]);
+      path.push(nums[i]); // @ask path.length
       // @why Fill the remaining positions.
       dfs();
       // @why Backtrack: remove the number from the path.

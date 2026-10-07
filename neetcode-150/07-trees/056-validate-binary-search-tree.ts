@@ -58,6 +58,7 @@ export class TreeNode {
   }
 }
 
+// @rule every node lies strictly between the low and high bounds set by its ancestors
 // @why A tree is a valid BST when every node fits inside the range set by its ancestors.
 export function isValidBST(root: TreeNode | null): boolean {
   // @why `low` and `high` are the limits this node's value must stay strictly between.
@@ -65,9 +66,15 @@ export function isValidBST(root: TreeNode | null): boolean {
     // @why An empty subtree cannot break any rule.
     if (!node) return true; // @say An empty subtree breaks no rules
     // @why Out of range means a duplicate or a misplaced value, so it is not a BST.
-    if (node.val <= low || node.val >= high) return false; // @say {node.val} must lie strictly between ancestors' bounds ({low}, {high})
-    // @why Going left, this value becomes the new upper limit; going right, the new lower limit.
-    return valid(node.left, low, node.val) && valid(node.right, node.val, high); // @say Left side must stay below {node.val}, right side above it
+    if (node.val <= low || node.val >= high) return false; // @broken // @say {node.val} must lie strictly between ancestors' bounds ({low}, {high})
+    // @why Going left, this value becomes the new upper limit for that whole side.
+    const leftOk = valid(node.left, low, node.val); // @say Left side must stay below {node.val}, right side above it
+    // @why Only check the right side (lower limit = this value) if the left side passed.
+    const rightOk = leftOk && valid(node.right, node.val, high);
+    // @why This subtree is valid only if both sides are.
+    const ok = leftOk && rightOk; // @ask ok
+    // @why Hand the verdict for this subtree up to the caller.
+    return ok;
   };
   // @why The root has no limits yet, so start with -Infinity and Infinity.
   return valid(root, -Infinity, Infinity);

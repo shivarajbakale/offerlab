@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i] is the length of the longest increasing subsequence starting at index i
 // @why Returns the length of the longest strictly increasing subsequence.
 export function lengthOfLIS(nums: number[]): number {
   // @why Number of elements.
@@ -54,7 +55,7 @@ export function lengthOfLIS(nums: number[]): number {
     // @why Look at every element after `i` that could come next in the sequence.
     for (let j = i + 1; j < n; j++) {
       // @why If `nums[j]` is bigger, `i` can be followed by `j`'s sequence: length `1 + dp[j]`; keep the best.
-      if (nums[i] < nums[j]) dp[i] = Math.max(dp[i], 1 + dp[j]);
+      if (nums[i] < nums[j]) dp[i] = Math.max(dp[i], 1 + dp[j]); // @ask dp[i]
     }
   }
   // @why The sequence can start anywhere, so the answer is the biggest `dp` value.

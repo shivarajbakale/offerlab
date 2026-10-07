@@ -57,12 +57,13 @@ export class TreeNode {
   }
 }
 
+// @rule each finished call has mirrored its whole subtree before returning it
 // @why Returns the same root, now mirrored; `null` in means `null` out.
 export function invertTree(root: TreeNode | null): TreeNode | null {
   // @why Base case: an empty tree has nothing to swap, so stop here.
   if (!root) return null; // @say Empty subtree: nothing to invert
   // @why Swap the two children; this one swap is what mirrors this node.
-  [root.left, root.right] = [root.right, root.left]; // @say Mirror node {root.val}: swap its left and right children
+  [root.left, root.right] = [root.right, root.left]; // @ask root.left?root.left.val:null // @moment mirror {root.val} // @say Mirror node {root.val}: swap its left and right children
   // @why Mirror everything under the (new) left child the same way.
   invertTree(root.left); // @say Now invert the (new) left subtree of {root.val}
   // @why Do the same for the right side; the order of the two calls does not matter.

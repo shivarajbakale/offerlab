@@ -59,6 +59,7 @@ export class TreeNode {
   }
 }
 
+// @rule tokens are written and read in the same order: root, then left, then right
 // @why Turn a tree into a string that can be turned back into the same tree.
 export function serialize(root: TreeNode | null): string {
   // @why Collect one token per node, in preorder.
@@ -73,7 +74,7 @@ export function serialize(root: TreeNode | null): string {
       return;
     }
     // @why Write this node's value.
-    out.push(String(node.val));
+    out.push(String(node.val)); // @moment write {node.val}
     // @why Then write everything in the left subtree.
     dfs(node.left);
     // @why Then write everything in the right subtree.
@@ -94,11 +95,11 @@ export function deserialize(data: string): TreeNode | null {
   // @why Reads tokens in the same root, left, right order they were written.
   const dfs = (): TreeNode | null => {
     // @why Take the next token and move forward.
-    const token = tokens[i++];
+    const token = tokens[i++]; // @ask token
     // @why "N" means no node here, so return an empty subtree.
     if (token === "N") return null;
     // @why Make a node from the number token.
-    const node = new TreeNode(Number(token));
+    const node = new TreeNode(Number(token)); // @moment rebuild {token}
     // @why The next tokens describe the left subtree, so build it first.
     node.left = dfs();
     // @why After the left side is finished, the following tokens are the right subtree.

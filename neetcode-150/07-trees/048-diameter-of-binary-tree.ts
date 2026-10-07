@@ -56,6 +56,8 @@ export class TreeNode {
   }
 }
 
+// @viz best:best
+// @rule height returns its subtree's height; best is the longest bend l + r seen so far
 // @why The diameter is the longest path (counted in edges) between any two nodes.
 export function diameterOfBinaryTree(root: TreeNode | null): number {
   // @why `best` remembers the longest path seen at any node so far.
@@ -70,9 +72,11 @@ export function diameterOfBinaryTree(root: TreeNode | null): number {
     // @why Height of the right subtree, which is the longest path going down-right.
     const r = height(node.right);
     // @why A path bending at this node uses both sides, so its length is `l + r`; keep the max.
-    best = Math.max(best, l + r);
-    // @why Tell the parent our height: one more than our taller side.
-    return 1 + Math.max(l, r);
+    best = Math.max(best, l + r); // @ask best
+    // @why Our height is one more than our taller side.
+    const h = 1 + Math.max(l, r); // @ask h
+    // @why Tell the parent our height.
+    return h;
   };
 
   // @why Start the walk at the root; we only care about the `best` it fills in.

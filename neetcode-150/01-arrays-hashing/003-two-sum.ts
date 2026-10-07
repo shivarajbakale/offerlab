@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule indexOf holds every number before i, mapped to its index
 // @why Return the two indices whose numbers add up to `target`.
 export function twoSum(nums: number[], target: number): number[] {
   // @why Map from a number to its index, for numbers already passed.
@@ -50,7 +51,7 @@ export function twoSum(nums: number[], target: number): number[] {
   // @why Visit each number once; earlier numbers are already in the map.
   for (let i = 0; i < nums.length; i++) {
     // @why The partner this number needs is `target - nums[i]`; look for it in the map.
-    const j = indexOf.get(target - nums[i]); // @say {nums[i]} needs a partner of {target - nums[i]}; have we seen it before?
+    const j = indexOf.get(target - nums[i]); // @ask j!==undefined // @say {nums[i]} needs a partner of {target - nums[i]}; have we seen it before?
     // @why The partner was seen earlier, so these two indices are the answer.
     if (j !== undefined) return [j, i]; // @say If the complement was stored earlier, those two indices are the pair
     // @why No partner yet, so store this number for the numbers that come later.

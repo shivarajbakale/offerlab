@@ -42,6 +42,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:bestLen
+// @rule while the window covers all of t, shrink it from the left
 // @why Return the shortest part of `s` that holds every letter of `t`.
 export function minWindow(s: string, t: string): string {
   // @why Nothing is needed, so the answer is empty.
@@ -71,7 +73,7 @@ export function minWindow(s: string, t: string): string {
     // @why Count the new letter.
     window.set(ch, (window.get(ch) ?? 0) + 1);
     // @why Does '{ch}' now fully satisfy one required character?
-    if (window.get(ch) === need.get(ch)) have++; // @say Does '{ch}' now fully satisfy one required character?
+    if (window.get(ch) === need.get(ch)) have++; // @ask have // @say Does '{ch}' now fully satisfy one required character?
 
     // @why Window covers all of `t`, so try shrinking from the left.
     while (have === required) { // @say Window covers all of t, so try shrinking from the left
@@ -91,7 +93,7 @@ export function minWindow(s: string, t: string): string {
       // @why If we dropped below what `t` needs, the window no longer covers that letter.
       if (needed !== undefined && window.get(out)! < needed) have--; // @say Dropping '{out}' may break coverage of t
       // @why Move the left edge in.
-      l++; // @say Shrink: move l right past '{s[l]}'
+      l++; // @ask l // @say Shrink: move l right past '{s[l]}'
     }
   }
   // @why No window ever worked, so return empty; otherwise cut out the best one.

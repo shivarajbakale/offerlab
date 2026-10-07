@@ -123,6 +123,7 @@ class Heap<T> {
   }
 }
 
+// @rule the heap holds the k largest numbers seen so far; its top is the kth largest
 // @why Return the k-th largest number in the array.
 export function findKthLargest(nums: number[], k: number): number {
   // @why A min-heap that keeps only the k largest numbers seen.
@@ -132,7 +133,7 @@ export function findKthLargest(nums: number[], k: number): number {
     // @why Add the number to the heap.
     heap.push(n);
     // @why Over k items: drop the smallest, so only the top k stay.
-    if (heap.size() > k) heap.pop();
+    if (heap.size() > k) heap.pop(); // @ask heap.data[0]
   }
   // @why The smallest of the top k is the k-th largest.
   return heap.peek()!;

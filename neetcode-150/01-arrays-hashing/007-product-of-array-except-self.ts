@@ -39,6 +39,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule prefix is the product of every number left of i; suffix of every number right of i
 // @why Return, for each spot, the product of all the other numbers.
 export function productExceptSelf(nums: number[]): number[] {
   // @why Remember the array size.
@@ -50,7 +51,7 @@ export function productExceptSelf(nums: number[]): number[] {
   // @why Left to right pass fills each spot with its left-side product.
   for (let i = 0; i < n; i++) {
     // @why Save the product of everything left of `i` before counting `nums[i]`.
-    answer[i] = prefix;
+    answer[i] = prefix; // @ask answer[i]
     // @why Now include `nums[i]` for the next spot.
     prefix *= nums[i];
   }
@@ -59,7 +60,7 @@ export function productExceptSelf(nums: number[]): number[] {
   // @why Right to left pass adds the right-side product, with no extra array.
   for (let i = n - 1; i >= 0; i--) {
     // @why Left product times right product is everything except `nums[i]`.
-    answer[i] *= suffix;
+    answer[i] *= suffix; // @ask answer[i]
     // @why Now include `nums[i]` for the spot to its left.
     suffix *= nums[i];
   }

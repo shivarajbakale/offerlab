@@ -46,6 +46,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[l][r] is the most coins from bursting every balloon strictly between l and r
 // @why Returns the most coins from bursting all balloons, where each burst pays left x self x right.
 export function maxCoins(nums: number[]): number {
   // @why Pad both ends with 1 so edge balloons have neighbours; the pads are never burst.
@@ -64,7 +65,7 @@ export function maxCoins(nums: number[]): number {
       // @why Let `k` be the LAST balloon burst in the gap; its neighbours are then `l` and `r`.
       for (let k = l + 1; k < r; k++) {
         // @why Last burst pays `a[l] * a[k] * a[r]`, plus the two independent sides `dp[l][k]` and `dp[k][r]`.
-        dp[l][r] = Math.max(dp[l][r], dp[l][k] + a[l] * a[k] * a[r] + dp[k][r]);
+        dp[l][r] = Math.max(dp[l][r], dp[l][k] + a[l] * a[k] * a[r] + dp[k][r]); // @ask dp[l][r]
       }
     }
   }

@@ -128,6 +128,7 @@ class Heap<T> {
   }
 }
 
+// @rule the heap holds the k closest points seen so far, farthest on top
 // @why Return the k points nearest the origin, in any order.
 export function kClosest(points: number[][], k: number): number[][] {
   // @why Squared distance is enough to compare, so no slow square root.
@@ -139,7 +140,7 @@ export function kClosest(points: number[][], k: number): number[][] {
     // @why Add the point to the heap.
     heap.push(p);
     // @why Over k points: drop the farthest, since it can't be one of the closest.
-    if (heap.size() > k) heap.pop();
+    if (heap.size() > k) heap.pop(); // @ask heap.data[0].join()
   }
   // @why What is left in the heap is the k closest.
   return heap.toArray();

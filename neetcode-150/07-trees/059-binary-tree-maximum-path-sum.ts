@@ -60,6 +60,8 @@ export class TreeNode {
   }
 }
 
+// @viz best:best
+// @rule gain returns the best downward sum from its node; best is the best bend seen so far
 // @why Find the largest sum along any path; it may start and end anywhere.
 export function maxPathSum(root: TreeNode | null): number {
   // @why `best` is the highest path sum seen so far; start very low since values can be negative.
@@ -74,9 +76,11 @@ export function maxPathSum(root: TreeNode | null): number {
     // @why Same for the right side.
     const right = Math.max(gain(node.right), 0);
     // @why A path bending at this node uses both sides, so check if it beats `best`.
-    best = Math.max(best, node.val + left + right);
-    // @why The parent can only extend one side, so pass up this node plus the better side.
-    return node.val + Math.max(left, right);
+    best = Math.max(best, node.val + left + right); // @ask best
+    // @why The parent can only extend one side, so take this node plus the better side.
+    const down = node.val + Math.max(left, right); // @ask down
+    // @why Pass that one-sided gain up to the parent.
+    return down;
   };
 
   // @why Start at the root; `best` gets filled in along the way.

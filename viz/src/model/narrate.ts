@@ -43,7 +43,7 @@ export function conditionOf(code: string): { kind: "if" | "while" | "for"; cond:
   return null;
 }
 
-function fillTemplate(template: string, scope: Record<string, unknown>): string {
+export function fillTemplate(template: string, scope: Record<string, unknown>): string {
   return template.replace(/\{([^{}]+)\}/g, (whole, expr: string) => {
     const r = evaluate(expr, scope);
     if (!r.ok) return whole;

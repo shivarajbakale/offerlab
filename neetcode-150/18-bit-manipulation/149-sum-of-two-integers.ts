@@ -39,16 +39,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule a + b always equals the original sum; b holds the carries still to add
 // @why Adds two integers without using + or -, using only bit operations.
 export function getSum(a: number, b: number): number {
   // @why Repeat until there is no carry left to add.
   while (b !== 0) {
     // @why `a & b` finds the places where both bits are 1; those create a carry, which belongs one place left.
-    const carry = (a & b) << 1;
+    const carry = (a & b) << 1; // @ask carry
     // @why XOR adds each pair of bits while ignoring the carry (1+1 gives 0 here).
-    a = a ^ b;
+    a = a ^ b; // @ask a
     // @why Now add the carry in the next round.
-    b = carry;
+    b = carry; // @moment carry {carry} left to add
   }
   // @why With no carry left, `a` holds the full sum.
   return a;

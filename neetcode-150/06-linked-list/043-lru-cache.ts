@@ -61,6 +61,7 @@ class DNode {
   }
 }
 
+// @rule the list runs least to most recently used and never holds more than capacity
 // @why A cache that drops the least recently used item when full.
 export class LRUCache {
   // @why The most items the cache may hold.
@@ -108,7 +109,7 @@ export class LRUCache {
   // @why Read a value, and count it as just used.
   get(key: number): number {
     // @why Find the node in O(1) using the map.
-    const node = this.map.get(key);
+    const node = this.map.get(key); // @ask !!node
     // @why Missing key: return -1 as the problem asks.
     if (!node) return -1;
     // @why Take the node out of its old spot.
@@ -128,16 +129,16 @@ export class LRUCache {
     // @why Make a new node holding the latest value.
     const node = new DNode(key, value);
     // @why Record it in the map for fast lookup.
-    this.map.set(key, node);
+    this.map.set(key, node); // @ask this.map.size
     // @why Mark it as most recently used.
     this.insert(node);
 
     // @why Over the limit means something must go.
-    if (this.map.size > this.capacity) {
+    if (this.map.size > this.capacity) { // @broken
       // @why The node next to `head` is the least recently used.
-      const lru = this.head.next!;
+      const lru = this.head.next!; // @ask lru.key
       // @why Unlink it from the list.
-      this.remove(lru);
+      this.remove(lru); // @moment evict key {lru.key}
       // @why Delete it from the map too, so they stay in sync.
       this.map.delete(lru.key);
     }

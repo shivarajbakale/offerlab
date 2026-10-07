@@ -131,6 +131,7 @@ type Tweet = { time: number; id: number };
 // @why A heap entry: a tweet plus its author and position, to fetch their next older tweet.
 type Entry = { time: number; id: number; user: number; idx: number };
 
+// @rule the heap holds each source's newest unshown tweet; its top is the newest of all
 // @why A tiny Twitter: post, follow, unfollow and a feed of the 10 newest tweets.
 export class Twitter {
   // @why A counter that gives every tweet a newer time than the last.
@@ -175,15 +176,15 @@ export class Twitter {
     // @why Take the newest tweet until we have 10 or run out.
     while (heap.size() > 0 && feed.length < 10) {
       // @why The newest tweet among all candidates.
-      const top = heap.pop()!;
+      const top = heap.pop()!; // @ask top.id
       // @why Add it to the feed.
-      feed.push(top.id);
+      feed.push(top.id); // @moment feed gets tweet {top.id}
       // @why If that author has an older tweet, it is the next candidate from them.
       if (top.idx > 0) {
         // @why Position of their next older tweet.
         const idx = top.idx - 1;
         // @why Add that older tweet to the heap.
-        heap.push({ ...this.tweets.get(top.user)![idx], user: top.user, idx });
+        heap.push({ ...this.tweets.get(top.user)![idx], user: top.user, idx }); // @ask heap.data.length
       }
     }
     // @why Return the newest-first list.

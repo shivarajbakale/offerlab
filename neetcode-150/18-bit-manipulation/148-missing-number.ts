@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule result is n xor every index and value seen so far; numbers present cancel in pairs
 // @why Returns the one number from 0..n missing from `nums`.
 export function missingNumber(nums: number[]): number {
   // @why Start with `n` (the array length), because the loop only covers indexes 0 to n-1.
@@ -50,7 +51,7 @@ export function missingNumber(nums: number[]): number {
   // @why Visit every index.
   for (let i = 0; i < nums.length; i++) {
     // @why XOR in the index and the value at it. Numbers present show up twice and cancel, so the missing one is left.
-    result ^= i ^ nums[i];
+    result ^= i ^ nums[i]; // @ask result
   }
   // @why The only number without a partner is the missing one.
   return result;

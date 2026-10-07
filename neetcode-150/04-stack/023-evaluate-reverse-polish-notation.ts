@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule the stack holds the value of every finished sub-expression, oldest at the bottom
 // @why Evaluates a postfix (RPN) expression given as string tokens.
 export function evalRPN(tokens: string[]): number {
   // @why The stack holds numbers that are waiting for an operator.
@@ -52,11 +53,11 @@ export function evalRPN(tokens: string[]): number {
     // @why An operator works on the two newest numbers; anything else is a number.
     if (t === "+" || t === "-" || t === "*" || t === "/") {
       // @why The right operand was pushed last, so it comes off first.
-      const b = stack.pop()!;
+      const b = stack.pop()!; // @ask b
       // @why The left operand is the one just below it. Order matters for `-` and `/`.
-      const a = stack.pop()!;
+      const a = stack.pop()!; // @ask a
       // @why Apply the operator and push the result, so it can be an operand for a later operator.
-      if (t === "+") stack.push(a + b);
+      if (t === "+") stack.push(a + b); // @moment {a} {t} {b}
       else if (t === "-") stack.push(a - b);
       else if (t === "*") stack.push(a * b);
       // @why Division must cut toward zero, which `Math.trunc` does (plain `/` gives decimals).

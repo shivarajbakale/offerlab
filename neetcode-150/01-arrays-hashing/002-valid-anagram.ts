@@ -37,6 +37,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule counts[x] is how many x's s has had so far minus how many t has had
 // @why Return true if `t` uses exactly the same letters as `s`.
 export function isAnagram(s: string, t: string): boolean {
   // @why Different lengths can never match, so quit early.
@@ -50,7 +51,7 @@ export function isAnagram(s: string, t: string): boolean {
     // @why Count this letter of `s` as one more.
     counts[s.charCodeAt(i) - a]++;
     // @why Cancel one of this letter using `t`.
-    counts[t.charCodeAt(i) - a]--;
+    counts[t.charCodeAt(i) - a]--; // @ask counts[t.charCodeAt(i)-a]
   }
   // @why If every letter cancelled out to zero, the two strings have the same letters.
   return counts.every((c) => c === 0);

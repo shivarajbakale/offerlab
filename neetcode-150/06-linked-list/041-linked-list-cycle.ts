@@ -55,6 +55,7 @@ export class ListNode {
   }
 }
 
+// @rule fast has always taken twice as many steps as slow from the head
 // @why Return true if following `next` ever loops back.
 export function hasCycle(head: ListNode | null): boolean {
   // @why `slow` is the tortoise.
@@ -64,11 +65,11 @@ export function hasCycle(head: ListNode | null): boolean {
   // @why Fast moves two at a time, so it needs two nodes ahead; running out means the list ended.
   while (fast && fast.next) { // @say If fast hits the end, there is no loop to trap it
     // @why The tortoise takes one step.
-    slow = slow!.next; // @say Tortoise moves one step
+    slow = slow!.next; // @ask slow?.val // @say Tortoise moves one step
     // @why The hare takes two steps, so it gains one node per round.
-    fast = fast.next.next; // @say Hare moves two steps, gaining one node per round
+    fast = fast.next.next; // @ask fast?.val // @say Hare moves two steps, gaining one node per round
     // @why If they ever stand on the same node, the list must loop.
-    if (slow === fast) return true; // @say In a cycle the hare must eventually land on the tortoise
+    if (slow === fast) return true; // @moment {slow === fast ? "caught at " + slow.val : "no meet yet"} // @say In a cycle the hare must eventually land on the tortoise
   }
   // @why The hare reached the end, so there is no cycle.
   return false;

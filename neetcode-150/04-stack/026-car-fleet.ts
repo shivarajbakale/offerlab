@@ -47,6 +47,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule stack holds fleet arrival times, each strictly later than the fleet ahead of it
 // @why Count the groups (fleets) of cars that arrive at the target together.
 export function carFleet(target: number, position: number[], speed: number[]): number {
   // @why Pair each car's position with its speed so they can be sorted together.
@@ -60,9 +61,9 @@ export function carFleet(target: number, position: number[], speed: number[]): n
   // @why Go through cars from front to back.
   for (const [p, s] of cars) {
     // @why How long this car needs to reach the target if nothing blocks it.
-    const time = (target - p) / s;
+    const time = (target - p) / s; // @ask time
     // @why Slower than the fleet ahead means it catches up and joins it. Taking longer starts a new fleet.
-    if (stack.length === 0 || time > stack[stack.length - 1]) stack.push(time);
+    if (stack.length === 0 || time > stack[stack.length - 1]) stack.push(time); // @ask stack.length // @moment car at {p} needs {time} hours
   }
   // @why Each entry left is one fleet.
   return stack.length;

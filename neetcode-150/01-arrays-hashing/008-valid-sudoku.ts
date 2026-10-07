@@ -41,6 +41,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule rows[r], cols[c] and boxes[b] hold every digit already placed in them
 // @why Return true if no row, column or 3x3 box repeats a digit.
 export function isValidSudoku(board: string[][]): boolean {
   // @why One set of seen digits for each row.
@@ -59,7 +60,7 @@ export function isValidSudoku(board: string[][]): boolean {
       // @why An empty cell can't break a rule, so skip it.
       if (v === ".") continue;
       // @why Turn the row and column into a box number from 0 to 8.
-      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3); // @ask b
       // @why If this digit is already in its row, column or box, the board is invalid.
       if (rows[r].has(v) || cols[c].has(v) || boxes[b].has(v)) return false;
       // @why Remember the digit in this row.

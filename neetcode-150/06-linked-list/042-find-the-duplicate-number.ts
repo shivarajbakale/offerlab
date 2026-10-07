@@ -47,6 +47,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule walking i -> nums[i] from 0, fast has taken twice as many steps as slow
 // @why Treat `nums[i]` as a pointer from i to nums[i]; the duplicate is where a cycle starts.
 export function findDuplicate(nums: number[]): number {
   // @why `slow` takes one step per round.
@@ -56,20 +57,20 @@ export function findDuplicate(nums: number[]): number {
   // @why Run at least once, because both pointers start equal.
   do {
     // @why Slow follows one pointer.
-    slow = nums[slow];
+    slow = nums[slow]; // @ask slow
     // @why Fast follows two pointers.
-    fast = nums[nums[fast]];
+    fast = nums[nums[fast]]; // @ask fast
   // @why Stop when they meet; that spot is somewhere inside the cycle.
   } while (slow !== fast);
 
   // @why A second walker from the start; it meets `slow` at the cycle entrance.
-  let slow2 = 0;
+  let slow2 = 0; // @moment met inside the cycle at {slow}
   // @why Move both one step at a time until they meet.
   while (slow !== slow2) {
     // @why Slow takes one step.
     slow = nums[slow];
     // @why The second walker takes one step.
-    slow2 = nums[slow2];
+    slow2 = nums[slow2]; // @ask slow2
   }
   // @why The cycle entrance is the number that appears twice.
   return slow;

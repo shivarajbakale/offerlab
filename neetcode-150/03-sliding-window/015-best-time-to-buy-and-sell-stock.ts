@@ -36,7 +36,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// @viz hide:p
+// @viz hide:p best:best
+// @rule minPrice is the cheapest price on any day up to today
 // @why Return the best profit from one buy followed by one later sell.
 export function maxProfit(prices: number[]): number {
   // @why Cheapest price seen so far; the best day to have bought.
@@ -46,9 +47,9 @@ export function maxProfit(prices: number[]): number {
   // @why Take each day in order, so a sell always comes after the buy.
   for (const p of prices) {
     // @why If today is cheaper than any earlier day, it becomes the buy day.
-    minPrice = Math.min(minPrice, p); // @say Today's price {p}: is it the cheapest day to buy so far?
+    minPrice = Math.min(minPrice, p); // @ask minPrice // @say Today's price {p}: is it the cheapest day to buy so far?
     // @why If we sold today, we'd earn `p - minPrice`; keep it if it beats the best.
-    best = Math.max(best, p - minPrice); // @say Selling today earns {p - minPrice} over the cheapest buy; keep the max
+    best = Math.max(best, p - minPrice); // @ask best // @say Selling today earns {p - minPrice} over the cheapest buy; keep the max
   }
   // @why The top profit, or 0 if prices only fall.
   return best;

@@ -53,6 +53,7 @@ const INT_MAX = 2 ** 31 - 1; // 2147483647
 // @why Smallest signed 32-bit integer.
 const INT_MIN = -(2 ** 31); // -2147483648
 
+// @rule res is the digits taken off x so far, in reverse order, and always fits in 32 bits
 // @why Returns `x` with its digits reversed, or 0 if the result would not fit in 32 bits.
 export function reverse(x: number): number {
   // @why The most `res` can be before adding one more digit and still not go past the max.
@@ -64,7 +65,7 @@ export function reverse(x: number): number {
   // @why Keep taking digits until none are left.
   while (x !== 0) {
     // @why The last digit of `x`; works for negatives too, keeping the sign.
-    const digit = x % 10;
+    const digit = x % 10; // @ask digit
     // @why Chop the last digit off, rounding toward zero.
     x = Math.trunc(x / 10);
 
@@ -74,7 +75,7 @@ export function reverse(x: number): number {
     if (res < minDiv || (res === minDiv && digit < INT_MIN % 10)) return 0;
 
     // @why Push the digit onto the end of the reversed number.
-    res = res * 10 + digit;
+    res = res * 10 + digit; // @ask res
   }
   // @why The reversed number fit in range.
   return res;

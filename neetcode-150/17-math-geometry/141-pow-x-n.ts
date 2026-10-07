@@ -42,6 +42,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule helper(base, exp) returns base^exp, built by squaring helper(base, floor(exp/2))
 // @why Returns `x` raised to the power `n`, using fast exponentiation.
 export function myPow(x: number, n: number): number {
   // @why Helper that works with a non-negative exponent, so we handle the sign once at the end.
@@ -53,11 +54,13 @@ export function myPow(x: number, n: number): number {
     // @why Solve for half the exponent first; it halves the work each time (O(log n)).
     const half = helper(base, Math.floor(exp / 2));
     // @why Even exponent: two halves multiply. Odd exponent: one extra `base` is left over.
-    return exp % 2 === 0 ? half * half : half * half * base;
+    const p = exp % 2 === 0 ? half * half : half * half * base; // @ask p // @moment base^{exp} from half {half}
+    // @why This call's power, handed back up to the caller.
+    return p;
   };
 
   // @why Compute with the absolute value of `n`.
-  const res = helper(x, Math.abs(n));
+  const res = helper(x, Math.abs(n)); // @ask res
   // @why A negative power is one divided by the positive power.
   return n >= 0 ? res : 1 / res;
 }

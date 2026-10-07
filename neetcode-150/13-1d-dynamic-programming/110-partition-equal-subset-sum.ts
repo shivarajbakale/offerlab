@@ -40,6 +40,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[t] is true when some subset of the numbers seen so far sums to exactly t
 // @why Returns whether the numbers can be split into two groups with equal sums.
 export function canPartition(nums: number[]): boolean {
   // @why Sum of all numbers; needed to know what each half must be.
@@ -58,7 +59,7 @@ export function canPartition(nums: number[]): boolean {
     // @why Go downward so this number isn't used twice in the same round.
     for (let t = target; t >= n; t--) {
       // @why If `t - n` was reachable, adding `n` makes `t` reachable.
-      if (dp[t - n]) dp[t] = true;
+      if (dp[t - n]) dp[t] = true; // @ask dp[t]
     }
     // @why Stop early once the half-sum is reachable.
     if (dp[target]) return true;

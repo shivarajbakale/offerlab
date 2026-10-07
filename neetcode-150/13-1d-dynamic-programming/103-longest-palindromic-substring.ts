@@ -38,6 +38,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz best:maxLen
+// @rule inside the loop s[l..r] is a palindrome; start and maxLen mark the longest one seen
 // @why Returns the longest substring that reads the same forwards and backwards.
 export function longestPalindrome(s: string): string {
   // @why `start` is where the best palindrome found so far begins.
@@ -52,9 +54,9 @@ export function longestPalindrome(s: string): string {
       // @why Only remember this palindrome if it beats the longest one so far.
       if (r - l + 1 > maxLen) {
         // @why Save where the new best begins.
-        start = l;
+        start = l; // @moment new best {s.slice(l, r + 1)}
         // @why Save how long the new best is.
-        maxLen = r - l + 1;
+        maxLen = r - l + 1; // @ask maxLen
       }
       // @why Step the left edge outward.
       l--;

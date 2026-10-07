@@ -40,6 +40,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @viz range:top..bot@mid
+// @rule rows top..bot (then columns lo..hi) always contain the target if it is in the matrix
 // @why The matrix is sorted row by row, so search the right row first, then inside it.
 export function searchMatrix(matrix: number[][], target: number): boolean {
   // @why How many rows there are.
@@ -58,12 +60,12 @@ export function searchMatrix(matrix: number[][], target: number): boolean {
     // @why Check the middle row.
     const mid = (top + bot) >> 1;
     // @why Bigger than the row's last value, so the target must be in a lower row.
-    if (target > matrix[mid][cols - 1]) top = mid + 1;
+    if (target > matrix[mid][cols - 1]) top = mid + 1; // @ask top
     // @why Smaller than the row's first value, so the target must be in an upper row.
-    else if (target < matrix[mid][0]) bot = mid - 1;
+    else if (target < matrix[mid][0]) bot = mid - 1; // @ask bot
     else {
       // @why The target lies between this row's first and last value, so this is the only row it can be in.
-      row = mid;
+      row = mid; // @moment row {mid} picked
       break;
     }
   }
@@ -83,7 +85,7 @@ export function searchMatrix(matrix: number[][], target: number): boolean {
     // @why Found the target.
     if (v === target) return true;
     // @why Too small, so the target is to the right.
-    if (v < target) lo = mid + 1;
+    if (v < target) lo = mid + 1; // @ask lo
     else hi = mid - 1;
   }
   // @why Not found in the row.

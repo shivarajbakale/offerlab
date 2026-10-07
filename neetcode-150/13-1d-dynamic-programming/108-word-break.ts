@@ -45,6 +45,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[i] is true when s from index i on splits fully into dictionary words
 // @why Returns whether `s` can be split into words that all appear in `wordDict`.
 export function wordBreak(s: string, wordDict: string[]): boolean {
   // @why Length of `s`, used for the base case and loop.
@@ -57,10 +58,12 @@ export function wordBreak(s: string, wordDict: string[]): boolean {
   for (let i = n - 1; i >= 0; i--) {
     // @why Try each word as the first word of the suffix at `i`.
     for (const w of wordDict) {
+      // @why The word `w` works here if it sits at `i` and what remains after it is splittable.
+      const fits = s.startsWith(w, i) && dp[i + w.length]; // @ask fits
       // @why This word fits at `i`, and what remains after it must be splittable.
-      if (s.startsWith(w, i) && dp[i + w.length]) {
+      if (fits) {
         // @why One working word is enough, so suffix `i` is splittable.
-        dp[i] = true;
+        dp[i] = true; // @moment {JSON.stringify(s.slice(i))} splits
         // @why No need to try more words once one works.
         break;
       }

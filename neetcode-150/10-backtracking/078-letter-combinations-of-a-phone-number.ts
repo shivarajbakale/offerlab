@@ -57,6 +57,7 @@ const KEYPAD: Record<string, string> = {
   "9": "wxyz",
 };
 
+// @rule cur holds one letter for each of digits[0..i-1]
 // @why Returns every letter string the digits could spell.
 export function letterCombinations(digits: string): string[] {
   // @why No digits means no combinations (not even an empty string).
@@ -69,7 +70,7 @@ export function letterCombinations(digits: string): string[] {
     // @why All digits used, so `cur` is a full combination.
     if (i === digits.length) {
       // @why Save it. A string can't be changed later, so no copy is needed.
-      res.push(cur);
+      res.push(cur); // @ask res.length // @moment found {cur}
       // @why Done with this branch.
       return;
     }

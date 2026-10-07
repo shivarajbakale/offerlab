@@ -43,6 +43,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+// @rule dp[a] is the fewest coins that make amount a, using any of the coins
 // @why Returns the fewest coins that add up to `amount`, or -1 if impossible.
 export function coinChange(coins: number[], amount: number): number {
   // @why `dp[a]` means the fewest coins to make amount `a`; start at `amount + 1`, which stands for impossible.
@@ -56,7 +57,7 @@ export function coinChange(coins: number[], amount: number): number {
       // @why A coin bigger than `a` can't be used.
       if (c <= a) { // @say Coin {c} is only usable if it fits inside amount {a}
         // @why Using coin `c` last costs 1 plus the best for `a - c`; keep it if it beats the current best.
-        dp[a] = Math.min(dp[a], dp[a - c] + 1); // @say Use coin {c} last: 1 + best for {a - c}; keep if it beats {dp[a]}
+        dp[a] = Math.min(dp[a], dp[a - c] + 1); // @ask dp[a] // @say Use coin {c} last: 1 + best for {a - c}; keep if it beats {dp[a]}
       }
     }
   }
