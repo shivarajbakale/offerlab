@@ -2,13 +2,19 @@
   "name": "practice-runner",
   "displayName": "Practice Runner",
   "description": "Run a NeetCode practice file with one click and see pass/fail inline.",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "publisher": "offerlab",
   "license": "MIT",
-  "engines": { "vscode": "^1.80.0" },
-  "categories": ["Testing"],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Testing"
+  ],
   "main": "./extension.js",
-  "activationEvents": ["onLanguage:typescript"],
+  "activationEvents": [
+    "onLanguage:typescript"
+  ],
   "contributes": {
     "commands": [
       {
@@ -16,6 +22,12 @@
         "title": "Run Problem",
         "category": "Practice",
         "icon": "$(play)"
+      },
+      {
+        "command": "practiceRunner.reset",
+        "title": "Reset Problem",
+        "category": "Practice",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -24,6 +36,11 @@
           "command": "practiceRunner.run",
           "group": "navigation",
           "when": "resourceExtname == .ts && resourcePath =~ /practice|neetcode-150/"
+        },
+        {
+          "command": "practiceRunner.reset",
+          "group": "navigation",
+          "when": "resourceExtname == .ts && resourcePath =~ /practice/"
         }
       ]
     },

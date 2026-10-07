@@ -4,10 +4,16 @@ A small Cursor / VS Code extension for this repo. Open any file under `practice/
 or `neetcode-150/` and click **▶ Run** above the solution or test, the ▶ button in the editor title bar, the status bar button (or
 `Cmd+Alt+R` / `Ctrl+Alt+R`). It runs `node --test` on that file and shows:
 
-- the full test output in the **Practice Runner** output panel,
+- a **Test Results** panel beside your code: pass/fail per test, expected vs got, full output, and a Run again button,
 - `✓ passed` next to the test, or a red `✗ expected …, got …` on the failing line
   (hover it for the full assertion diff),
 - a pass/fail summary in the status bar.
+
+**↺ Reset** (above the solution, in the title bar, or in the results panel) puts a
+`practice/` file back to its blank version, rebuilt from the matching
+`neetcode-150/` solution. It asks first, and Cmd+Z undoes it.
+
+To recreate any missing practice files: `node tools/practice-runner/stub.js neetcode-150 practice`.
 
 Runs are killed after 10 seconds to catch infinite loops. Settings:
 `practiceRunner.nodePath` (default `node`, needs Node 23.6+) and
@@ -18,7 +24,7 @@ Runs are killed after 10 seconds to catch infinite loops. Settings:
 ```sh
 cd tools/practice-runner
 npx @vscode/vsce package --skip-license --allow-missing-repository
-cursor --install-extension practice-runner-0.2.0.vsix
+cursor --install-extension practice-runner-0.4.0.vsix
 ```
 
 Then reload the Cursor window.
