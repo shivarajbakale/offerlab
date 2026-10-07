@@ -3086,3 +3086,145 @@
 .sim-caption .callout {
   margin-bottom: 0;
 }
+
+/* Blocks overview: Servers 101, the request's trip, and "which one when". */
+.bm h2 {
+  margin-top: 28px;
+}
+.bm-basics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px 18px;
+  margin: 10px 0 0;
+}
+.bm-basics div {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.bm-basics dt {
+  font-weight: 600;
+  font-size: 13px;
+}
+.bm-basics dd {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.bm-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  margin-top: 12px;
+}
+.bm-step {
+  display: flex;
+  align-items: stretch;
+}
+.bm-arrow {
+  align-self: center;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 18px;
+}
+.bm-stop {
+  width: 180px;
+  padding: 10px 11px;
+  border: 1px solid var(--line-2);
+  border-top: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.bm-stop b {
+  font-size: 13.5px;
+}
+.bm-stop p {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.bm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bm-chip {
+  padding: 2px 7px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.bm-chip:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.bm-behind-title {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.bm-behind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.bm-behind .bm-stop {
+  width: 260px;
+  border-top-color: var(--warn);
+}
+.overview-chooser {
+  margin: 10px 0 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+.overview-chooser-head {
+  font: 600 10.5px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.overview-chooser button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.overview-chooser button:hover .overview-need {
+  color: var(--ink);
+}
+.overview-pick {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .bm-stop,
+  .bm-behind .bm-stop {
+    width: 100%;
+  }
+  .bm-step {
+    width: 100%;
+    flex-direction: column;
+  }
+  .bm-arrow {
+    transform: rotate(90deg);
+  }
+}

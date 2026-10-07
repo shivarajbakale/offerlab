@@ -9,6 +9,8 @@ import { useProgress } from "../useProgress.ts";
 import { oneLiner } from "../sim/intro.ts";
 import { parseLesson } from "../sim/lesson.ts";
 import { groupsFor, type TabId } from "../sidebarTabs.ts";
+import { CHOOSERS } from "../blocksGuide.ts";
+import { BlocksMap } from "./BlocksMap.tsx";
 
 export function OverviewView({ tab, onSelect }: { tab: TabId; onSelect: (id: string) => void }) {
   const intro = TAB_INTROS[tab];
@@ -47,6 +49,7 @@ export function OverviewView({ tab, onSelect }: { tab: TabId; onSelect: (id: str
             </p>
           </div>
         )}
+        {tab === "blocks" && <BlocksMap onSelect={onSelect} />}
         {groups.map((g) => (
           <section key={g.key} className="overview-group">
             {g.section && <div className="overview-section">{g.section}</div>}
@@ -55,6 +58,17 @@ export function OverviewView({ tab, onSelect }: { tab: TabId; onSelect: (id: str
               {algorithms && <span className="overview-group-count">{tally(progress, ids(g.problems)).solved}/{g.problems.length} solved</span>}
             </h2>
             {GROUP_INTROS[g.key] && <p className="overview-blurb">{GROUP_INTROS[g.key]}</p>}
+            {CHOOSERS[g.key] && (
+              <div className="overview-chooser">
+                <div className="overview-chooser-head">Which one when</div>
+                {CHOOSERS[g.key].map((c) => (
+                  <button key={c.pick + c.need} onClick={() => onSelect(c.pick)}>
+                    <span className="overview-need">{c.need}</span>
+                    <span className="overview-pick">→ {problems.find((p) => p.id === c.pick)?.title ?? c.pick}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <ul>
               {g.problems.map((p) => (
                 <li key={p.id}>
