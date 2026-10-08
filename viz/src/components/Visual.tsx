@@ -1,3 +1,5 @@
+import { Alert, Badge, Paper, Text } from "@mantine/core";
+import { IconCircleCheck, IconCircleX } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import type { CallTree } from "../model/callTree.ts";
 import type { Panel, Scene } from "../model/scene.ts";
@@ -46,6 +48,9 @@ const KIND_LABEL: Record<Panel["kind"], string> = {
   merkle: "replicas",
 };
 
+/** Maps, sets and objects get their own colour; everything else stays neutral. */
+const KIND_COLOR: Partial<Record<Panel["kind"], string>> = { map: "teal", set: "teal", object: "teal" };
+
 const WIDE = new Set<Panel["kind"]>(["tree", "graph", "trie", "list", "ring", "spatial", "levels", "pages", "timeline", "balancer", "gate", "merkle"]);
 
 function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
@@ -63,14 +68,16 @@ function PanelBox({ panel, children }: { panel: Panel; children: ReactNode }) {
     panel.kind === "array" ? `len ${panel.len}` : panel.kind === "map" || panel.kind === "set" ? `size ${panel.size}` : "";
   const wide = WIDE.has(panel.kind);
   return (
-    <div className={`panel ${wide ? "wide" : ""}`}>
+    <Paper className={`panel ${wide ? "wide" : ""}`}>
       <div className="panel-title">
         <b>{panel.name}</b>
-        <span className={`kind-tag kind-${panel.kind}`}>{kind}</span>
+        <Badge className={`kind-tag kind-${panel.kind}`} size="sm" variant="light" color={KIND_COLOR[panel.kind] ?? "gray"} tt="none" ff="monospace">
+          {kind}
+        </Badge>
         {size && <span>{size}</span>}
       </div>
       {children}
-    </div>
+    </Paper>
   );
 }
 
@@ -161,12 +168,15 @@ export function Visual({
     <div className="visual">
       {caption && <Callout caption={caption} />}
       {story?.rule && (
-        <div className={`rule-bar ${story.broken ? "broken" : ""}`}>
-          <span className="dot" />
-          <span className="rule-text">
-            {`${story.broken ? "Rule broken" : "Rule holds"}: ${story.rule}`}
-          </span>
-        </div>
+        <Alert
+          className={`rule-bar ${story.broken ? "broken" : ""}`}
+          variant="light"
+          color={story.broken ? "red" : "green"}
+          icon={story.broken ? <IconCircleX size={18} /> : <IconCircleCheck size={18} />}
+          py={8}
+        >
+          <span className="rule-text">{`${story.broken ? "Rule broken" : "Rule holds"}: ${story.rule}`}</span>
+        </Alert>
       )}
       {scene.scalars.length > 0 && (
         <div className="scalars">
@@ -186,12 +196,14 @@ export function Visual({
             {renderPanel(p, story, step)}
           </PanelBox>
         ))}
-        {scene.panels.length === 0 && scene.scalars.length === 0 && <div className="empty">no variables yet</div>}
+        {scene.panels.length === 0 && scene.scalars.length === 0 && <Text className="empty" size="xs" c="dimmed">
+            no variables yet
+          </Text>}
       </div>
       {(showWindow || range) && (
         <div className="side-by-side">
           {range && (
-            <div className="panel">
+            <Paper className="panel">
               <div className="panel-title">
                 <b>search range</b>
                 <span>
@@ -199,31 +211,31 @@ export function Visual({
                 </span>
               </div>
               <RangeView range={range} index={index} />
-            </div>
+            </Paper>
           )}
           {showWindow && !range && (
-            <div className="panel">
+            <Paper className="panel">
               <div className="panel-title">
                 <b>search space</b>
                 <span>every start and end brute force would try</span>
               </div>
               <SearchSpaceView story={win} index={index} />
-            </div>
+            </Paper>
           )}
           {showWindow && !range && (
-            <div className="panel">
+            <Paper className="panel">
               <div className="panel-title">
                 <b>window over time</b>
               </div>
               <WindowHistoryView story={win} index={index} />
-            </div>
+            </Paper>
           )}
         </div>
       )}
       {((!plain && scene.frames.length > 1) || showTree) && (
         <div className="side-by-side">
           {!plain && scene.frames.length > 1 && (
-            <div className="panel" style={{ maxHeight: 360, overflowY: "auto" }}>
+            <Paper className="panel" style={{ maxHeight: 360, overflowY: "auto" }}>
               <div className="panel-title">
                 <b>call stack</b>
                 <span>depth {scene.frames.length}</span>
@@ -235,16 +247,16 @@ export function Visual({
                   </div>
                 ))}
               </div>
-            </div>
+            </Paper>
           )}
           {showTree && (
-            <div className="panel" style={{ flex: 1, minWidth: 320 }}>
+            <Paper className="panel" style={{ flex: 1, minWidth: 320 }}>
               <div className="panel-title">
                 <b>recursion tree</b>
                 <span>{callTree.nodes.filter((n) => n.start <= index).length} calls so far</span>
               </div>
               <CallTreeView tree={callTree} index={index} />
-            </div>
+            </Paper>
           )}
         </div>
       )}

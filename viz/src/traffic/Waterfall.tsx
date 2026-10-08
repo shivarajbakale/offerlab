@@ -2,6 +2,7 @@
 // a shared time axis, and coloured parts for waiting in line, waiting for a CPU, working, and
 // waiting on the next stop.
 
+import { CloseButton, Group, Paper, Text } from "@mantine/core";
 import type { DesignView, Journey } from "../../../system-design/traffic/index.ts";
 import { ms, waterfall } from "./explain.ts";
 
@@ -15,19 +16,17 @@ export function Waterfall({ journey, design, onClose }: { journey: Journey; desi
   const line = rows.reduce((n, r) => n + r.segments.filter((s) => s.kind === "line" || s.kind === "cpu").reduce((a, s) => a + s.to - s.from, 0), 0);
   const net = rows.reduce((n, r) => n + r.segments.filter((s) => s.kind === "net").reduce((a, s) => a + s.to - s.from, 0), 0);
   return (
-    <div className="wf">
-      <div className="wf-head">
-        <b>
+    <Paper className="wf" p="md" radius="md" shadow="xs">
+      <Group gap="sm" wrap="nowrap">
+        <Text fw={700} style={{ flex: 1 }}>
           Request #{journey.id}: a {journey.kind}, {OUTCOME[journey.outcome]} after {ms(total)}
-        </b>
-        <button className="wf-close" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <p className="wf-note">
+        </Text>
+        <CloseButton onClick={onClose} aria-label="Close" />
+      </Group>
+      <Text size="sm" c="dimmed" mt={4} mb="sm" lh={1.5}>
         Read it like the Network tab in DevTools: one row per stop, time running left to right. Of the {ms(total)}, {ms(net)} was the trip over the internet,{" "}
         {ms(work)} was real work, {ms(line)} was waiting in line, and the rest was short network hops between the servers.
-      </p>
+      </Text>
       <div className="wf-rows">
         {rows.map((r, i) => (
           <div key={i} className="wf-row">
@@ -63,6 +62,6 @@ export function Waterfall({ journey, design, onClose }: { journey: Journey; desi
           <i className="wf-seg net" /> over the internet
         </span>
       </div>
-    </div>
+    </Paper>
   );
 }

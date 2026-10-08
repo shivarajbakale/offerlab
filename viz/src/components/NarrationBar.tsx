@@ -1,5 +1,14 @@
+import { Badge } from "@mantine/core";
 import type { Narration } from "../model/narrate.ts";
 import { WhyText } from "./WhyText.tsx";
+
+/** Badge colour per kind: what the step said in words, a branch's outcome, a call, or plain code. */
+function kindColor(n: Narration): string {
+  if (n.kind === "say") return "indigo";
+  if (n.kind === "check") return n.outcome ? "green" : "red";
+  if (n.kind === "call" || n.kind === "return") return "teal";
+  return "gray";
+}
 
 const KIND_TEXT: Record<Narration["kind"], string> = {
   say: "now",
@@ -24,18 +33,28 @@ export function NarrationBar({ narration, why, hasNotes }: { narration: Narratio
     <div className="narration">
       {narration && (
         <div className="narration-row">
-          <span className={`narration-kind ${cls}`}>{KIND_TEXT[narration.kind]}</span>
+          <Badge className={`narration-kind ${cls}`} color={kindColor(narration)} variant="light" size="md">
+            {KIND_TEXT[narration.kind]}
+          </Badge>
           <span className={`narration-text ${narration.kind === "say" ? "say" : ""}`}>{narration.text}</span>
           {narration.check && (
-            <span className={`narration-check ${narration.check.outcome ? "yes" : "no"}`}>
+            <Badge
+              className={`narration-check ${narration.check.outcome ? "yes" : "no"}`}
+              color={narration.check.outcome ? "green" : "red"}
+              variant="light"
+              ff="monospace"
+              tt="none"
+            >
               {narration.check.cond} → {String(narration.check.outcome)}
-            </span>
+            </Badge>
           )}
         </div>
       )}
       {narration && hasNotes && (
         <div className="narration-row">
-          <span className="narration-kind why">why</span>
+          <Badge className="narration-kind why" color="orange" variant="outline" size="md">
+            why
+          </Badge>
           <span className="narration-why">{why ? <WhyText text={why} /> : <span className="none">—</span>}</span>
         </div>
       )}

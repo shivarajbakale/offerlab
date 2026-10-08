@@ -1,3 +1,4 @@
+import { Badge, Code, Paper } from "@mantine/core";
 import type { Explanation } from "../model/explain.ts";
 import { WhyText } from "./WhyText.tsx";
 
@@ -18,10 +19,10 @@ const DID_LABEL: Record<Explanation["did"]["kind"], string> = {
 export function ExplainCard({ ex }: { ex: Explanation }) {
   const d = ex.decision;
   return (
-    <section className={`explain ${ex.key ? "key" : ""}`} aria-live="polite">
+    <Paper component="section" className={`explain ${ex.key ? "key" : ""}`} aria-live="polite">
       {(ex.phase || ex.goal) && (
         <div className="explain-context">
-          {ex.phase && <span className="explain-phase">{ex.phase}</span>}
+          {ex.phase && <Badge className="explain-phase" size="sm">{ex.phase}</Badge>}
           {ex.goal && (
             <span className="explain-goal">
               <b>Asking:</b> <WhyText text={ex.goal} />
@@ -31,7 +32,7 @@ export function ExplainCard({ ex }: { ex: Explanation }) {
       )}
       {d && (
         <div className={`explain-decision ${d.outcome ? "yes" : "no"}`}>
-          <code className="cond">{d.cond}</code>
+          <Code className="cond">{d.cond}</Code>
           {d.operands.length > 0 && (
             <span className="operands">
               {d.operands.map((o) => (
@@ -41,7 +42,9 @@ export function ExplainCard({ ex }: { ex: Explanation }) {
               ))}
             </span>
           )}
-          <span className="outcome">{d.outcome ? "true" : "false"}</span>
+          <Badge className="outcome" color={d.outcome ? "green" : "red"} variant="light" ff="monospace">
+            {d.outcome ? "true" : "false"}
+          </Badge>
         </div>
       )}
       {ex.why && (
@@ -51,22 +54,22 @@ export function ExplainCard({ ex }: { ex: Explanation }) {
       )}
       {ex.returns && (
         <p className="explain-row returns">
-          <span className="tag">returns</span>
+          <Badge className="tag" color="teal" variant="outline" size="sm">returns</Badge>
           <WhyText text={ex.returns} />
         </p>
       )}
       {ex.then && (
         <p className="explain-row then">
-          <span className="tag">so now</span>
+          <Badge className="tag" color="green" variant="outline" size="sm">so now</Badge>
           <WhyText text={ex.then} />
         </p>
       )}
       {!d && (
         <p className="explain-did">
-          <span className="tag">{DID_LABEL[ex.did.kind]}</span>
+          <Badge className="tag" color="gray" variant="light" size="sm">{DID_LABEL[ex.did.kind]}</Badge>
           <code>{ex.did.text}</code>
         </p>
       )}
-    </section>
+    </Paper>
   );
 }

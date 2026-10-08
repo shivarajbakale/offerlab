@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ActionIcon, Alert, Anchor, AppShell, Badge, Burger, Group, Kbd, Loader, Select, Switch, Tabs, Text, Title, Tooltip, UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { IconAlertTriangle, IconExternalLink, IconMoon, IconSun } from "@tabler/icons-react";
 import "./App.css";
 import { CodePanel } from "./components/CodePanel.tsx";
 import { Controls } from "./components/Controls.tsx";
@@ -32,6 +35,7 @@ import { QuestionPanel, SolutionHidden } from "./components/QuestionPanel.tsx";
 import type { Run, Step } from "./tracer/types.ts";
 
 const EMPTY_STEPS: Step[] = [];
+const DIFFICULTY_COLOR: Record<string, string> = { Easy: "green", Medium: "orange", Hard: "red" };
 /** Narrations are computed lazily per step and cached per run. */
 const narrationCache = new WeakMap<Step[], Map<number, Narration>>();
 const explainCache = new WeakMap<Step[], Map<number, Explanation>>();
@@ -87,50 +91,59 @@ export default function App() {
   const [problemId, selectProblem] = useProblemId();
   const problem = problems.find((p) => p.id === problemId);
   const overview = overviewTab(problemId);
-  // Phones and portrait tablets show the sidebar as a drawer behind a menu button.
-  const [navOpen, setNavOpen] = useState(false);
-  const closeNav = useCallback(() => setNavOpen(false), []);
+  // Below the md breakpoint the sidebar is a drawer behind the burger.
+  const [navOpen, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
   const select = useCallback(
     (id: string) => {
       selectProblem(id);
-      setNavOpen(false);
+      closeNav();
     },
-    [selectProblem],
+    [selectProblem, closeNav],
   );
-  useEffect(() => {
-    if (!navOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setNavOpen(false);
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [navOpen]);
   if (problemId === WELCOME) return <LandingView onOpen={select} />;
   return (
-    <div className="app">
-      <div className="topbar">
-        <button className="menu-btn" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
-            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button className="brand brand-home" onClick={() => select(WELCOME)} aria-label="Offerlab home">
-          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
-          Offerlab
-        </button>
-      </div>
-      <Sidebar activeId={problemId} onSelect={select} open={navOpen} onClose={closeNav} />
-      {navOpen && <div className="scrim" onClick={closeNav} />}
-      {overview || !problem ? (
-        <OverviewView key={problemId} tab={overview ?? "algorithms"} onSelect={selectProblem} />
-      ) : problem.engine === "kernel" ? (
-        <SimProblemView key={problem.id} problem={problem} />
-      ) : problem.engine === "traffic" ? (
-        <TrafficProblemView key={problem.id} problem={problem} />
-      ) : problem.engine === "drill" ? (
-        <DrillView key={problem.id} problem={problem} onSelect={selectProblem} />
-      ) : (
-        <ProblemView key={problem.id} problem={problem} onSelect={selectProblem} />
-      )}
-    </div>
+    <AppShell header={{ height: 52 }} navbar={{ width: 312, breakpoint: "md", collapsed: { mobile: !navOpen } }} padding={0}>
+      <AppShell.Header>
+        <Group h="100%" px="md" gap="sm" wrap="nowrap">
+          <Burger opened={navOpen} onClick={toggleNav} hiddenFrom="md" size="sm" aria-label="Toggle menu" />
+          <UnstyledButton className="brand" onClick={() => select(WELCOME)} aria-label="Offerlab home">
+            <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+            Offerlab
+          </UnstyledButton>
+          <ColorSchemeToggle />
+        </Group>
+      </AppShell.Header>
+      <AppShell.Navbar>
+        <Sidebar activeId={problemId} onSelect={select} />
+      </AppShell.Navbar>
+      <AppShell.Main className="app-main">
+        {overview || !problem ? (
+          <OverviewView key={problemId} tab={overview ?? "algorithms"} onSelect={selectProblem} />
+        ) : problem.engine === "kernel" ? (
+          <SimProblemView key={problem.id} problem={problem} />
+        ) : problem.engine === "traffic" ? (
+          <TrafficProblemView key={problem.id} problem={problem} />
+        ) : problem.engine === "drill" ? (
+          <DrillView key={problem.id} problem={problem} onSelect={selectProblem} />
+        ) : (
+          <ProblemView key={problem.id} problem={problem} onSelect={selectProblem} />
+        )}
+      </AppShell.Main>
+    </AppShell>
+  );
+}
+
+/** Light, dark, or follow the system; Mantine stores the choice. */
+function ColorSchemeToggle() {
+  const { setColorScheme } = useMantineColorScheme();
+  const computed = useComputedColorScheme("light");
+  const next = computed === "dark" ? "light" : "dark";
+  return (
+    <Tooltip label={`Switch to ${next} mode`}>
+      <ActionIcon variant="default" size="lg" ml="auto" onClick={() => setColorScheme(next)} aria-label={`Switch to ${next} mode`}>
+        {computed === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+      </ActionIcon>
+    </Tooltip>
   );
 }
 
@@ -390,37 +403,42 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   return (
     <main className="main">
       <header className="header">
-        <div className="title-row">
-          <h1 className="title">
-            <span style={{ color: "var(--muted)", fontWeight: 500 }}>{problem.number}</span> {problem.title}
-          </h1>
-          {problem.difficulty && <span className={`badge ${problem.difficulty}`}>{problem.difficulty}</span>}
-          {systems && problem.level && <span className={`badge ${problem.level}`}>{problem.level}</span>}
+        <Group className="title-row" gap="sm" wrap="wrap">
+          <Title order={1} className="title">
+            <Text span c="dimmed" fw={500} inherit>
+              {problem.number}
+            </Text>{" "}
+            {problem.title}
+          </Title>
+          {problem.difficulty && <Badge color={DIFFICULTY_COLOR[problem.difficulty] ?? "gray"}>{problem.difficulty}</Badge>}
+          {systems && problem.level && <Badge color="indigo">{problem.level}</Badge>}
           {run?.label.startsWith("broken: ") && (
-            <span className="badge broken" title="This scenario runs a deliberately flawed version to show why the real one needs each part">
-              broken on purpose
-            </span>
+            <Tooltip label="This scenario runs a deliberately flawed version to show why the real one needs each part">
+              <Badge color="red" variant="outline">broken on purpose</Badge>
+            </Tooltip>
           )}
           {problem.leetcode && (
-            <a href={problem.leetcode} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
-              LeetCode ↗
-            </a>
+            <Anchor href={problem.leetcode} target="_blank" rel="noreferrer" size="xs" inline>
+              <Group gap={2} component="span" wrap="nowrap">
+                LeetCode <IconExternalLink size={12} />
+              </Group>
+            </Anchor>
           )}
           {revealed && trace && trace.runs.length > 0 && (
-            <select
-              className="example-select"
-              value={runIndex}
-              onChange={(e) => setRunIndex(Number(e.target.value))}
-              title="Each example comes from the file's test cases"
-            >
-              {trace.runs.map((r, i) => (
-                <option key={i} value={i}>
-                  {scenarioOptionLabel(r, i, systems)}
-                </option>
-              ))}
-            </select>
+            <Tooltip label="Each example comes from the file's test cases">
+              <Select
+                className="example-select"
+                size="xs"
+                allowDeselect={false}
+                comboboxProps={{ width: "max-content", position: "bottom-end" }}
+                value={String(runIndex)}
+                onChange={(v) => v !== null && setRunIndex(Number(v))}
+                data={trace.runs.map((r, i) => ({ value: String(i), label: scenarioOptionLabel(r, i, systems) }))}
+                aria-label="Example"
+              />
+            </Tooltip>
           )}
-        </div>
+        </Group>
         {revealed && (problem.approach || problem.approachName) && (
           <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             <b>{problem.approachName || "Approach"}.</b> {problem.approach} <span className="complexity">· {problem.complexity}</span>
@@ -430,40 +448,43 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
 
       <section className="stage">
         <div className="left">
-          <div className="tabs" role="tablist">
-            {systems && problem.lesson && (
-              <button role="tab" className={`tab ${tab === "learn" ? "on" : ""}`} onClick={() => setTab("learn")}>
-                Learn
-              </button>
-            )}
-            {!systems && (
-              <button role="tab" className={`tab ${tab === "problem" ? "on" : ""}`} onClick={() => setTab("problem")} title="The question, hints and your progress (press p)">
-                Problem<kbd>p</kbd>
-              </button>
-            )}
-            <button role="tab" className={`tab ${tab === "code" ? "on" : ""}`} onClick={() => setTab("code")}>
-              Code
-            </button>
-            {!systems && (
-              <button
-                role="tab"
-                className={`tab ${tab === "intuition" ? "on" : ""}`}
-                onClick={() => setTab("intuition")}
-                title="Pattern, related problems and real-world uses (press i)"
-              >
-                Intuition<kbd>i</kbd>
-              </button>
-            )}
+          <Group className="tabs" gap={0} wrap="nowrap" justify="space-between">
+            <Tabs value={tab} onChange={(v) => v && setTab(v as LeftTab)} variant="default">
+              <Tabs.List>
+                {systems && problem.lesson && <Tabs.Tab value="learn">Learn</Tabs.Tab>}
+                {!systems && (
+                  <Tooltip label="The question, hints and your progress (press p)">
+                    <Tabs.Tab value="problem" rightSection={<Kbd size="xs">p</Kbd>}>
+                      Problem
+                    </Tabs.Tab>
+                  </Tooltip>
+                )}
+                <Tabs.Tab value="code">Code</Tabs.Tab>
+                {!systems && (
+                  <Tooltip label="Pattern, related problems and real-world uses (press i)">
+                    <Tabs.Tab value="intuition" rightSection={<Kbd size="xs">i</Kbd>}>
+                      Intuition
+                    </Tabs.Tab>
+                  </Tooltip>
+                )}
+              </Tabs.List>
+            </Tabs>
             {tab === "code" && hasNotes && revealed && (
-              <label
-                className={`explain-toggle ${explain ? "on" : ""}`}
-                title="Show a plain-English note under every line (press e). Otherwise hover or click a line's dot."
-              >
-                <input type="checkbox" checked={explain} onChange={(e) => setExplain(e.target.checked)} />
-                Explain lines<kbd>e</kbd>
-              </label>
+              <Tooltip label="Show a plain-English note under every line (press e). Otherwise hover or click a line's dot.">
+                <Switch
+                  className="explain-toggle"
+                  size="xs"
+                  checked={explain}
+                  onChange={(e) => setExplain(e.currentTarget.checked)}
+                  label={
+                    <>
+                      Explain lines <Kbd size="xs">e</Kbd>
+                    </>
+                  }
+                />
+              </Tooltip>
             )}
-          </div>
+          </Group>
           {tab === "learn" && systems && problem.lesson ? (
             <LessonView lesson={lesson} onPlay={onPlay} ready={Boolean(trace)} />
           ) : tab === "problem" && !systems ? (
@@ -486,10 +507,20 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             <SolutionHidden onShow={showSolution} />
           </div>
         )}
-        {revealed && state.status === "loading" && <div className="status">Tracing…</div>}
-        {revealed && state.status === "error" && <div className="status error">{state.message}</div>}
+        {revealed && state.status === "loading" && (
+          <Group className="status" gap="sm">
+            <Loader size="sm" /> Tracing…
+          </Group>
+        )}
+        {revealed && state.status === "error" && (
+          <Alert className="status" color="red" variant="light" icon={<IconAlertTriangle size={18} />} title="This run failed">
+            <pre className="status-pre">{state.message}</pre>
+          </Alert>
+        )}
         {revealed && trace && !run && (
-          <div className="status error">{trace.error ?? "No calls to the solution were recorded."}</div>
+          <Alert className="status" color="red" variant="light" icon={<IconAlertTriangle size={18} />}>
+            {trace.error ?? "No calls to the solution were recorded."}
+          </Alert>
         )}
         {revealed && run && scene && (
           <div className="visual-col">

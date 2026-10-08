@@ -5,53 +5,6 @@
   min-width: 0;
   overflow-y: auto;
 }
-.stage-tabs {
-  display: flex;
-  gap: 4px;
-}
-.stage-tabs button {
-  border: 1px solid var(--line-2);
-  background: var(--panel);
-  color: var(--ink-2);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-}
-.stage-tabs button.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-
-.knobs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 20px 0;
-  font-size: 12px;
-}
-.knob {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.knob input {
-  width: 160px;
-  accent-color: var(--accent);
-}
-.knob-name {
-  color: var(--muted);
-}
-.knob-value {
-  font-family: var(--mono);
-  min-width: 48px;
-}
-.knob-busy {
-  color: var(--muted);
-  font-style: italic;
-}
-
 .arch {
   padding: 8px 20px 0;
 }
@@ -135,49 +88,11 @@
   stroke: var(--ink);
   stroke-width: 2;
 }
-.arch-note {
-  font-size: 12px;
-  line-height: 1.35;
-  padding: 5px 7px;
-  border-radius: 6px;
-  border-left: 3px solid var(--line-2);
-  background: var(--panel-2);
-  color: var(--ink-2);
-  margin-bottom: 4px;
-}
-.arch-note.sev3 {
-  border-left-color: var(--bad);
-  background: var(--bad-soft);
-}
-.arch-note.sev2 {
-  border-left-color: var(--warn);
-  background: var(--flash-soft);
-}
-
-.journey {
-  margin: 8px 20px 0;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
-  font-size: 12px;
-  font-family: var(--mono);
-  color: var(--ink-2);
-}
-
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   padding: 10px 20px 12px;
-}
-.metric-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 2px;
 }
 .metric-legend {
   display: flex;
@@ -206,26 +121,6 @@
   font-size: 12px;
   color: var(--muted);
 }
-.traffic-chaos {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 20px 0;
-  font-size: 12px;
-}
-.traffic-chaos select,
-.traffic-chaos button {
-  border: 1px solid var(--line-2);
-  background: var(--panel);
-  color: var(--ink-2);
-  border-radius: 6px;
-  padding: 3px 8px;
-}
-.traffic-chaos .fault {
-  color: var(--bad);
-  font-family: var(--mono);
-}
 .arch-badge {
   fill: var(--warn);
 }
@@ -246,9 +141,6 @@
   gap: 6px;
   padding: 8px 20px 0;
 }
-.arch-notes .arch-note b {
-  color: var(--ink);
-}
 .arch-link.broken {
   stroke: var(--bad);
   stroke-dasharray: 4 3;
@@ -266,26 +158,6 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.kind-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-2);
-}
-.kind-table th {
-  text-align: left;
-  font-weight: 500;
-  color: var(--muted);
-}
-.kind-table td,
-.kind-table th {
-  padding: 1px 4px 1px 0;
-}
-.kind-table tr.bad td {
-  color: var(--bad);
-}
-
 /* Plain words on the canvas: each box's job, arrows, clickable boxes. */
 .arch-job {
   font-size: 10.5px;
@@ -305,141 +177,7 @@
   stroke: var(--accent);
   stroke-width: 3;
 }
-.arch-note.clickable {
-  cursor: pointer;
-}
-.arch-note.clickable:hover {
-  filter: brightness(1.08);
-}
-.arch-help {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 20px 0;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-/* The clicked box, explained. */
-.insp {
-  margin: 10px 20px 0;
-  padding: 12px 14px;
-  border: 1px solid var(--accent-line);
-  border-radius: 10px;
-  background: var(--panel);
-}
-.insp-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.insp-head b {
-  font-size: 15px;
-}
-.insp-tag {
-  color: var(--muted);
-  font-style: italic;
-  font-size: 12.5px;
-}
-.insp-head .wf-close {
-  margin-left: auto;
-}
-.insp-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px 16px;
-  margin: 10px 0 0;
-}
-.insp-facts dt,
-.insp-sub {
-  font: 600 10.5px var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.insp-facts dd {
-  margin: 3px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-.insp-metrics {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.insp-metric {
-  display: grid;
-  grid-template-columns: 130px 110px 1fr;
-  gap: 10px;
-  align-items: baseline;
-  padding: 4px 8px;
-  border-left: 3px solid var(--line-2);
-  font-size: 12.5px;
-}
-.insp-metric.ok {
-  border-left-color: var(--ok);
-}
-.insp-metric.warn {
-  border-left-color: var(--warn);
-}
-.insp-metric.bad {
-  border-left-color: var(--bad);
-  background: var(--bad-soft);
-}
-.insp-name {
-  color: var(--muted);
-}
-.insp-value {
-  font-family: var(--mono);
-  color: var(--ink);
-}
-.insp-says {
-  color: var(--ink-2);
-  line-height: 1.45;
-}
-.insp-off {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* One request as a DevTools-style waterfall. */
-.wf {
-  margin: 10px 20px 0;
-  padding: 12px 14px;
-  border: 1px solid var(--line-2);
-  border-radius: 10px;
-  background: var(--panel);
-}
-.wf-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.wf-close {
-  margin-left: auto;
-  padding: 2px 8px;
-  border: 1px solid var(--line-2);
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.wf-note {
-  margin: 6px 0 10px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
 .wf-rows {
   display: flex;
   flex-direction: column;
@@ -527,30 +265,9 @@
   vertical-align: middle;
 }
 @media (max-width: 700px) {
-  .insp-metric {
-    grid-template-columns: 1fr auto;
-  }
-  .insp-says {
-    grid-column: 1 / -1;
-  }
   .wf-row {
     grid-template-columns: 90px 1fr 54px;
   }
-}
-.arch-trace {
-  padding: 3px 10px;
-  border: 1px solid var(--accent-line);
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font: inherit;
-  font-size: 12.5px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.arch-trace:hover {
-  background: var(--accent);
-  color: var(--accent-ink);
 }
 .wf-seg.net {
   top: 5px;
@@ -559,4 +276,55 @@
 }
 .arch-node {
   cursor: pointer;
+}
+
+/* Spacing for the Mantine panels around the canvas. */
+.knobs,
+.traffic-chaos,
+.arch-help {
+  padding: 10px 20px 0;
+}
+.knob {
+  width: 190px;
+}
+.traffic-notice {
+  margin: 10px 20px 0;
+}
+.traffic-error {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+}
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.kind-table {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.kind-table tr.bad td {
+  color: var(--bad);
+}
+.arch-note.clickable {
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.arch-note.clickable:hover {
+  filter: brightness(1.05);
+}
+.insp,
+.wf {
+  margin: 12px 20px 0;
+}
+.insp-table td {
+  vertical-align: baseline;
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .knob {
+    width: 100%;
+  }
 }

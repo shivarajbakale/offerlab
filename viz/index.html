@@ -13,6 +13,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Overpass:wght@600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Set the colour scheme before first paint so a dark-mode visit never flashes white (Mantine's ColorSchemeScript).
+      try {
+        var v = localStorage.getItem("mantine-color-scheme-value") || "auto";
+        if (v === "auto") v = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-mantine-color-scheme", v);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

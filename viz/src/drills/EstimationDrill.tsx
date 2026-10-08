@@ -1,6 +1,8 @@
 // An estimation drill: the question and its assumptions, the reader's number graded by factor,
 // then the worked answer one step at a time, then what to remember.
 
+import { Alert, Badge, Button, Group, List, Paper, Table, Text, TextInput, Timeline, Title } from "@mantine/core";
+import { IconBulb, IconCheck, IconPlayerTrackNext, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import type { Estimation } from "../../../system-design/drills/index.ts";
 import { formatQuantity, grade, readEstimate, type Grade } from "./grade.ts";
@@ -19,94 +21,132 @@ export function EstimationDrill({ drill }: { drill: Estimation }) {
   };
   const done = shown >= drill.steps.length;
 
+  const reading =
+    text.trim() === ""
+      ? `Suffixes: k, M, B (billion), T${unit === "bytes" ? "; KB, MB, GB, TB, PB" : ""}`
+      : valid
+        ? `reads as ${formatQuantity(value, unit)}${unit && unit !== "bytes" ? ` ${unit}` : ""}`
+        : "error" in read
+          ? read.error
+          : "must be above zero";
+  const invalid = text.trim() !== "" && !valid;
+
   return (
     <div className="drill-body">
-      <section className="drill-card">
+      <Paper className="drill-card" p="md" radius="md" shadow="xs">
         <p className="drill-prompt">
           <Rich text={drill.prompt} />
         </p>
-        <table className="drill-table">
-          <thead>
-            <tr>
-              <th>Assume</th>
-              <th className="num">Value</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="drill-table" verticalSpacing={5} horizontalSpacing="xs" fz="sm" striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Assume</Table.Th>
+              <Table.Th className="num">Value</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
             {drill.assumptions.map((a) => (
-              <tr key={a.name}>
-                <td>
+              <Table.Tr key={a.name}>
+                <Table.Td>
                   {a.note ? <Rich text={a.note} /> : a.name} <span className="drill-name">{a.name}</span>
-                </td>
-                <td className="num">
+                </Table.Td>
+                <Table.Td className="num">
                   {formatQuantity(a.value, a.unit === "bytes" ? "bytes" : "")}
                   {a.unit && a.unit !== "bytes" ? ` ${a.unit}` : ""}
-                </td>
-              </tr>
+                </Table.Td>
+              </Table.Tr>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </Table.Tbody>
+        </Table>
+      </Paper>
 
-      <section className="drill-card">
-        <label className="drill-answer">
-          <span>Your estimate{unit ? ` (${unit})` : ""}:</span>
-          <input
+      <Paper className="drill-card" p="md" radius="md" shadow="xs">
+        <Group align="flex-start" gap="xs" wrap="wrap">
+          <TextInput
+            className="drill-answer"
+            label={`Your estimate${unit ? ` (${unit})` : ""}`}
             value={text}
             placeholder={unit === "bytes" ? "e.g. 200TB or 2e14" : "e.g. 12k or 1.2e4"}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => setText(e.currentTarget.value)}
             onKeyDown={(e) => e.key === "Enter" && check()}
-            aria-invalid={text.trim() !== "" && !valid}
+            error={invalid ? reading : undefined}
+            description={invalid ? undefined : reading}
+            inputWrapperOrder={["label", "input", "description", "error"]}
+            aria-invalid={invalid}
           />
-          <button className="drill-btn primary" disabled={!valid} onClick={check}>
+          <Button mt={25} disabled={!valid} onClick={check}>
             Check
-          </button>
-          <span className="drill-reading">
-            {text.trim() === "" ? `Suffixes: k, M, B (billion), T${unit === "bytes" ? "; KB, MB, GB, TB, PB" : ""}` : valid ? `reads as ${formatQuantity(value, unit)}${unit && unit !== "bytes" ? ` ${unit}` : ""}` : "error" in read ? read.error : "must be above zero"}
-          </span>
-        </label>
-        {result && <div className={`drill-verdict ${result.ok ? "ok" : "bad"}`}>{result.message}</div>}
-      </section>
+          </Button>
+        </Group>
+        {result && (
+          <Alert
+            mt="sm"
+            variant="light"
+            color={result.ok ? "green" : "red"}
+            icon={result.ok ? <IconCheck size={18} /> : <IconX size={18} />}
+            classNames={{ message: "drill-verdict" }}
+          >
+            {result.message}
+          </Alert>
+        )}
+      </Paper>
 
-      <section className="drill-card">
-        <h3 className="drill-h">Working</h3>
-        {shown === 0 && !result && <p className="drill-muted">Make your own estimate first, then compare the working.</p>}
-        <ol className="drill-steps">
-          {drill.steps.slice(0, shown).map((s) => (
-            <li key={s.label}>
-              <span className="drill-step-label">{s.label}</span>
-              <span className="drill-step-value">
-                {formatQuantity(s.value, s.unit === "bytes" ? "bytes" : "")}
-                {s.unit !== "bytes" ? ` ${s.unit}` : ""}
-              </span>
-              <span className="drill-step-how">
-                <Rich text={s.how} />
-              </span>
-            </li>
-          ))}
-        </ol>
+      <Paper className="drill-card" p="md" radius="md" shadow="xs">
+        <Title order={3} className="drill-h">
+          Working
+        </Title>
+        {shown === 0 && !result && (
+          <Text size="sm" c="dimmed" mb="sm">
+            Make your own estimate first, then compare the working.
+          </Text>
+        )}
+        {shown > 0 && (
+          <Timeline className="drill-steps" active={shown - 1} bulletSize={22} lineWidth={2} mb="md">
+            {drill.steps.slice(0, shown).map((s, i) => (
+              <Timeline.Item
+                key={s.label}
+                bullet={<Text size="xs" fw={700}>{i + 1}</Text>}
+                title={
+                  <Group gap="xs" wrap="wrap">
+                    <span className="drill-step-label">{s.label}</span>
+                    <Badge variant="light" className="drill-step-value" tt="none">
+                      {formatQuantity(s.value, s.unit === "bytes" ? "bytes" : "")}
+                      {s.unit !== "bytes" ? ` ${s.unit}` : ""}
+                    </Badge>
+                  </Group>
+                }
+              >
+                <Text size="sm" c="dimmed" className="drill-step-how">
+                  <Rich text={s.how} />
+                </Text>
+              </Timeline.Item>
+            ))}
+          </Timeline>
+        )}
         {!done && (
-          <button className="drill-btn" onClick={() => setShown(shown + 1)}>
+          <Button variant="light" leftSection={<IconPlayerTrackNext size={16} />} onClick={() => setShown(shown + 1)}>
             {shown === 0 ? "Show the first step" : `Next step (${shown + 1} of ${drill.steps.length})`}
-          </button>
+          </Button>
         )}
         {done && (
           <>
-            <div className="drill-final">
+            <Alert variant="light" color="indigo" className="drill-final" icon={<IconCheck size={18} />}>
               Answer: <b>{formatQuantity(drill.answer.value, unit)}</b>
               {unit !== "bytes" ? ` ${unit}` : ""} · anything within x{drill.tolerance} counts
-            </div>
-            <h3 className="drill-h">Takeaways</h3>
-            <ul className="drill-takeaways">
+            </Alert>
+            <Title order={3} className="drill-h">
+              Takeaways
+            </Title>
+            <List className="drill-takeaways" spacing={6} size="sm" icon={<IconBulb size={16} color="var(--mantine-color-yellow-6)" />}>
               {drill.takeaways.map((t, i) => (
-                <li key={i}>
+                <List.Item key={i}>
                   <Rich text={t} />
-                </li>
+                </List.Item>
               ))}
-            </ul>
+            </List>
           </>
         )}
-      </section>
+      </Paper>
     </div>
   );
 }

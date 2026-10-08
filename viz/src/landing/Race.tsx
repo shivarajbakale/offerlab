@@ -1,6 +1,7 @@
 // Two Sum, run twice side by side: every pair checked (the naive way) against one pass with
 // a hash map. Both count their work honestly on the same 12 numbers.
 
+import { Button } from "@mantine/core";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "./reducedMotion.ts";
@@ -166,9 +167,9 @@ export function Race() {
             ? `Same answer. ${NAIVE_PAIRS.length} checks against ${MAP_STEPS}, and the gap widens with every number you add.`
             : "Both start together on the same numbers."}
         </p>
-        <button className="ln-btn ghost" onClick={replay} disabled={running}>
+        <Button className="race-replay" variant="outline" radius="xl" onClick={replay} disabled={running}>
           {running ? "Running…" : "Run it again"}
-        </button>
+        </Button>
       </div>
     </div>
   );

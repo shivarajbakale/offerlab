@@ -1,5 +1,7 @@
 // Chaos for architectures: kill, restart or slow a server, or kill a whole region, at the current moment, then watch.
 
+import { Badge, Button, Group, Select, Text, Tooltip } from "@mantine/core";
+import { IconBolt } from "@tabler/icons-react";
 import { useState } from "react";
 import type { DesignView, TrafficFault } from "../../../system-design/traffic/index.ts";
 import { faultLabel, faultRegions, faultTargets } from "./model.ts";
@@ -23,30 +25,42 @@ export function TrafficChaos({ design, t, faults, onAdd, onReset }: { design: De
     if (action === "killRegion" || action === "restartRegion") onAdd({ at, kind: action, region: chosen });
     else onAdd(action === "slow" ? { at, kind: "slow", target: chosen, factor: 10, durationMs: 5000 } : { at, kind: action, target: chosen });
   };
+  const actions = [
+    { value: "kill", label: "kill" },
+    { value: "restart", label: "restart (memory is wiped)" },
+    { value: "slow", label: "slow down 10× for 5 s" },
+    ...(regions.length > 0
+      ? [
+          { value: "killRegion", label: "kill a whole region" },
+          { value: "restartRegion", label: "restart a region" },
+        ]
+      : []),
+  ];
   return (
-    <div className="traffic-chaos" title="Replays this scenario with a fault added at the current moment">
-      <span>⚡ Chaos at {(at / 1000).toFixed(1)} s:</span>
-      <select value={action} onChange={(e) => setAction(e.target.value as Action)}>
-        <option value="kill">kill</option>
-        <option value="restart">restart (memory is wiped)</option>
-        <option value="slow">slow down 10× for 5 s</option>
-        {regions.length > 0 && <option value="killRegion">kill a whole region</option>}
-        {regions.length > 0 && <option value="restartRegion">restart a region</option>}
-      </select>
-      <select value={chosen} onChange={(e) => setTarget(e.target.value)}>
-        {targets.map((x) => (
-          <option key={x} value={x}>
-            {x}
-          </option>
-        ))}
-      </select>
-      <button onClick={add}>Inject</button>
+    <Group className="traffic-chaos" gap="xs">
+      <Tooltip label="Replays this scenario with a fault added at the current moment">
+        <Group gap={4} wrap="nowrap">
+          <IconBolt size={15} color="var(--warn)" />
+          <Text size="xs" fw={600}>
+            Chaos at {(at / 1000).toFixed(1)} s
+          </Text>
+        </Group>
+      </Tooltip>
+      <Select size="xs" w={200} allowDeselect={false} data={actions} value={action} onChange={(v) => v && setAction(v as Action)} aria-label="Fault" />
+      <Select size="xs" w={150} allowDeselect={false} data={targets} value={chosen || null} onChange={(v) => v && setTarget(v)} aria-label="Target" />
+      <Button size="xs" color="red" variant="light" onClick={add}>
+        Inject
+      </Button>
       {faults.map((f, i) => (
-        <span key={i} className="fault">
+        <Badge key={i} color="red" variant="light" ff="monospace" tt="none">
           {faultLabel(f)} @ {(f.at / 1000).toFixed(1)} s
-        </span>
+        </Badge>
       ))}
-      {faults.length > 0 && <button onClick={onReset}>Reset chaos</button>}
-    </div>
+      {faults.length > 0 && (
+        <Button size="xs" variant="subtle" color="gray" onClick={onReset}>
+          Reset chaos
+        </Button>
+      )}
+    </Group>
   );
 }

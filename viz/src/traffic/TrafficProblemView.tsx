@@ -1,8 +1,11 @@
 // Plays an architecture: the canvas, charts, knobs and timeline for one scenario at a time.
 
+import { Alert, Badge, Button, Center, Group, Loader, SegmentedControl, Select, Tabs, Text, Title, Tooltip } from "@mantine/core";
+import { IconAlertTriangle, IconRoute } from "@tabler/icons-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { callouts, replicaNames, summary, type Journey, type TrafficFault, type TrafficTrace } from "../../../system-design/traffic/index.ts";
 import { BoxInspector } from "./BoxInspector.tsx";
+import { NoteCard } from "./NoteCard.tsx";
 import { Waterfall } from "./Waterfall.tsx";
 import { CodePanel } from "../components/CodePanel.tsx";
 import { Controls } from "../components/Controls.tsx";
@@ -103,6 +106,8 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      // A focused knob slider uses the arrow keys itself.
+      if ((e.target as HTMLElement).closest?.('[role="slider"]')) return;
       if (e.key === " ") {
         e.preventDefault();
         player.toggle();
@@ -137,37 +142,45 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
     <main className="main">
       <header className="header">
         <div className="title-row">
-          <h1 className="title">
-            <span style={{ color: "var(--muted)", fontWeight: 500 }}>{problem.number}</span> {problem.title}
-          </h1>
-          {problem.level && <span className={`badge ${problem.level}`}>{problem.level}</span>}
+          <Title order={1} className="title">
+            <Text span inherit c="dimmed" fw={500}>
+              {problem.number}
+            </Text>{" "}
+            {problem.title}
+          </Title>
+          {problem.level && <Badge color={problem.level === "Staff" ? "red" : problem.level === "Senior" ? "indigo" : "gray"}>{problem.level}</Badge>}
           {run?.label.startsWith("broken: ") && (
-            <span className="badge broken" title="This scenario pushes the design past its limit on purpose, to show why the next stage exists">
-              broken on purpose
-            </span>
+            <Tooltip label="This scenario pushes the design past its limit on purpose, to show why the next stage exists">
+              <Badge color="red" leftSection={<IconAlertTriangle size={12} />}>
+                broken on purpose
+              </Badge>
+            </Tooltip>
           )}
           {stageList.length > 0 && (
-            <div className="stage-tabs" role="tablist" title="Each stage fixes what broke the one before">
-              {stageList.map((n) => (
-                <button
-                  key={n}
-                  role="tab"
-                  className={n === stage ? "on" : ""}
-                  onClick={() => pickRun(trace!.runs.findIndex((r) => stageOf(r.design.name) === n))}
-                >
-                  Stage {n}
-                </button>
-              ))}
-            </div>
+            <Tooltip label="Each stage fixes what broke the one before">
+              <SegmentedControl
+                className="stage-tabs"
+                size="xs"
+                value={String(stage)}
+                onChange={(v) => pickRun(trace!.runs.findIndex((r) => stageOf(r.design.name) === Number(v)))}
+                data={stageList.map((n) => ({ value: String(n), label: `Stage ${n}` }))}
+              />
+            </Tooltip>
           )}
           {trace && trace.runs.length > 0 && (
-            <select className="example-select" value={runIndex} onChange={(e) => pickRun(Number(e.target.value))} title="Each scenario comes from the file's tests">
-              {trace.runs.map((r, i) => (
-                <option key={i} value={i}>
-                  {scenarioOptionLabel(r, i, true)}
-                </option>
-              ))}
-            </select>
+            <Select
+              className="example-select"
+              size="xs"
+              ml="auto"
+              w={360}
+              maw="100%"
+              allowDeselect={false}
+              aria-label="Scenario"
+              value={String(runIndex)}
+              onChange={(v) => v !== null && pickRun(Number(v))}
+              data={trace.runs.map((r, i) => ({ value: String(i), label: scenarioOptionLabel(r, i, true) }))}
+              comboboxProps={{ width: "max-content", position: "bottom-end" }}
+            />
           )}
         </div>
         {run && (
@@ -186,14 +199,12 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
       <section className="stage">
         <div className="left">
           {problem.lesson && (
-            <div className="tabs" role="tablist">
-              <button role="tab" className={`tab ${tab === "learn" ? "on" : ""}`} onClick={() => setTab("learn")}>
-                Learn
-              </button>
-              <button role="tab" className={`tab ${tab === "code" ? "on" : ""}`} onClick={() => setTab("code")}>
-                Code
-              </button>
-            </div>
+            <Tabs value={tab} onChange={(v) => v && setTab(v as "learn" | "code")} className="left-tabs">
+              <Tabs.List px="xs">
+                <Tabs.Tab value="learn">Learn</Tabs.Tab>
+                <Tabs.Tab value="code">Code</Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
           )}
           {tab === "learn" && problem.lesson ? (
             <LessonView lesson={lesson} onPlay={onPlay} ready={Boolean(trace)} />
@@ -201,15 +212,30 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
             <CodePanel problem={problem} activeLine={null} callerLines={NO_LINES} explain={false} />
           )}
         </div>
-        {!trace && state.status === "loading" && <div className="status">Simulating…</div>}
-        {state.status === "error" && <div className="status error">{state.message}</div>}
-        {trace && !run && <div className="status error">{trace.error ?? "No run() calls were recorded."}</div>}
+        {!trace && state.status === "loading" && (
+          <Center p="xl">
+            <Group gap="sm">
+              <Loader size="sm" />
+              <Text c="dimmed">Simulating…</Text>
+            </Group>
+          </Center>
+        )}
+        {state.status === "error" && (
+          <Alert m="md" color="red" variant="light" title="The simulation failed" className="traffic-error">
+            {state.message}
+          </Alert>
+        )}
+        {trace && !run && (
+          <Alert m="md" color="red" variant="light" className="traffic-error">
+            {trace.error ?? "No run() calls were recorded."}
+          </Alert>
+        )}
         {run && frame && (
           <div className="traffic-stage">
             {(trace?.error || run.error || run.truncated || run.scale > 1) && (
-              <div className="notice" style={{ padding: "8px 20px 0" }}>
-                {trace?.error && <div>⚠ The file stopped early: {trace.error}</div>}
-                {run.error && <div>⚠ {run.error}</div>}
+              <Alert className="traffic-notice" color="yellow" variant="light" p="xs" radius="md" icon={<IconAlertTriangle size={16} />}>
+                {trace?.error && <div>The file stopped early: {trace.error}</div>}
+                {run.error && <div>{run.error}</div>}
                 {run.truncated && <div>The run hit the event limit and stops early.</div>}
                 {run.scale > 1 && (
                   <div>
@@ -217,7 +243,7 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
                     {run.approximate.length > 0 && ` ${run.approximate.join(", ")} cannot be split that finely, so its numbers are approximate.`}
                   </div>
                 )}
-              </div>
+              </Alert>
             )}
             <KnobBar
               knobs={run.design.knobs}
@@ -231,13 +257,17 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
               }}
             />
             <TrafficChaos design={run.design} t={frame.t} faults={active?.faults ?? []} onAdd={addFault} onReset={resetFaults} />
-            <div className="arch-help">
-              <span>Click any box to see what it does and what its numbers mean. Click a moving dot, or</span>
-              <button className="arch-trace" onClick={traceOne}>
+            <Group className="arch-help" gap={8}>
+              <Text size="sm" c="dimmed">
+                Click any box to see what it does and what its numbers mean. Click a moving dot, or
+              </Text>
+              <Button size="compact-sm" variant="light" leftSection={<IconRoute size={14} />} onClick={traceOne}>
                 Trace a request
-              </button>
-              <span>to see where its time went.</span>
-            </div>
+              </Button>
+              <Text size="sm" c="dimmed">
+                to see where its time went.
+              </Text>
+            </Group>
             <div className="arch">
               <ArchCanvas run={run} frame={frame} prev={prev} notes={notes} selected={selected} onSelect={setSelected} box={box} onBox={(id) => setBox(box === id ? null : id)} />
             </div>
@@ -260,14 +290,11 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
             {notes.length > 0 && (
               <div className="arch-notes">
                 {notes.map((n) => (
-                  <div
-                    key={`${n.at}-${n.rule}`}
-                    className={`arch-note sev${n.severity} clickable`}
-                    onClick={() => setBox(n.at)}
-                    title="Show this box's details"
-                  >
-                    <b>{run.design.components.find((c) => c.id === n.at)?.label ?? n.at}:</b> {n.text}
-                  </div>
+                  <Tooltip key={`${n.at}-${n.rule}`} label="Show this box's details">
+                    <div>
+                      <NoteCard note={n} title={run.design.components.find((c) => c.id === n.at)?.label ?? n.at} onClick={() => setBox(n.at)} />
+                    </div>
+                  </Tooltip>
                 ))}
               </div>
             )}

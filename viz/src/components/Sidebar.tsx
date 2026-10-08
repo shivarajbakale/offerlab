@@ -1,3 +1,5 @@
+import { Badge, NavLink, ScrollArea, SegmentedControl, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { IconLayoutGrid, IconSearch } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { problems } from "../problems.ts";
 import { tally } from "../progress.ts";
@@ -5,24 +7,8 @@ import { useProgress } from "../useProgress.ts";
 import { GROUP_INTROS } from "../overviews.ts";
 import { groupKeyOf, groupsFor, overviewId, overviewTab, TABS, tabOf, type TabId } from "../sidebarTabs.ts";
 
-const Chevron = () => (
-  <svg className="cat-chevron" width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-    <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-/** On narrow screens the sidebar is a drawer: `open` slides it in and `onClose` dismisses it. */
-export function Sidebar({
-  activeId,
-  onSelect,
-  open: drawerOpen = false,
-  onClose,
-}: {
-  activeId: string;
-  onSelect: (id: string) => void;
-  open?: boolean;
-  onClose?: () => void;
-}) {
+/** The topic list: a tab switch, a search box, and each group as a collapsible nav link. */
+export function Sidebar({ activeId, onSelect }: { activeId: string; onSelect: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const progress = useProgress();
   const active = problems.find((p) => p.id === activeId);
@@ -46,64 +32,53 @@ export function Sidebar({
     !q || p.title.toLowerCase().includes(q) || p.number.includes(q) || label.toLowerCase().includes(q);
 
   return (
-    <aside className={`sidebar ${drawerOpen ? "open" : ""}`} aria-label="Topics">
-      <div className="sidebar-head">
-        <div className="brand">
-          <button className="brand-home" onClick={() => onSelect("welcome")} aria-label="Offerlab home">
-            <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
-            Offerlab
-          </button>
-          {onClose && (
-            <button className="drawer-close" aria-label="Close menu" onClick={onClose}>
-              ×
-            </button>
-          )}
-        </div>
-        <div className="track-switch" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              title={t.title}
-              aria-selected={t.id === tab}
-              className={t.id === tab ? "on" : ""}
-              onClick={() => {
-                if (t.id !== tab) onSelect(last.current.get(t.id) ?? overviewId(t.id));
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <input
-          className="search"
-          placeholder={`Search ${count} ${noun}…`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+    <>
+      <Stack gap="sm" p="md" pb="sm" className="sidebar-head">
+        <SegmentedControl
+          fullWidth
+          size="xs"
+          styles={{ label: { paddingInline: 4, fontSize: 11 } }}
+          value={tab}
+          onChange={(v) => {
+            if (v !== tab) onSelect(last.current.get(v as TabId) ?? overviewId(v as TabId));
+          }}
+          data={TABS.map((t) => ({ value: t.id, label: <Tooltip label={t.title}><span>{t.label}</span></Tooltip> }))}
         />
-      </div>
-      <nav className="sidebar-list">
+        <TextInput
+          placeholder={`Search ${count} ${noun}`}
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+          leftSection={<IconSearch size={15} />}
+          aria-label="Search topics"
+        />
+      </Stack>
+      <ScrollArea className="sidebar-list" type="scroll" px="xs" pb="lg">
         {!q && (
-          <button className={`prob overview-link ${activeId === overviewId(tab) ? "active" : ""}`} onClick={() => onSelect(overviewId(tab))}>
-            <span className="prob-num">◎</span>
-            <span>Overview: what's in this tab</span>
-          </button>
+          <NavLink
+            label="Overview: what's in this tab"
+            leftSection={<IconLayoutGrid size={16} />}
+            active={activeId === overviewId(tab)}
+            onClick={() => onSelect(overviewId(tab))}
+            className="nav-overview"
+          />
         )}
         {shown.map((g) => {
           const items = g.problems.filter(matches(g.label));
           if (!items.length) return null;
           const isOpen = Boolean(q) || open.has(g.key);
-          const bodyId = `cat-${g.key}`;
           const solved = tab === "algorithms" && !q ? tally(progress, g.problems.map((p) => p.id)).solved : 0;
           return (
-            <div key={g.key} className={`cat ${isOpen ? "open" : ""}`}>
-              {g.section && <div className="sidebar-section">{g.section}</div>}
-              <button
-                className="cat-head"
+            <div key={g.key}>
+              {g.section && (
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" lts="0.06em" px="sm" mt="md" mb={4}>
+                  {g.section}
+                </Text>
+              )}
+              <NavLink
+                label={g.label}
                 title={GROUP_INTROS[g.key]}
-                aria-expanded={isOpen}
-                aria-controls={bodyId}
-                onClick={() =>
+                opened={isOpen}
+                onChange={() =>
                   setOpen((s) => {
                     const next = new Set(s);
                     if (next.has(g.key)) next.delete(g.key);
@@ -111,35 +86,34 @@ export function Sidebar({
                     return next;
                   })
                 }
+                className="nav-group"
+                rightSection={
+                  <Badge size="sm" variant={isOpen ? "light" : "default"} title={solved ? `${solved} of ${g.problems.length} solved` : undefined}>
+                    {solved > 0 && `${solved}/`}
+                    {q ? items.length : g.problems.length}
+                  </Badge>
+                }
+                childrenOffset={14}
               >
-                <Chevron />
-                <span className="cat-label">{g.label}</span>
-                <span className="cat-count" title={solved ? `${solved} of ${g.problems.length} solved` : undefined}>
-                  {solved > 0 && `${solved}/`}
-                  {q ? items.length : g.problems.length}
-                </span>
-              </button>
-              <div className="cat-body" id={bodyId} inert={!isOpen}>
-                <div className="cat-items">
-                  {items.map((p) => (
-                    <button
+                {items.map((p) => {
+                  const status = progress.entries[p.id]?.status;
+                  return (
+                    <NavLink
                       key={p.id}
-                      className={`prob ${p.id === activeId ? "active" : ""}`}
+                      active={p.id === activeId}
                       onClick={() => onSelect(p.id)}
-                    >
-                      <span className="prob-num">{p.number}</span>
-                      <span>{p.title}</span>
-                      {progress.entries[p.id]?.status && (
-                        <span className={`prob-mark ${progress.entries[p.id].status}`} title={progress.entries[p.id].status === "solved" ? "Solved" : "Attempted"} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      className="nav-item"
+                      leftSection={<span className="prob-num">{p.number}</span>}
+                      label={p.title}
+                      rightSection={status && <span className={`prob-mark ${status}`} title={status === "solved" ? "Solved" : "Attempted"} />}
+                    />
+                  );
+                })}
+              </NavLink>
             </div>
           );
         })}
-      </nav>
-    </aside>
+      </ScrollArea>
+    </>
   );
 }

@@ -1,18 +1,21 @@
 // The question first: statement, examples and constraints, then hints one at a time, then the
 // solution. Also where the learner marks a problem attempted or solved.
 
-import { Fragment, useState, type ReactNode } from "react";
+import { Badge, Button, Card, Checkbox, Code, CopyButton, Group, List, Paper, Text, ThemeIcon, Timeline, Title } from "@mantine/core";
+import { IconBulb, IconCheck, IconCopy, IconEyeOff, IconLock } from "@tabler/icons-react";
+import { Fragment, type ReactNode } from "react";
 import { patternById } from "../patterns/index.ts";
 import type { Problem } from "../problems.ts";
 import { entryOf, HINTS, hideAgain, isRevealed, mark, openHint, setShowAll, type Status } from "../progress.ts";
 import { updateProgress, useProgress } from "../useProgress.ts";
+import "./panels.css";
 
 /** `code` spans in header prose. */
 function Prose({ text }: { text: string }) {
   return (
     <>
       {text.split(/(`[^`]+`)/).map((part, i) =>
-        part.startsWith("`") && part.endsWith("`") && part.length > 1 ? <code key={i}>{part.slice(1, -1)}</code> : <Fragment key={i}>{part}</Fragment>,
+        part.startsWith("`") && part.endsWith("`") && part.length > 1 ? <Code key={i}>{part.slice(1, -1)}</Code> : <Fragment key={i}>{part}</Fragment>,
       )}
     </>
   );
@@ -69,6 +72,15 @@ function hintsFor(problem: Problem): { label: string; body: ReactNode }[] {
 
 const practicePath = (problem: Problem) => `practice/${problem.id}.ts`;
 
+/** A section's small uppercase heading. */
+function Heading({ children }: { children: ReactNode }) {
+  return (
+    <Title order={4} className="q-heading">
+      {children}
+    </Title>
+  );
+}
+
 export function QuestionPanel({ problem, onShowSolution }: { problem: Problem; onShowSolution: () => void }) {
   const progress = useProgress();
   const entry = entryOf(progress, problem.id);
@@ -77,117 +89,148 @@ export function QuestionPanel({ problem, onShowSolution }: { problem: Problem; o
   const shown = revealed ? HINTS : entry.hints;
   const setStatus = (s: Status) => updateProgress((p, now) => mark(p, problem.id, entry.status === s ? undefined : s, now));
   const command = `node --test ${practicePath(problem)}`;
-  const [copied, setCopied] = useState(false);
 
   return (
     <div className="question">
       <section className="q-statement">
         {problem.statement.map((para, i) => (
-          <p key={i}>
+          <Text key={i} className="q-para">
             <Prose text={para} />
-          </p>
+          </Text>
         ))}
       </section>
 
       {problem.examples.map((ex) => (
         <section key={ex.title} className="q-example">
-          <h4>{ex.title}</h4>
+          <Heading>{ex.title}</Heading>
           <ExampleBody body={ex.body} />
         </section>
       ))}
 
       {problem.constraints.length > 0 && (
         <section className="q-constraints">
-          <h4>Constraints</h4>
-          <ul>
+          <Heading>Constraints</Heading>
+          <List size="sm" spacing={4}>
             {problem.constraints.map((c) => (
-              <li key={c}>
-                <code>{c}</code>
-              </li>
+              <List.Item key={c}>
+                <Code>{c}</Code>
+              </List.Item>
             ))}
-          </ul>
+          </List>
         </section>
       )}
 
-      <section className="q-try">
-        <h4>Try it first</h4>
-        <p>
-          Solve it in <code>{practicePath(problem)}</code>, then run its tests:
-        </p>
-        <div className="q-command">
-          <code>{command}</code>
-          <button
-            className="q-copy"
-            onClick={() => {
-              navigator.clipboard?.writeText(command).then(
-                () => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                },
-                () => {},
-              );
-            }}
+      <Card component="section" className="q-card" padding="md">
+        <Heading>Try it first</Heading>
+        <Text size="sm" c="dimmed" mb="xs">
+          Solve it in <Code>{practicePath(problem)}</Code>, then run its tests:
+        </Text>
+        <Group gap="xs" wrap="nowrap" className="q-command">
+          <Code className="q-command-text">{command}</Code>
+          <CopyButton value={command} timeout={1500}>
+            {({ copied, copy }) => (
+              <Button
+                size="xs"
+                variant={copied ? "light" : "default"}
+                color={copied ? "green" : undefined}
+                leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                onClick={copy}
+              >
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            )}
+          </CopyButton>
+        </Group>
+        <Group gap="xs" mt="md" role="group" aria-label="Your progress">
+          <Button
+            size="xs"
+            variant={entry.status === "attempted" ? "light" : "default"}
+            color={entry.status === "attempted" ? "orange" : undefined}
+            aria-pressed={entry.status === "attempted"}
+            onClick={() => setStatus("attempted")}
           >
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-        <div className="q-status" role="group" aria-label="Your progress">
-          <button className={`q-status-btn attempted ${entry.status === "attempted" ? "on" : ""}`} aria-pressed={entry.status === "attempted"} onClick={() => setStatus("attempted")}>
             Attempted
-          </button>
-          <button className={`q-status-btn solved ${entry.status === "solved" ? "on" : ""}`} aria-pressed={entry.status === "solved"} onClick={() => setStatus("solved")}>
+          </Button>
+          <Button
+            size="xs"
+            variant={entry.status === "solved" ? "filled" : "default"}
+            color={entry.status === "solved" ? "green" : undefined}
+            leftSection={entry.status === "solved" ? <IconCheck size={14} /> : undefined}
+            aria-pressed={entry.status === "solved"}
+            onClick={() => setStatus("solved")}
+          >
             I solved it
-          </button>
+          </Button>
           {entry.status === "solved" && entry.solvedWith && (
-            <span className="q-status-note">
+            <Text size="xs" c="dimmed">
               {entry.solvedWith.revealed
                 ? "after seeing the solution"
                 : entry.solvedWith.hints
                   ? `with ${entry.solvedWith.hints} hint${entry.solvedWith.hints > 1 ? "s" : ""}`
                   : "with no hints"}
-            </span>
+            </Text>
           )}
-        </div>
-      </section>
+        </Group>
+      </Card>
 
-      <section className="q-hints">
-        <h4>Stuck?</h4>
-        <ol>
-          {hints.slice(0, shown).map((h, i) => (
-            <li key={h.label} className="q-hint">
-              <span className="q-hint-label">
-                Hint {i + 1} · {h.label}
-              </span>
-              <p>{h.body}</p>
-            </li>
-          ))}
-        </ol>
+      <Card component="section" className="q-card" padding="md">
+        <Heading>Stuck?</Heading>
+        {shown > 0 && (
+          <Timeline active={shown - 1} bulletSize={22} lineWidth={2} mt="xs" mb="sm">
+            {hints.slice(0, shown).map((h, i) => (
+              <Timeline.Item
+                key={h.label}
+                bullet={<Text size="xs" fw={700}>{i + 1}</Text>}
+                title={
+                  <Badge size="sm" variant="light">
+                    Hint {i + 1} · {h.label}
+                  </Badge>
+                }
+              >
+                <Text size="sm" mt={4}>
+                  {h.body}
+                </Text>
+              </Timeline.Item>
+            ))}
+          </Timeline>
+        )}
         {!revealed && (
-          <div className="q-hint-actions">
+          <Group gap="sm">
             {shown < HINTS && (
-              <button className="q-hint-btn" onClick={() => updateProgress((p, now) => openHint(p, problem.id, now))}>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconBulb size={14} />}
+                onClick={() => updateProgress((p, now) => openHint(p, problem.id, now))}
+              >
                 Show hint {shown + 1} of {HINTS}
-              </button>
+              </Button>
             )}
-            <button
-              className={shown < HINTS ? "q-reveal-link" : "q-hint-btn primary"}
-              onClick={onShowSolution}
-            >
+            <Button size="xs" variant={shown < HINTS ? "subtle" : "filled"} color={shown < HINTS ? "gray" : undefined} onClick={onShowSolution}>
               Show solution
-            </button>
-          </div>
+            </Button>
+          </Group>
         )}
         {revealed && !progress.showAll && (
-          <button className="q-reveal-link" onClick={() => updateProgress((p, now) => hideAgain(p, problem.id, now))}>
+          <Button
+            size="xs"
+            variant="subtle"
+            color="gray"
+            leftSection={<IconEyeOff size={14} />}
+            onClick={() => updateProgress((p, now) => hideAgain(p, problem.id, now))}
+          >
             Hide hints and solution to try again
-          </button>
+          </Button>
         )}
-      </section>
+      </Card>
 
-      <label className="q-showall">
-        <input type="checkbox" checked={progress.showAll} onChange={(e) => updateProgress((p) => setShowAll(p, e.target.checked))} />
-        Always show solutions (skip the try-first step on every problem)
-      </label>
+      <Checkbox
+        size="xs"
+        checked={progress.showAll}
+        onChange={(e) => updateProgress((p) => setShowAll(p, e.currentTarget.checked))}
+        label="Always show solutions (skip the try-first step on every problem)"
+        c="dimmed"
+      />
     </div>
   );
 }
@@ -196,20 +239,25 @@ export function QuestionPanel({ problem, onShowSolution }: { problem: Problem; o
 export function SolutionHidden({ onShow, onProblem }: { onShow: () => void; onProblem?: () => void }) {
   return (
     <div className="solution-hidden">
-      <div className="solution-hidden-card">
-        <h3>Solution hidden</h3>
-        <p>Read the problem and try it yourself first. The code, notes and step-by-step animation open when you reveal the solution.</p>
-        <div className="solution-hidden-actions">
+      <Paper className="solution-hidden-card" p="xl" radius="lg">
+        <ThemeIcon size={44} radius="xl" variant="light" mx="auto" mb="sm">
+          <IconLock size={22} />
+        </ThemeIcon>
+        <Title order={3} size="h4" mb={6}>
+          Solution hidden
+        </Title>
+        <Text size="sm" c="dimmed" mb="md">
+          Read the problem and try it yourself first. The code, notes and step-by-step animation open when you reveal the solution.
+        </Text>
+        <Group justify="center" gap="xs">
           {onProblem && (
-            <button className="q-hint-btn" onClick={onProblem}>
+            <Button variant="default" onClick={onProblem}>
               Back to the problem
-            </button>
+            </Button>
           )}
-          <button className="q-hint-btn primary" onClick={onShow}>
-            Show solution
-          </button>
-        </div>
-      </div>
+          <Button onClick={onShow}>Show solution</Button>
+        </Group>
+      </Paper>
     </div>
   );
 }

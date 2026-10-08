@@ -1,0 +1,223 @@
+/* Panels built from Mantine components: lesson, question, intuition and chapter strip. Colours
+   come from the app tokens (index.css) so they match the drawings in both schemes. */
+
+/* ---------- chapters above a building block's picture ---------- */
+.chapters {
+  flex: none;
+  padding: 12px 20px 0;
+}
+.chapter-steps .mantine-Stepper-steps {
+  flex-wrap: nowrap;
+}
+.chapter-steps .mantine-Stepper-step {
+  min-width: 140px;
+  max-width: 220px;
+  align-items: flex-start;
+}
+.chapter-steps .mantine-Stepper-separator {
+  min-width: 16px;
+  margin-inline: 8px;
+}
+.chapter-steps .mantine-Stepper-stepLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.chapter-role.problem {
+  color: var(--bad);
+}
+.chapter-role.works {
+  color: var(--ok);
+}
+.chapter-title {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+
+/* ---------- lesson ---------- */
+.lesson .lesson-h2 {
+  font-size: 19px;
+  margin: 4px 0 10px;
+  color: var(--ink);
+}
+.lesson .lesson-h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 24px 0 6px;
+}
+.lesson .lesson-h4 {
+  font-size: 14.5px;
+  margin: 14px 0 4px;
+  color: var(--ink);
+}
+.lesson .lesson-p {
+  margin: 6px 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+.lesson .lesson-list {
+  margin: 6px 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.lesson strong {
+  color: var(--ink);
+}
+.lesson .lesson-pre {
+  margin: 8px 0;
+  font-size: 12.5px;
+}
+.lesson .play-link {
+  margin: 2px 4px 2px 0;
+  vertical-align: baseline;
+}
+.lesson-opener {
+  margin: 10px 0 18px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+}
+.lesson-opener dl {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.lesson-opener dt {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.lesson-opener dd {
+  margin: 2px 0 0;
+}
+.lesson-opener .lead dd {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* ---------- question ---------- */
+.question .q-heading {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.question .q-para {
+  margin: 0 0 10px;
+  line-height: 1.6;
+}
+.q-command-text {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 6px 8px;
+}
+.solution-hidden-card {
+  max-width: 400px;
+  text-align: center;
+}
+
+/* ---------- intuition ---------- */
+.intu-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.intu-insight {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.intu-sub {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+.intu-solves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+.intu-solves li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: var(--mantine-radius-sm);
+}
+.intu-solves li:hover {
+  background: var(--panel-2);
+}
+.intu-solves li.current {
+  background: var(--accent-soft);
+}
+.intu-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.intu-link:disabled {
+  cursor: default;
+  font-weight: 600;
+}
+.intu-num {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.intu-ext {
+  color: var(--muted);
+}
+.intu-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.intu-dot.in {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.intu-dot:not(.in) {
+  margin-left: 8px;
+}
+.intu-link .intu-dot {
+  margin: 0;
+}
+.intu-real {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.intu-real dt {
+  font-weight: 650;
+  font-size: 13px;
+}
+.intu-real dd {
+  margin: 0;
+  color: var(--ink-2);
+}

@@ -1,6 +1,7 @@
 // The front door: what Offerlab is, shown running. A first visit lands here; Start opens the
 // Algorithms overview and every station on the map opens its real topic.
 
+import { ActionIcon, Button, Group, SegmentedControl } from "@mantine/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { problems } from "../problems.ts";
 import { Illustration } from "./Illustrations.tsx";
@@ -135,20 +136,20 @@ export function LandingView({ onOpen }: { onOpen: (id: string) => void }) {
           <img src={`${BASE}favicon.svg`} alt="" width={30} height={30} />
           Offerlab
         </div>
-        <nav aria-label="Page sections">
-          <button onClick={() => scrollTo("map")}>Tracks</button>
-          <button onClick={() => scrollTo("naive")}>How it teaches</button>
-          <button onClick={() => scrollTo("screens")}>Screens</button>
-          <button onClick={() => scrollTo("local")}>Run locally</button>
-        </nav>
-        <div className="ln-nav-end">
-          <a className="ln-icon-link" href={REPO} target="_blank" rel="noreferrer" aria-label="Offerlab on GitHub">
+        <Group component="nav" gap={4} aria-label="Page sections">
+          <Button variant="subtle" color="gray" onClick={() => scrollTo("map")}>Tracks</Button>
+          <Button variant="subtle" color="gray" onClick={() => scrollTo("naive")}>How it teaches</Button>
+          <Button variant="subtle" color="gray" onClick={() => scrollTo("screens")}>Screens</Button>
+          <Button variant="subtle" color="gray" onClick={() => scrollTo("local")}>Run locally</Button>
+        </Group>
+        <Group gap="xs" ml="auto">
+          <ActionIcon component="a" variant="subtle" color="gray" size="lg" href={REPO} target="_blank" rel="noreferrer" aria-label="Offerlab on GitHub">
             <GitHubMark />
-          </a>
-          <button className="ln-btn small" onClick={start}>
+          </ActionIcon>
+          <Button radius="xl" onClick={start}>
             Open the lab
-          </button>
-        </div>
+          </Button>
+        </Group>
       </header>
 
       <section className="ln-hero" id="map" ref={hero}>
@@ -157,14 +158,14 @@ export function LandingView({ onOpen }: { onOpen: (id: string) => void }) {
             Interview prep you can <em>watch run</em>.
           </h1>
           <p className="ln-lede">The NeetCode 150 and system design from first principles, step by step, in your browser.</p>
-          <div className="ln-ctas">
-            <button className="ln-btn" onClick={start}>
-              Start with Algorithms <Icon d={ARROW} />
-            </button>
-            <a className="ln-btn ghost" href={REPO} target="_blank" rel="noreferrer">
-              <GitHubMark /> Source on GitHub
-            </a>
-          </div>
+          <Group gap="sm">
+            <Button size="lg" radius="xl" onClick={start} rightSection={<Icon d={ARROW} />}>
+              Start with Algorithms
+            </Button>
+            <Button component="a" size="lg" radius="xl" variant="default" href={REPO} target="_blank" rel="noreferrer" leftSection={<GitHubMark />}>
+              Source on GitHub
+            </Button>
+          </Group>
           <ul className="ln-legend" aria-label="Tracks">
             {LINES.map((l) => (
               <li key={l.key}>
@@ -198,17 +199,17 @@ export function LandingView({ onOpen }: { onOpen: (id: string) => void }) {
               <h2>{station.label}</h2>
               <p>{station.watch}</p>
               <div className="ln-station-actions">
-                <button className="ln-btn small" onClick={() => onOpen(station.id)}>
-                  Open this lesson <Icon d={ARROW} size={16} />
-                </button>
-                <div className="ln-stepper">
-                  <button aria-label="Previous station" onClick={() => step(-1)}>
+                <Button radius="xl" onClick={() => onOpen(station.id)} rightSection={<Icon d={ARROW} size={16} />}>
+                  Open this lesson
+                </Button>
+                <Group gap={6}>
+                  <ActionIcon variant="default" radius="xl" size="lg" aria-label="Previous station" onClick={() => step(-1)}>
                     <Icon d="M15 6l-6 6 6 6" />
-                  </button>
-                  <button aria-label="Next station" onClick={() => step(1)}>
+                  </ActionIcon>
+                  <ActionIcon variant="default" radius="xl" size="lg" aria-label="Next station" onClick={() => step(1)}>
                     <Icon d="M9 6l6 6-6 6" />
-                  </button>
-                </div>
+                  </ActionIcon>
+                </Group>
               </div>
             </div>
           </div>
@@ -231,13 +232,15 @@ export function LandingView({ onOpen }: { onOpen: (id: string) => void }) {
           <h2>Every step sits next to the line that caused it.</h2>
           <p>Solutions and simulations run for real. Pointers slide, trees re-link, queues back up and servers fall over while the code highlights.</p>
         </div>
-        <div className="ln-tabs" role="tablist" aria-label="Screens">
-          {SCREENS.map((s) => (
-            <button key={s.key} role="tab" aria-selected={s.key === screen} className={s.key === screen ? "on" : ""} onClick={() => setScreen(s.key)}>
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          className="ln-tabs"
+          radius="xl"
+          size="md"
+          aria-label="Screens"
+          value={screen}
+          onChange={setScreen}
+          data={SCREENS.map((s) => ({ value: s.key, label: s.label }))}
+        />
         <figure className="ln-shot">
           <div className="ln-shot-bar" aria-hidden="true">
             <span />
@@ -277,21 +280,21 @@ export function LandingView({ onOpen }: { onOpen: (id: string) => void }) {
             MIT licensed. Every problem is one self-contained TypeScript file with its tests, so you can run it with <code>node --test</code>, break it,
             and watch what changes. You need Node.js 26 or newer.
           </p>
-          <div className="ln-ctas">
-            <button className="ln-btn" onClick={start}>
-              Start with Algorithms <Icon d={ARROW} />
-            </button>
-            <a className="ln-btn ghost" href={`${REPO}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noreferrer">
+          <Group gap="sm">
+            <Button size="lg" radius="xl" onClick={start} rightSection={<Icon d={ARROW} />}>
+              Start with Algorithms
+            </Button>
+            <Button component="a" size="lg" radius="xl" variant="default" href={`${REPO}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noreferrer">
               Contribute
-            </a>
-          </div>
+            </Button>
+          </Group>
         </div>
         <div className="ln-terminal">
           <div className="ln-terminal-bar">
             <span>terminal</span>
-            <button onClick={copy} aria-label="Copy the commands">
-              <Icon d={copied ? CHECK : COPY} size={15} /> {copied ? "Copied" : "Copy"}
-            </button>
+            <Button size="compact-sm" variant="light" color={copied ? "teal" : "gray"} onClick={copy} aria-label="Copy the commands" leftSection={<Icon d={copied ? CHECK : COPY} size={15} />}>
+              {copied ? "Copied" : "Copy"}
+            </Button>
           </div>
           <pre>
             {INSTALL.split("\n").map((l) => (

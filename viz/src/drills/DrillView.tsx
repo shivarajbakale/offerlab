@@ -1,6 +1,8 @@
 // Practice drills: estimation, failure diagnosis and flashcards. No code panel; the file's
 // tests prove the data right, and the screen tests the reader.
 
+import { Alert, Badge, Group, Loader, Text, Title } from "@mantine/core";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import type { Problem } from "../parseProblem.ts";
 import { EstimationDrill } from "./EstimationDrill.tsx";
 import { FailureDrill } from "./FailureDrill.tsx";
@@ -10,6 +12,7 @@ import { DRILL_INTROS, FAILURE_INTRO_PHONE } from "../overviews.ts";
 import { usePhone } from "../player/usePhone.ts";
 import "./drills.css";
 
+const LEVEL_COLOR: Record<string, string> = { Senior: "indigo", Staff: "red" };
 const KIND = { estimation: "Estimation drill", failure: "Failure drill", flashcards: "Flashcards" } as const;
 
 export function DrillView({ problem, onSelect }: { problem: Problem; onSelect: (id: string) => void }) {
@@ -22,21 +25,36 @@ export function DrillView({ problem, onSelect }: { problem: Problem; onSelect: (
   return (
     <main className={`main ${failure ? "" : "drill-main"}`}>
       <header className="header">
-        <div className="title-row">
-          <h1 className="title">
-            <span style={{ color: "var(--muted)", fontWeight: 500 }}>{problem.number}</span> {problem.title}
-          </h1>
-          {problem.drill && <span className="badge drill">{KIND[problem.drill]}</span>}
-          {problem.level && <span className={`badge ${problem.level}`}>{problem.level}</span>}
-        </div>
+        <Group className="title-row" gap="sm" wrap="wrap">
+          <Title order={1} className="title">
+            <Text span c="dimmed" fw={500} inherit>
+              {problem.number}
+            </Text>{" "}
+            {problem.title}
+          </Title>
+          {problem.drill && (
+            <Badge color="indigo" variant="outline">
+              {KIND[problem.drill]}
+            </Badge>
+          )}
+          {problem.level && <Badge color={LEVEL_COLOR[problem.level] ?? "gray"}>{problem.level}</Badge>}
+        </Group>
         {problem.drill && (
-          <p className="drill-intro">
+          <Text className="drill-intro" size="sm" c="dimmed">
             {phone && problem.drill === "failure" ? FAILURE_INTRO_PHONE : DRILL_INTROS[problem.drill]}
-          </p>
+          </Text>
         )}
       </header>
-      {state.status === "loading" && <div className="status">{problem.drill === "failure" ? "Simulating…" : "Loading…"}</div>}
-      {result && "error" in result && <div className="status error">{result.error}</div>}
+      {state.status === "loading" && (
+        <Group className="status" gap="sm">
+          <Loader size="sm" /> {problem.drill === "failure" ? "Simulating…" : "Loading…"}
+        </Group>
+      )}
+      {result && "error" in result && (
+        <Alert className="status" color="red" variant="light" icon={<IconAlertTriangle size={18} />}>
+          <pre className="drill-pre">{result.error}</pre>
+        </Alert>
+      )}
       {drill?.kind === "estimation" && <EstimationDrill key={problem.id} drill={drill} />}
       {drill?.kind === "flashcards" && <Flashcards key={problem.id} deck={drill} deckId={problem.id} onSelect={onSelect} />}
       {drill?.kind === "failure" && failure && <FailureDrill key={problem.id} drill={drill} play={failure} answerTitle={problem.answerTitle} />}

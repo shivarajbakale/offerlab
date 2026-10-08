@@ -3,6 +3,8 @@
 // Before the answer nothing names the cause: no fault marks, no "slower" tags, and callouts show
 // only where something is wrong and how badly.
 
+import { Alert, Badge, Group, List, Radio, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { compareRows, type CompareRow, type FailureDrill as Drill } from "../../../system-design/drills/index.ts";
 import { callouts, type Frame, type TrafficRun } from "../../../system-design/traffic/index.ts";
@@ -71,67 +73,93 @@ export function FailureDrill({ drill, play, answerTitle }: { drill: Drill; play:
             <p className="drill-question">
               <Rich text={drill.question} />
             </p>
-            <div className="drill-options">
-              {drill.options.map((o, i) => {
-                const state = !answered ? "" : o.correct ? "right" : i === picked ? "wrong" : "other";
-                return (
-                  <button key={i} className={`drill-option ${state}`} disabled={answered} onClick={() => setPicked(i)}>
-                    <span className="drill-option-text">
-                      {answered && (o.correct ? "✓ " : i === picked ? "✗ " : "")}
-                      <Rich text={o.text} />
-                    </span>
-                    {answered && (
-                      <span className="drill-option-why">
-                        <Rich text={o.why} />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <Radio.Group value={picked === null ? null : String(picked)} onChange={(v) => !answered && setPicked(Number(v))}>
+              <Stack className="drill-options" gap="xs">
+                {drill.options.map((o, i) => {
+                  const state = !answered ? "" : o.correct ? "right" : i === picked ? "wrong" : "other";
+                  return (
+                    <Radio.Card key={i} value={String(i)} className={`drill-option ${state}`} disabled={answered} radius="md" p="sm">
+                      <Group wrap="nowrap" align="flex-start" gap="sm">
+                        {answered && o.correct ? (
+                          <IconCheck size={18} className="drill-option-mark ok" />
+                        ) : answered && i === picked ? (
+                          <IconX size={18} className="drill-option-mark bad" />
+                        ) : (
+                          <Radio.Indicator size="sm" mt={2} disabled={answered} />
+                        )}
+                        <Stack gap={4}>
+                          <span className="drill-option-text">
+                            <Rich text={o.text} />
+                          </span>
+                          {answered && (
+                            <span className="drill-option-why">
+                              <Rich text={o.why} />
+                            </span>
+                          )}
+                        </Stack>
+                      </Group>
+                    </Radio.Card>
+                  );
+                })}
+              </Stack>
+            </Radio.Group>
             {!answered && (
-              <p className="drill-muted">
+              <Text size="sm" c="dimmed" mt="sm">
                 <span className="not-phone">Press play and read the canvas and charts. </span>
                 <span className="phone-only">Read the symptoms above. </span>
                 Pick an answer to see what really happened.
-              </p>
+              </Text>
             )}
             {answered && (
               <>
-                <div className={`drill-verdict ${drill.options[picked].correct ? "ok" : "bad"}`}>
+                <Alert
+                  mt="sm"
+                  variant="light"
+                  color={drill.options[picked].correct ? "green" : "red"}
+                  icon={drill.options[picked].correct ? <IconCheck size={18} /> : <IconX size={18} />}
+                  classNames={{ message: "drill-verdict" }}
+                >
                   {drill.options[picked].correct ? "Right." : "Not this time: the right answer is marked."}
-                </div>
-                {answerTitle && <h3 className="drill-h">What it was: {answerTitle}</h3>}
-                <h3 className="drill-h">What was injected</h3>
-                <ul className="drill-faults">
+                </Alert>
+                {answerTitle && (
+                  <Title order={3} className="drill-h">
+                    What it was: {answerTitle}
+                  </Title>
+                )}
+                <Title order={3} className="drill-h">
+                  What was injected
+                </Title>
+                <List className="drill-faults" size="sm">
                   {drill.faults.map((f, i) => (
-                    <li key={i}>
+                    <List.Item key={i}>
                       {"region" in f ? `${f.kind} ${f.region}` : f.kind === "slow" ? `${f.target} slowed ${f.factor}x for ${f.durationMs / 1000} s` : `${f.kind} ${f.target}`} at {f.at / 1000} s
-                    </li>
+                    </List.Item>
                   ))}
-                </ul>
-                <h3 className="drill-h">The fix</h3>
+                </List>
+                <Title order={3} className="drill-h">
+                  The fix
+                </Title>
                 <p>
                   <Rich text={drill.fix.explain} />
                 </p>
-                <table className="drill-table">
-                  <thead>
-                    <tr>
-                      <th>From {from} s on</th>
-                      <th className="num">As it happened</th>
-                      <th className="num">With the fix</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table className="drill-table" verticalSpacing={5} horizontalSpacing="xs" fz="sm" striped>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>From {from} s on</Table.Th>
+                      <Table.Th className="num">As it happened</Table.Th>
+                      <Table.Th className="num">With the fix</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
                     {rows.map((r) => (
-                      <tr key={r.metric}>
-                        <td>{r.label}</td>
-                        <td className="num">{show(r, r.broken)}</td>
-                        <td className="num">{show(r, r.fixed)}</td>
-                      </tr>
+                      <Table.Tr key={r.metric}>
+                        <Table.Td>{r.label}</Table.Td>
+                        <Table.Td className="num">{show(r, r.broken)}</Table.Td>
+                        <Table.Td className="num">{show(r, r.fixed)}</Table.Td>
+                      </Table.Tr>
                     ))}
-                  </tbody>
-                </table>
+                  </Table.Tbody>
+                </Table>
               </>
             )}
           </div>
@@ -139,15 +167,20 @@ export function FailureDrill({ drill, play, answerTitle }: { drill: Drill; play:
         {frame && (
           <div className="traffic-stage">
             {answered && (
-              <div className="drill-play-switch" role="tablist">
-                <button role="tab" className={!showFix ? "on" : ""} onClick={() => setShowFix(false)}>
-                  As it happened
-                </button>
-                <button role="tab" className={showFix ? "on" : ""} onClick={() => setShowFix(true)}>
-                  With the fix
-                </button>
-                <span className="drill-muted">{run.design.name}</span>
-              </div>
+              <Group className="drill-play-switch" gap="sm">
+                <SegmentedControl
+                  size="xs"
+                  value={showFix ? "fixed" : "broken"}
+                  onChange={(v) => setShowFix(v === "fixed")}
+                  data={[
+                    { value: "broken", label: "As it happened" },
+                    { value: "fixed", label: "With the fix" },
+                  ]}
+                />
+                <Badge variant="default" tt="none">
+                  {run.design.name}
+                </Badge>
+              </Group>
             )}
             <div className="arch">
               <ArchCanvas run={run} frame={answered ? frame : masked(frame)} notes={notes} selected={null} onSelect={() => {}} />

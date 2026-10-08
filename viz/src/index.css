@@ -40,40 +40,39 @@
   font-variant-ligatures: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1014;
-    --panel: #15181e;
-    --panel-2: #1a1e25;
-    --ink: #e8e8ec;
-    --ink-2: #c4c4cc;
-    --muted: #8b8b97;
-    --line: #262a33;
-    --line-2: #333844;
-    --accent: #8b8cf8;
-    --accent-ink: #0e1014;
-    --accent-soft: rgba(139, 140, 248, 0.14);
-    --accent-line: rgba(139, 140, 248, 0.55);
-    --flash: rgba(251, 191, 36, 0.45);
-    --flash-soft: rgba(251, 191, 36, 0.22);
-    --ok: #4ade80;
-    --ok-soft: rgba(74, 222, 128, 0.12);
-    --bad: #f87171;
-    --bad-soft: rgba(248, 113, 113, 0.12);
-    --warn: #fb923c;
-    --code-active: rgba(139, 140, 248, 0.18);
-    --shadow: none;
-    --p0: #8b8cf8;
-    --p1: #fb923c;
-    --p2: #2dd4bf;
-    --p3: #f472b6;
-    --p4: #a3e635;
-    --p5: #38bdf8;
-    --key: #5eead4;
-    --key-soft: rgba(45, 212, 191, 0.12);
-    --key-line: rgba(45, 212, 191, 0.4);
-    color-scheme: dark;
-  }
+/* Mantine sets this attribute from the colour-scheme toggle (auto follows the system). */
+:root[data-mantine-color-scheme="dark"] {
+  --bg: #0e1014;
+  --panel: #15181e;
+  --panel-2: #1a1e25;
+  --ink: #e8e8ec;
+  --ink-2: #c4c4cc;
+  --muted: #8b8b97;
+  --line: #262a33;
+  --line-2: #333844;
+  --accent: #8b8cf8;
+  --accent-ink: #0e1014;
+  --accent-soft: rgba(139, 140, 248, 0.14);
+  --accent-line: rgba(139, 140, 248, 0.55);
+  --flash: rgba(251, 191, 36, 0.45);
+  --flash-soft: rgba(251, 191, 36, 0.22);
+  --ok: #4ade80;
+  --ok-soft: rgba(74, 222, 128, 0.12);
+  --bad: #f87171;
+  --bad-soft: rgba(248, 113, 113, 0.12);
+  --warn: #fb923c;
+  --code-active: rgba(139, 140, 248, 0.18);
+  --shadow: none;
+  --p0: #8b8cf8;
+  --p1: #fb923c;
+  --p2: #2dd4bf;
+  --p3: #f472b6;
+  --p4: #a3e635;
+  --p5: #38bdf8;
+  --key: #5eead4;
+  --key-soft: rgba(45, 212, 191, 0.12);
+  --key-line: rgba(45, 212, 191, 0.4);
+  color-scheme: dark;
 }
 
 * {

@@ -1,5 +1,7 @@
 // Plays a kernel primitive: the cluster picture, the message log, and the handler that ran.
 
+import { Alert, Badge, Button, Group, Loader, Select, Tabs, Text, Title, Tooltip } from "@mantine/core";
+import { IconAlertTriangle, IconBolt } from "@tabler/icons-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Fault, SimStep } from "../../../system-design/kernel/types.ts";
 import { ChaosBar } from "../components/ChaosBar.tsx";
@@ -17,10 +19,12 @@ import { simCaption } from "./narrate.ts";
 import { ChapterStrip } from "../components/ChapterStrip.tsx";
 import { Callout } from "../components/views/Callout.tsx";
 import { useSimTrace } from "./useSimTrace.ts";
+import "./sim.css";
 
 const EMPTY_STEPS: SimStep[] = [];
 const NO_LINES: number[] = [];
 const NO_FAULTS: Fault[] = [];
+const LEVEL_COLOR: Record<string, string> = { Senior: "indigo", Staff: "red" };
 
 export function SimProblemView({ problem }: { problem: Problem }) {
   const [pickedRun, setRunIndex] = useState<number | null>(null);
@@ -108,31 +112,36 @@ export function SimProblemView({ problem }: { problem: Problem }) {
   return (
     <main className="main">
       <header className="header">
-        <div className="title-row">
-          <h1 className="title">
-            <span style={{ color: "var(--muted)", fontWeight: 500 }}>{problem.number}</span> {problem.title}
-          </h1>
-          {problem.level && <span className={`badge ${problem.level}`}>{problem.level}</span>}
+        <Group className="title-row" gap="sm" wrap="wrap">
+          <Title order={1} className="title">
+            <Text span c="dimmed" fw={500} inherit>
+              {problem.number}
+            </Text>{" "}
+            {problem.title}
+          </Title>
+          {problem.level && <Badge color={LEVEL_COLOR[problem.level] ?? "gray"}>{problem.level}</Badge>}
           {run?.label.startsWith("broken: ") && (
-            <span className="badge broken" title="This scenario runs a deliberately flawed version to show why the real one needs each part">
-              broken on purpose
-            </span>
+            <Tooltip label="This scenario runs a deliberately flawed version to show why the real one needs each part">
+              <Badge color="red" variant="outline">
+                broken on purpose
+              </Badge>
+            </Tooltip>
           )}
           {trace && trace.runs.length > 0 && (
-            <select
-              className="example-select"
-              value={runIndex}
-              onChange={(e) => setRunIndex(Number(e.target.value))}
-              title="Each scenario comes from the file's tests"
-            >
-              {trace.runs.map((r, i) => (
-                <option key={i} value={i}>
-                  {scenarioOptionLabel(r, i, true)}
-                </option>
-              ))}
-            </select>
+            <Tooltip label="Each scenario comes from the file's tests">
+              <Select
+                className="example-select"
+                size="xs"
+                allowDeselect={false}
+                comboboxProps={{ width: "max-content", position: "bottom-end" }}
+                value={String(runIndex)}
+                onChange={(v) => v !== null && setRunIndex(Number(v))}
+                data={trace.runs.map((r, i) => ({ value: String(i), label: scenarioOptionLabel(r, i, true) }))}
+                aria-label="Scenario"
+              />
+            </Tooltip>
           )}
-        </div>
+        </Group>
         {(problem.approach || problem.approachName) && (
           <div className="approach" onClick={(e) => e.currentTarget.classList.toggle("expanded")}>
             <b>{problem.approachName || "Approach"}.</b> {problem.approach}{" "}
@@ -144,14 +153,14 @@ export function SimProblemView({ problem }: { problem: Problem }) {
       <section className="stage">
         <div className="left">
           {problem.lesson && (
-            <div className="tabs" role="tablist">
-              <button role="tab" className={`tab ${tab === "learn" ? "on" : ""}`} onClick={() => setTab("learn")}>
-                Learn
-              </button>
-              <button role="tab" className={`tab ${tab === "code" ? "on" : ""}`} onClick={() => setTab("code")}>
-                Code
-              </button>
-            </div>
+            <Group className="tabs" gap={0} wrap="nowrap">
+              <Tabs value={tab} onChange={(v) => v && setTab(v as "learn" | "code")}>
+                <Tabs.List>
+                  <Tabs.Tab value="learn">Learn</Tabs.Tab>
+                  <Tabs.Tab value="code">Code</Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+            </Group>
           )}
           {tab === "learn" && problem.lesson ? (
             <LessonView lesson={lesson} onPlay={onPlay} ready={Boolean(trace)} />
@@ -159,35 +168,40 @@ export function SimProblemView({ problem }: { problem: Problem }) {
             <CodePanel problem={problem} activeLine={activeLine} callerLines={NO_LINES} explain={false} />
           )}
         </div>
-        {state.status === "loading" && <div className="status">Simulating…</div>}
-        {state.status === "error" && (
-          <div className="status error">
-            {state.message}
-            {injected.length > 0 && (
-              <>
-                {" "}
-                <button className="chaos-reset" onClick={resetChaos}>
-                  Reset chaos
-                </button>
-              </>
-            )}
-          </div>
+        {state.status === "loading" && (
+          <Group className="status" gap="sm">
+            <Loader size="sm" /> Simulating…
+          </Group>
         )}
-        {trace && !run && <div className="status error">{trace.error ?? "No simulate() calls were recorded."}</div>}
+        {state.status === "error" && (
+          <Alert className="status" color="red" variant="light" icon={<IconAlertTriangle size={18} />} title="The simulation failed">
+            <pre className="status-pre">{state.message}</pre>
+            {injected.length > 0 && (
+              <Button size="compact-sm" variant="default" mt="xs" onClick={resetChaos}>
+                Reset chaos
+              </Button>
+            )}
+          </Alert>
+        )}
+        {trace && !run && (
+          <Alert className="status" color="red" variant="light" icon={<IconAlertTriangle size={18} />}>
+            {trace.error ?? "No simulate() calls were recorded."}
+          </Alert>
+        )}
         {run && (
           <div className="sim-stage">
-            {(trace?.error || run.error || run.truncated || injected.length > 0) && (
-              <div className="notice" style={{ padding: "8px 20px 0" }}>
-                {trace?.error && <div>⚠ The file stopped early: {trace.error}</div>}
-                {run.error && <div>⚠ {run.error}</div>}
+            {(trace?.error || run.error || run.truncated) && (
+              <Alert className="sim-alert" color="orange" variant="light" icon={<IconAlertTriangle size={16} />} p="xs">
+                {trace?.error && <div>The file stopped early: {trace.error}</div>}
+                {run.error && <div>{run.error}</div>}
                 {run.truncated && <div>Showing the first {steps.length} events of a long run.</div>}
-                {injected.length > 0 && (
-                  <div>
-                    ⚡ Chaos replay. {chaosVerdict(steps).text} (The ✓/✗ in the scenario list checks this scenario&apos;s exact
-                    story, which your faults are free to change.)
-                  </div>
-                )}
-              </div>
+              </Alert>
+            )}
+            {injected.length > 0 && (
+              <Alert className="sim-alert" color="orange" variant="light" icon={<IconBolt size={16} />} p="xs">
+                Chaos replay. {chaosVerdict(steps).text} (The ✓/✗ in the scenario list checks this scenario&apos;s exact story,
+                which your faults are free to change.)
+              </Alert>
             )}
             {step && (
               <ChaosBar

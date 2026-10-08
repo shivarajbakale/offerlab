@@ -1,0 +1,35 @@
+/* Kernel simulation chrome: notices above the picture and the chaos bar. */
+.sim-alert {
+  margin: 8px 20px 0;
+  flex: none;
+  font-size: 12px;
+}
+.sim-alert .mantine-Alert-message {
+  font-size: 12px;
+}
+.status-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.chaos {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  flex: none;
+}
+.chaos-label {
+  font-weight: 700;
+  color: var(--warn);
+  margin-right: 4px;
+}
+.chaos-select {
+  font-family: var(--mono);
+}
+.chaos-list {
+  flex-basis: 100%;
+  color: var(--warn);
+  font-family: var(--mono);
+}

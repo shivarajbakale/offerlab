@@ -1,18 +1,13 @@
+import { ActionIcon, Button, Group, Kbd, SegmentedControl, Slider, Switch, Text, Tooltip } from "@mantine/core";
+import {
+  IconPlayerPauseFilled,
+  IconPlayerPlayFilled,
+  IconPlayerSkipBackFilled,
+  IconPlayerSkipForwardFilled,
+  IconPlayerTrackNextFilled,
+  IconPlayerTrackPrevFilled,
+} from "@tabler/icons-react";
 import { SPEEDS, type Player } from "../player/usePlayer.ts";
-
-const Icon = ({ d }: { d: string }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-    <path d={d} />
-  </svg>
-);
-const ICONS = {
-  first: "M6 5h2v14H6zM20 5v14L9 12z",
-  prev: "M18 5v14L7 12zM5 5h2v14H5z",
-  play: "M7 4v16l13-8z",
-  pause: "M6 4h4v16H6zM14 4h4v16h-4z",
-  next: "M6 5v14l11-7zM17 5h2v14h-2z",
-  last: "M4 5v14l11-7zM16 5h2v14h-2z",
-};
 
 export type ScrubMark = { index: number; label: string; kind?: "broken" | "shrink" | "best" | "moment" };
 
@@ -33,86 +28,113 @@ export function Controls({
   keyOnly?: { on: boolean; toggle: () => void; count: number };
 }) {
   const { index, count, playing } = player;
+  const go = (k: number) => {
+    player.pause();
+    player.setIndex(k);
+  };
   return (
     <div className="controls">
-      <div className="btns">
-        <button className="btn" title="Restart (Home)" onClick={() => player.step(-count)}>
-          <Icon d={ICONS.first} />
-        </button>
-        <button className="btn" title="Step back (←)" onClick={() => player.step(-1)}>
-          <Icon d={ICONS.prev} />
-        </button>
-        <button className="btn primary" title="Play / pause (space)" onClick={player.toggle}>
-          <Icon d={playing ? ICONS.pause : ICONS.play} />
-        </button>
-        <button className="btn" title="Step forward (→)" onClick={() => player.step(1)}>
-          <Icon d={ICONS.next} />
-        </button>
-        <button className="btn" title="Jump to end (End)" onClick={() => player.step(count)}>
-          <Icon d={ICONS.last} />
-        </button>
-      </div>
+      <Group className="btns" gap={4} wrap="nowrap">
+        <Tooltip label="Restart (Home)">
+          <ActionIcon variant="default" size="lg" onClick={() => player.step(-count)} aria-label="Restart">
+            <IconPlayerSkipBackFilled size={16} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Step back (←)">
+          <ActionIcon variant="default" size="lg" onClick={() => player.step(-1)} aria-label="Step back">
+            <IconPlayerTrackPrevFilled size={16} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Play / pause (space)">
+          <ActionIcon variant="filled" size="lg" w={44} onClick={player.toggle} aria-label={playing ? "Pause" : "Play"}>
+            {playing ? <IconPlayerPauseFilled size={18} /> : <IconPlayerPlayFilled size={18} />}
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Step forward (→)">
+          <ActionIcon variant="default" size="lg" onClick={() => player.step(1)} aria-label="Step forward">
+            <IconPlayerTrackNextFilled size={16} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Jump to end (End)">
+          <ActionIcon variant="default" size="lg" onClick={() => player.step(count)} aria-label="Jump to end">
+            <IconPlayerSkipForwardFilled size={16} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       <div className="scrub-wrap">
-      {marks?.map((m) =>
-        m.kind ? (
-          <button
-            key={`${m.index}-${m.label}`}
-            className={`scrub-tick ${m.kind}`}
-            style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }}
-            title={m.label}
-            aria-label={`Jump to: ${m.label}`}
-            onClick={() => {
-              player.pause();
-              player.setIndex(m.index);
-            }}
-          />
-        ) : (
-          <span key={`${m.index}-${m.label}`} className="scrub-mark" style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }} title={m.label}>
-            ⚡
-          </span>
-        ),
-      )}
-      <input
-        className="scrub"
-        type="range"
-        min={0}
-        max={Math.max(0, count - 1)}
-        value={index}
-        onChange={(e) => {
-          player.pause();
-          player.setIndex(Number(e.target.value));
-        }}
-      />
+        {marks?.map((m) =>
+          m.kind ? (
+            <Tooltip key={`${m.index}-${m.label}`} label={m.label}>
+              <button
+                className={`scrub-tick ${m.kind}`}
+                style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }}
+                aria-label={`Jump to: ${m.label}`}
+                onClick={() => go(m.index)}
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip key={`${m.index}-${m.label}`} label={m.label}>
+              <span className="scrub-mark" style={{ left: `${(100 * m.index) / Math.max(1, count - 1)}%` }}>
+                ⚡
+              </span>
+            </Tooltip>
+          ),
+        )}
+        <Slider
+          className="scrub"
+          min={0}
+          max={Math.max(0, count - 1)}
+          value={index}
+          onChange={go}
+          label={null}
+          size="sm"
+          thumbSize={14}
+          aria-label="Step"
+        />
       </div>
-      <span className="counter">
+      <Text span className="counter" ff="monospace" size="xs" c="dimmed">
         {counter ?? (
           <>
             <span className="counter-word">step </span>
             {count ? index + 1 : 0} / {count}
           </>
         )}
-      </span>
+      </Text>
       {keyOnly && (
-        <label className={`key-toggle ${keyOnly.on ? "on" : ""}`} title={`Step only through the ${keyOnly.count} steps that explain a decision (press k)`}>
-          <input type="checkbox" checked={keyOnly.on} onChange={keyOnly.toggle} />
-          Key steps<kbd>k</kbd>
-        </label>
+        <Tooltip label={`Step only through the ${keyOnly.count} steps that explain a decision (press k)`}>
+          <Switch
+            className="key-toggle"
+            size="xs"
+            checked={keyOnly.on}
+            onChange={keyOnly.toggle}
+            label={
+              <>
+                Key steps <Kbd size="xs">k</Kbd>
+              </>
+            }
+          />
+        </Tooltip>
       )}
       {/* Narrow screens show one button that cycles through the speeds instead of the full row. */}
-      <button
+      <Button
         className="speed-cycle"
-        title="Speed"
+        variant="default"
+        size="compact-sm"
+        ff="monospace"
         onClick={() => player.setSpeed(SPEEDS[(SPEEDS.indexOf(player.speed) + 1) % SPEEDS.length])}
+        aria-label="Speed"
       >
         {player.speed}x
-      </button>
-      <div className="speeds" title="Speed ([ and ])">
-        {SPEEDS.map((s) => (
-          <button key={s} className={s === player.speed ? "on" : ""} onClick={() => player.setSpeed(s)}>
-            {s}x
-          </button>
-        ))}
-      </div>
+      </Button>
+      <Tooltip label="Speed ([ and ])">
+        <SegmentedControl
+          className="speeds"
+          size="xs"
+          value={String(player.speed)}
+          onChange={(v) => player.setSpeed(Number(v))}
+          data={SPEEDS.map((s) => ({ value: String(s), label: `${s}x` }))}
+        />
+      </Tooltip>
     </div>
   );
 }

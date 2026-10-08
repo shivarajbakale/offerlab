@@ -1,5 +1,6 @@
 // Small charts over the whole run, with a cursor at the current moment.
 
+import { Paper, Table, Text } from "@mantine/core";
 import { useMemo } from "react";
 import type { TrafficRun } from "../../../system-design/traffic/index.ts";
 import { formatNumber, kindRows, series } from "./model.ts";
@@ -14,9 +15,11 @@ function Chart({ title, lines, index, unit, max }: { title: string; lines: { nam
   const x = (i: number) => (i / Math.max(1, n - 1)) * W;
   const y = (v: number) => H - (Math.min(v, top) / top) * H;
   return (
-    <div className="metric">
+    <Paper className="metric" p="xs" radius="md">
       <div className="metric-head">
-        <span>{title}</span>
+        <Text size="xs" fw={600} c="dimmed">
+          {title}
+        </Text>
         <span className="metric-legend">
           {lines.map((l, k) => (
             <span key={l.name} style={{ color: COLORS[k % COLORS.length] }}>
@@ -38,7 +41,7 @@ function Chart({ title, lines, index, unit, max }: { title: string; lines: { nam
         ))}
         <line x1={x(index)} x2={x(index)} y1={0} y2={H} className="metric-cursor" vectorEffect="non-scaling-stroke" />
       </svg>
-    </div>
+    </Paper>
   );
 }
 
@@ -47,31 +50,31 @@ function KindTable({ run, index }: { run: TrafficRun; index: number }) {
   const rows = useMemo(() => kindRows(run, index), [run, index]);
   if (!rows.length) return null;
   return (
-    <div className="metric">
-      <div className="metric-head">
-        <span>By kind, last second</span>
-      </div>
-      <table className="kind-table">
-        <thead>
-          <tr>
-            <th>kind</th>
-            <th>req/s</th>
-            <th>p99</th>
-            <th>errors</th>
-          </tr>
-        </thead>
-        <tbody>
+    <Paper className="metric" p="xs" radius="md">
+      <Text size="xs" fw={600} c="dimmed" mb={2}>
+        By kind, last second
+      </Text>
+      <Table className="kind-table" withRowBorders={false} verticalSpacing={1} horizontalSpacing={4}>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>kind</Table.Th>
+            <Table.Th>req/s</Table.Th>
+            <Table.Th>p99</Table.Th>
+            <Table.Th>errors</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
           {rows.map((r) => (
-            <tr key={r.kind} className={r.errorRate >= 0.01 ? "bad" : ""}>
-              <td>{r.kind}</td>
-              <td>{formatNumber(r.rate)}</td>
-              <td>{Number.isFinite(r.p99) ? `${formatNumber(r.p99)} ms` : "—"}</td>
-              <td>{r.errorRate > 0 ? `${Math.max(1, Math.round(r.errorRate * 100))}%` : "0"}</td>
-            </tr>
+            <Table.Tr key={r.kind} className={r.errorRate >= 0.01 ? "bad" : ""}>
+              <Table.Td>{r.kind}</Table.Td>
+              <Table.Td>{formatNumber(r.rate)}</Table.Td>
+              <Table.Td>{Number.isFinite(r.p99) ? `${formatNumber(r.p99)} ms` : "—"}</Table.Td>
+              <Table.Td>{r.errorRate > 0 ? `${Math.max(1, Math.round(r.errorRate * 100))}%` : "0"}</Table.Td>
+            </Table.Tr>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </Table.Tbody>
+      </Table>
+    </Paper>
   );
 }
 
