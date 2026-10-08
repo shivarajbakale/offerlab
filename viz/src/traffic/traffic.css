@@ -285,3 +285,278 @@
 .kind-table tr.bad td {
   color: var(--bad);
 }
+
+/* Plain words on the canvas: each box's job, arrows, clickable boxes. */
+.arch-job {
+  font-size: 10.5px;
+  fill: var(--muted);
+  font-style: italic;
+}
+.arch-arrowhead {
+  fill: var(--line-2);
+}
+.arch-box.clickable {
+  cursor: pointer;
+}
+.arch-box.clickable:hover {
+  stroke-width: 2.5;
+}
+.arch-box.picked {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.arch-note.clickable {
+  cursor: pointer;
+}
+.arch-note.clickable:hover {
+  filter: brightness(1.08);
+}
+.arch-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* The clicked box, explained. */
+.insp {
+  margin: 10px 20px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.insp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.insp-head b {
+  font-size: 15px;
+}
+.insp-tag {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 12.5px;
+}
+.insp-head .wf-close {
+  margin-left: auto;
+}
+.insp-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 10px 0 0;
+}
+.insp-facts dt,
+.insp-sub {
+  font: 600 10.5px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.insp-facts dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.insp-metrics {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.insp-metric {
+  display: grid;
+  grid-template-columns: 130px 110px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 8px;
+  border-left: 3px solid var(--line-2);
+  font-size: 12.5px;
+}
+.insp-metric.ok {
+  border-left-color: var(--ok);
+}
+.insp-metric.warn {
+  border-left-color: var(--warn);
+}
+.insp-metric.bad {
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+}
+.insp-name {
+  color: var(--muted);
+}
+.insp-value {
+  font-family: var(--mono);
+  color: var(--ink);
+}
+.insp-says {
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.insp-off {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* One request as a DevTools-style waterfall. */
+.wf {
+  margin: 10px 20px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.wf-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.wf-close {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wf-note {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.wf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wf-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 64px;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+}
+.wf-label {
+  font-size: 12.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wf-label span {
+  margin-left: 6px;
+  font: 10.5px var(--mono);
+  color: var(--muted);
+}
+.wf-track {
+  position: relative;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--panel-2);
+}
+.wf-span {
+  position: absolute;
+  top: 6px;
+  height: 2px;
+  background: var(--line-2);
+}
+.wf-seg {
+  position: absolute;
+  top: 2px;
+  height: 10px;
+  border-radius: 2px;
+}
+.wf-seg.line {
+  background: var(--muted);
+}
+.wf-seg.cpu {
+  background: var(--warn);
+}
+.wf-seg.work {
+  background: var(--accent);
+}
+.wf-seg.downstream {
+  top: 5px;
+  height: 4px;
+  background: var(--accent-line);
+}
+.wf-time {
+  font: 11.5px var(--mono);
+  text-align: right;
+  color: var(--ink-2);
+}
+.wf-words {
+  grid-column: 2 / 4;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.wf-words.bad {
+  color: var(--bad);
+}
+.wf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.wf-legend i {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  top: 0;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+@media (max-width: 700px) {
+  .insp-metric {
+    grid-template-columns: 1fr auto;
+  }
+  .insp-says {
+    grid-column: 1 / -1;
+  }
+  .wf-row {
+    grid-template-columns: 90px 1fr 54px;
+  }
+}
+.arch-trace {
+  padding: 3px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.arch-trace:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.wf-seg.net {
+  top: 5px;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px);
+}
+.arch-node {
+  cursor: pointer;
+}

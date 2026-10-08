@@ -1,7 +1,9 @@
 // Plays an architecture: the canvas, charts, knobs and timeline for one scenario at a time.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { callouts, summary, type TrafficFault, type TrafficTrace } from "../../../system-design/traffic/index.ts";
+import { callouts, replicaNames, summary, type Journey, type TrafficFault, type TrafficTrace } from "../../../system-design/traffic/index.ts";
+import { BoxInspector } from "./BoxInspector.tsx";
+import { Waterfall } from "./Waterfall.tsx";
 import { CodePanel } from "../components/CodePanel.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { LessonView } from "../components/LessonView.tsx";
@@ -13,7 +15,7 @@ import { ArchCanvas } from "./ArchCanvas.tsx";
 import { KnobBar } from "./KnobBar.tsx";
 import { MetricsStrip } from "./MetricsStrip.tsx";
 import { TrafficChaos } from "./TrafficChaos.tsx";
-import { FRAME_MS, faultLabel, journeyLines, previousDesign, stageOf, stages } from "./model.ts";
+import { FRAME_MS, designDiff, faultLabel, previousDesign, stageOf, stages } from "./model.ts";
 import type { Override } from "./run.ts";
 import { useTrafficTrace } from "./useTrafficTrace.ts";
 import "./traffic.css";
@@ -36,6 +38,7 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
   const lesson = useMemo(() => parseLesson(problem.lesson), [problem.lesson]);
   const [tab, setTab] = useState<"learn" | "code">(problem.lesson ? "learn" : "code");
   const [selected, setSelected] = useState<number | null>(null);
+  const [box, setBox] = useState<string | null>(null);
   const [jump, setJump] = useState<{ run: number; frame: number; req?: number } | null>(null);
 
   const onPlay = useCallback(
@@ -79,14 +82,15 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
     },
     [run, override, runIndex, k],
   );
-  const addFault = useCallback(
-    (f: TrafficFault) => {
+  const addFaults = useCallback(
+    (fs: TrafficFault[]) => {
       const mine = override?.run === runIndex ? override : null;
-      setOverride({ run: runIndex, knobs: mine?.knobs, faults: [...(mine?.faults ?? []), f] });
+      setOverride({ run: runIndex, knobs: mine?.knobs, faults: [...(mine?.faults ?? []), ...fs] });
       setJump({ run: runIndex, frame: k });
     },
     [override, runIndex, k],
   );
+  const addFault = useCallback((f: TrafficFault) => addFaults([f]), [addFaults]);
   const resetFaults = useCallback(() => {
     const mine = override?.run === runIndex ? override : null;
     setOverride(mine?.knobs ? { run: runIndex, knobs: mine.knobs } : null);
@@ -116,6 +120,17 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
   const pickRun = (i: number) => {
     setRunIndex(i);
     setSelected(null);
+  };
+  const diff = useMemo(() => (run ? designDiff(prev, run.design) : {}), [prev, run]);
+  const boxComp = run?.design.components.find((c) => c.id === box);
+  /** A typical request that finished in the last two seconds: the one closest to the median time. */
+  const traceOne = () => {
+    if (!run || !frame) return;
+    const done = run.journeys.filter((j: Journey) => j.end >= 0 && j.end <= frame.t && j.end > frame.t - 2000);
+    const pool = done.filter((j) => j.outcome === "ok").length ? done.filter((j) => j.outcome === "ok") : done;
+    if (!pool.length) return;
+    const sorted = [...pool].sort((a, b) => a.end - a.sent - (b.end - b.sent));
+    setSelected(sorted[Math.floor(sorted.length / 2)].id);
   };
 
   return (
@@ -216,25 +231,47 @@ export function TrafficProblemView({ problem }: { problem: Problem }) {
               }}
             />
             <TrafficChaos design={run.design} t={frame.t} faults={active?.faults ?? []} onAdd={addFault} onReset={resetFaults} />
-            <div className="arch">
-              <ArchCanvas run={run} frame={frame} prev={prev} notes={notes} selected={selected} onSelect={setSelected} />
+            <div className="arch-help">
+              <span>Click any box to see what it does and what its numbers mean. Click a moving dot, or</span>
+              <button className="arch-trace" onClick={traceOne}>
+                Trace a request
+              </button>
+              <span>to see where its time went.</span>
             </div>
+            <div className="arch">
+              <ArchCanvas run={run} frame={frame} prev={prev} notes={notes} selected={selected} onSelect={setSelected} box={box} onBox={(id) => setBox(box === id ? null : id)} />
+            </div>
+            {boxComp && (
+              <BoxInspector
+                comp={boxComp}
+                design={run.design}
+                frame={frame}
+                notes={notes.filter((n) => n.at === boxComp.id)}
+                diff={diff[boxComp.id]}
+                before={prev?.components.find((c) => c.id === boxComp.id)}
+                onTurnOff={
+                  boxComp.type === "station" && boxComp.role !== "cdn"
+                    ? () => addFaults(replicaNames(boxComp).map((target) => ({ at: Math.max(100, Math.round(frame.t / 100) * 100), kind: "kill" as const, target })))
+                    : undefined
+                }
+                onClose={() => setBox(null)}
+              />
+            )}
             {notes.length > 0 && (
               <div className="arch-notes">
                 {notes.map((n) => (
-                  <div key={`${n.at}-${n.rule}`} className={`arch-note sev${n.severity}`}>
+                  <div
+                    key={`${n.at}-${n.rule}`}
+                    className={`arch-note sev${n.severity} clickable`}
+                    onClick={() => setBox(n.at)}
+                    title="Show this box's details"
+                  >
                     <b>{run.design.components.find((c) => c.id === n.at)?.label ?? n.at}:</b> {n.text}
                   </div>
                 ))}
               </div>
             )}
-            {journey && (
-              <div className="journey">
-                {journeyLines(journey).map((l, i) => (
-                  <div key={i}>{l}</div>
-                ))}
-              </div>
-            )}
+            {journey && <Waterfall journey={journey} design={run.design} onClose={() => setSelected(null)} />}
             <MetricsStrip run={run} index={k} />
           </div>
         )}

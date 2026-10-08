@@ -6,7 +6,8 @@ import type { TrafficTrace } from "../../../system-design/traffic/index.ts";
 import { cacheSet } from "../sim/cache.ts";
 import type { Override } from "./run.ts";
 
-const TIMEOUT_MS = 20_000;
+// Generous: a hidden browser tab runs workers slowly, and switching tabs mid-run must not fail it.
+const TIMEOUT_MS = 60_000;
 const cache = new Map<string, TrafficTrace>();
 
 export type TrafficState =
