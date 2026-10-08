@@ -80,16 +80,6 @@ export type StoryView = {
   lens?: ArrayLens;
   rule?: string;
   broken: boolean;
-  quiz?: { on: boolean; toggle: () => void };
-  ask?: {
-    name: string;
-    feedback: string;
-    onReveal: () => void;
-    /** A question answered by picking a value rather than clicking a cell. */
-    choices?: string[];
-    wrong?: string;
-    onChoose?: (c: string) => void;
-  };
   /** Grid cells visited or filled so far, by panel key. */
   trail?: Map<string, Set<string>>;
 };
@@ -170,47 +160,12 @@ export function Visual({
   return (
     <div className="visual">
       {caption && <Callout caption={caption} />}
-      {story && (story.rule || story.quiz) && (
+      {story?.rule && (
         <div className={`rule-bar ${story.broken ? "broken" : ""}`}>
           <span className="dot" />
           <span className="rule-text">
-            {story.rule ? `${story.broken ? "Rule broken" : "Rule holds"}: ${story.rule}` : "Key moments pause for your guess."}
+            {`${story.broken ? "Rule broken" : "Rule holds"}: ${story.rule}`}
           </span>
-          {story.quiz && (
-            <label className="quiz-toggle" title="Pause at key moments and guess where the pointer goes">
-              <input type="checkbox" checked={story.quiz.on} onChange={story.quiz.toggle} />
-              Ask me first
-            </label>
-          )}
-        </div>
-      )}
-      {story?.ask && (
-        <div className="ask-bar" role="status">
-          <span>
-            <b>Your turn.</b>{" "}
-            {story.ask.choices ? (
-              <>
-                What is <code>{story.ask.name}</code> after this line?
-              </>
-            ) : (
-              <>
-                Where does <code>{story.ask.name}</code> go next? Click a cell.
-              </>
-            )}
-          </span>
-          {story.ask.choices && (
-            <span className="ask-choices">
-              {story.ask.choices.map((c) => (
-                <button key={c} className={`btn ${story.ask!.wrong === c ? "wrong" : ""}`} onClick={() => story.ask!.onChoose?.(c)}>
-                  {c}
-                </button>
-              ))}
-            </span>
-          )}
-          <button className="btn" onClick={story.ask.onReveal}>
-            Show me
-          </button>
-          <span className="ask-feedback">{story.ask.feedback}</span>
         </div>
       )}
       {scene.scalars.length > 0 && (

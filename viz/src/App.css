@@ -2436,36 +2436,6 @@
   flex: 1;
   min-width: 0;
 }
-.quiz-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
-  cursor: pointer;
-}
-.ask-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px dashed var(--accent);
-  border-radius: 9px;
-  background: var(--accent-soft);
-  font-size: 13px;
-}
-.ask-bar b {
-  color: var(--accent);
-}
-.ask-bar .ask-feedback {
-  flex-basis: 100%;
-  color: var(--ink-2);
-}
-.ask-bar .ask-feedback:empty {
-  display: none;
-}
 .story-svg text {
   font-family: var(--mono);
   font-size: 10px;
@@ -2513,22 +2483,6 @@
 }
 .scrub-tick.moment {
   background: var(--accent);
-}
-
-/* choices for a question that is not a cell click */
-.ask-choices {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ask-choices .btn {
-  font-family: var(--mono);
-  min-width: 40px;
-}
-.ask-choices .btn.wrong {
-  animation: shake 0.35s;
-  background: var(--bad-soft);
-  border-color: var(--bad);
 }
 
 /* reads and writes of the current line */
@@ -2618,8 +2572,7 @@
   fill: var(--muted);
 }
 @media (prefers-reduced-motion: reduce) {
-  .arr-cell.wrong,
-  .ask-choices .btn.wrong {
+  .arr-cell.wrong {
     animation: none;
   }
 }

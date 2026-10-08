@@ -145,15 +145,6 @@ function initialTab(): LeftTab {
   }
 }
 
-const QUIZ_KEY = "viz:quiz";
-function initialQuiz(): boolean {
-  try {
-    return localStorage.getItem(QUIZ_KEY) !== "0";
-  } catch {
-    return true;
-  }
-}
-
 const KEY_ONLY_KEY = "viz:key-steps";
 function initialKeyOnly(): boolean {
   try {
@@ -303,26 +294,7 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
   const player = usePlayer(steps.length, `${problem.id}:${runIndex}:${steps.length}`, dwell, keyOnly && keyStops.length > 1 ? keyStops : null, !revealed);
   const k = player.index;
 
-  // "Ask me first": arriving at a step that moves a pointer pauses on the step before it,
-  // and the learner clicks where the pointer goes before the move is shown.
-  const [quizOn, setQuizOn] = useState(initialQuiz);
-  const [asking, setAsking] = useState<{ k: number; wrong?: number; wrongChoice?: string; feedback: string } | null>(null);
-  const answered = useRef(new Set<number>());
-  const lastK = useRef(k);
-  useEffect(() => {
-    answered.current = new Set();
-    setAsking(null);
-  }, [steps]);
-  useEffect(() => {
-    const from = lastK.current;
-    lastK.current = k;
-    if (asking && asking.k !== k) setAsking(null);
-    if (story && quizOn && k === from + 1 && story.asks.has(k) && !answered.current.has(k)) {
-      player.pause();
-      setAsking({ k, feedback: "" });
-    }
-  }, [k, story, quizOn, asking, player]);
-  const shownK = asking ? asking.k - 1 : k;
+  const shownK = k;
 
   const step = steps[shownK];
   const after = steps[shownK + 1] ?? step;
@@ -337,11 +309,6 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
 
   const storyView: StoryView | undefined = useMemo(() => {
     if (!story) return undefined;
-    const ask = asking ? story.asks.get(asking.k) : undefined;
-    const reveal = () => {
-      if (asking) answered.current.add(asking.k);
-      setAsking(null);
-    };
     const win = story.win;
     const trail = new Map<string, Set<string>>();
     for (const [key, cells] of story.trail) {
@@ -354,40 +321,6 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
       rule: problem.hints.rule,
       broken: story.broken[shownK] ?? false,
       trail,
-      quiz:
-        story.asks.size > 0
-          ? {
-              on: quizOn,
-              toggle: () => {
-                const on = !quizOn;
-                setQuizOn(on);
-                if (!on) setAsking(null);
-                try {
-                  localStorage.setItem(QUIZ_KEY, on ? "1" : "0");
-                } catch {
-                  // Remembering the toggle is a convenience only.
-                }
-              },
-            }
-          : undefined,
-      ask:
-        ask && asking
-          ? {
-              name: ask.name,
-              feedback: asking.feedback,
-              onReveal: reveal,
-              ...(ask.kind === "choice"
-                ? {
-                    choices: ask.choices,
-                    wrong: asking.wrongChoice,
-                    onChoose: (c: string) => {
-                      if (c === ask.answer) return reveal();
-                      setAsking({ k: asking.k, wrongChoice: c, feedback: `Not ${c}. Read the line again, then try another value or press Show me.` });
-                    },
-                  }
-                : {}),
-            }
-          : undefined,
       lens: win
         ? {
             mode: win.mode,
@@ -395,29 +328,10 @@ function ProblemView({ problem, onSelect }: { problem: Problem; onSelect: (id: s
             bestName: problem.hints.best,
             justLeft: leftWindow(win.wins[shownK - 1] ?? null, win.wins[shownK] ?? null),
             arcRoom: problem.hints.arcs.length > 0,
-            ask:
-              ask && asking && ask.kind === "cell"
-                ? {
-                    name: ask.name,
-                    wrong: asking.wrong,
-                    onPick: (i: number) => {
-                      if (i === ask.answer) return reveal();
-                      const towardRight = ask.answer > ask.from;
-                      const short = towardRight ? i < ask.answer : i > ask.answer;
-                      setAsking({
-                        k: asking.k,
-                        wrong: i,
-                        feedback: short
-                          ? `Not far enough: with ${ask.name} at ${i}${problem.hints.rule ? ", the rule is still broken" : ""}.`
-                          : `Too far: ${ask.name} at ${i} throws away cells that can still be part of an answer.`,
-                      });
-                    },
-                  }
-                : undefined,
           }
         : undefined,
     };
-  }, [story, asking, shownK, quizOn, problem.hints]);
+  }, [story, shownK, problem.hints]);
 
   // Every drawing, story or not: what the line reads and writes, and how far the tree's recursion has got.
   const stepLens: StepLens = useMemo(() => {
